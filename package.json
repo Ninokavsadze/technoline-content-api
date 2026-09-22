@@ -1,0 +1,12 @@
+{
+  "name": "technoline-content-api",
+  "version": "1.0.0",
+  "description": "Test/reference server for technoline.ge site content + booking API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
