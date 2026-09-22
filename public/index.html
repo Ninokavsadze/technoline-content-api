@@ -2260,7 +2260,7 @@
   function loadSiteContent(){
     var adminLink = document.getElementById('admin-btn');
     if(adminLink && ADMIN_PANEL_URL && ADMIN_PANEL_URL.indexOf('PLACEHOLDER') === -1) adminLink.href = ADMIN_PANEL_URL;
-    fetch(API_BASE + '/api/site').then(function(res){
+    fetch(API_BASE + '/api/site', {cache:'no-store'}).then(function(res){
       if(!res.ok) throw new Error('site_fetch_failed');
       return res.json();
     }).then(function(data){
