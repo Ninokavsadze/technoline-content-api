@@ -139,6 +139,13 @@
   table.admin-table tr:last-child td{border-bottom:none}
   table.admin-table input{width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-soft);color:var(--ink);font-size:.86rem}
   table.admin-table input:focus{border-color:var(--blue);background:var(--paper)}
+  .part-photo-cell{display:flex;align-items:center;gap:10px}
+  .part-thumb{width:52px;height:52px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper-soft);object-fit:cover;flex:none}
+  .part-thumb-empty{width:52px;height:52px;border-radius:10px;border:1.5px dashed var(--line);background:var(--paper-soft);flex:none;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-size:1.3rem}
+  .part-photo-actions{display:flex;flex-direction:column;gap:4px}
+  .part-photo-actions label{font-size:.76rem;font-weight:700;color:var(--blue);cursor:pointer;background:none;border:none;padding:0;text-align:left}
+  .part-photo-actions button{font-size:.76rem;font-weight:700;color:var(--ink-faint);cursor:pointer;background:none;border:none;padding:0;text-align:left}
+  .part-photo-actions input[type=file]{display:none}
 
   .branch-card{border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
   .branch-card:last-child{margin-bottom:0}
@@ -586,12 +593,29 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     wireSaveBar(tab, function(){ return {path:'theme-site', body: state.theme}; });
   }
 
+  var PART_PHOTO_MAX_W = 640;
+  var PART_PHOTO_QUALITY = 0.82;
+
+  function renderPartsThumb(id){
+    var o = state.parts[id] || {};
+    return o.image
+      ? '<img class="part-thumb" src="'+o.image+'" alt="">'
+      : '<div class="part-thumb-empty">—</div>';
+  }
+
   function renderPartsPanel(main, tab){
-    var html = panelHeadHtml(tab, 'შეცვალეთ ნაწილის დასახელება, ფასი ან მარაგის სტატუსი (in — მარაგშია, low — მცირდება).');
-    html += '<div class="card"><table class="admin-table"><thead><tr><th>ნაწილი</th><th style="width:110px">ფასი ₾</th><th style="width:100px">მარაგი</th></tr></thead><tbody>';
+    var html = panelHeadHtml(tab, 'შეცვალეთ ნაწილის დასახელება, ფასი, მარაგის სტატუსი (in — მარაგშია, low — მცირდება) ან ატვირთეთ საკუთარი ფოტო — თუ ფოტო არ ატვირთეთ, საიტზე საერთო ტიპის ილუსტრაცია გამოჩნდება.');
+    html += '<div class="card"><table class="admin-table"><thead><tr><th style="width:150px">ფოტო</th><th>ნაწილი</th><th style="width:110px">ფასი ₾</th><th style="width:100px">მარაგი</th></tr></thead><tbody>';
     PARTS_DEFAULTS.forEach(function(def){
       var o = state.parts[def.id] || {};
       html += '<tr>'
+        + '<td><div class="part-photo-cell" data-part-photo-cell="'+def.id+'">'
+          + renderPartsThumb(def.id)
+          + '<div class="part-photo-actions">'
+            + '<label>ატვირთვა<input type="file" accept="image/*" data-parts-photo="'+def.id+'"></label>'
+            + (o.image ? '<button type="button" data-parts-photo-clear="'+def.id+'">წაშლა</button>' : '')
+          + '</div>'
+        + '</div></td>'
         + '<td><input type="text" data-parts-edit="'+def.id+'" data-parts-field="name" value="'+escAttr(o.name!=null?o.name:def.name)+'"></td>'
         + '<td><input type="text" data-parts-edit="'+def.id+'" data-parts-field="price" value="'+escAttr(o.price!=null?o.price:def.price)+'"></td>'
         + '<td><input type="text" data-parts-edit="'+def.id+'" data-parts-field="stock" value="'+escAttr(o.stock!=null?o.stock:def.stock)+'"></td>'
@@ -610,6 +634,61 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         updateStatusChip(tab);
       });
     });
+
+    function refreshPhotoCell(id){
+      var cell = main.querySelector('[data-part-photo-cell="'+id+'"]');
+      if(!cell) return;
+      var o = state.parts[id] || {};
+      cell.innerHTML = renderPartsThumb(id)
+        + '<div class="part-photo-actions">'
+          + '<label>ატვირთვა<input type="file" accept="image/*" data-parts-photo="'+id+'"></label>'
+          + (o.image ? '<button type="button" data-parts-photo-clear="'+id+'">წაშლა</button>' : '')
+        + '</div>';
+      wirePhotoCell(id);
+    }
+
+    function wirePhotoCell(id){
+      var cell = main.querySelector('[data-part-photo-cell="'+id+'"]');
+      if(!cell) return;
+      var fileInp = cell.querySelector('[data-parts-photo="'+id+'"]');
+      if(fileInp){
+        fileInp.addEventListener('change', function(){
+          var file = fileInp.files && fileInp.files[0];
+          if(!file) return;
+          var reader = new FileReader();
+          reader.onload = function(){
+            var img = new Image();
+            img.onload = function(){
+              var scale = Math.min(1, PART_PHOTO_MAX_W / img.width);
+              var w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+              var canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              var dataUrl = canvas.toDataURL('image/jpeg', PART_PHOTO_QUALITY);
+              if(!state.parts[id]) state.parts[id] = {};
+              state.parts[id].image = dataUrl;
+              setDirty(tab, true);
+              updateStatusChip(tab);
+              refreshPhotoCell(id);
+            };
+            img.src = reader.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+      var clearBtn = cell.querySelector('[data-parts-photo-clear="'+id+'"]');
+      if(clearBtn){
+        clearBtn.addEventListener('click', function(){
+          if(state.parts[id]) delete state.parts[id].image;
+          setDirty(tab, true);
+          updateStatusChip(tab);
+          refreshPhotoCell(id);
+        });
+      }
+    }
+
+    PARTS_DEFAULTS.forEach(function(def){ wirePhotoCell(def.id); });
+
     wireSaveBar(tab, function(){ return {path:'content-parts', body: state.parts}; });
   }
 
