@@ -32,6 +32,15 @@ const DATA_FILE = path.join(__dirname, 'data.json');
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 
+// --- static site + admin panel ---------------------------------------
+// Served from this same server (not a claude.ai Artifact) so the pages
+// can call the /api/* routes below with a plain relative fetch — no CSP
+// or cross-origin restriction, since it's all one origin now.
+app.use(express.static(path.join(__dirname, 'public')));
+app.get('/admin', function (req, res) {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
 // --- permissive CORS for the test server -----------------------------
 // The real Q-Logic server should restrict this to the actual site's
 // origin(s) once known; for testing, any origin (including a claude.ai
