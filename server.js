@@ -56,7 +56,15 @@ app.use(function (req, res, next) {
   next();
 });
 
-// --- tiny JSON-file store ---------------------------------------------
+// --- storage ------------------------------------------------------------
+// Render's free web-service disk is EPHEMERAL: it resets to empty on every
+// redeploy and on every spin-down/spin-up after idle time, which is why
+// admin-saved content was disappearing. When UPSTASH_REDIS_REST_URL and
+// UPSTASH_REDIS_REST_TOKEN are set (Upstash's free Redis — console.upstash.com,
+// "REST API" section of the database) each top-level doc is stored there
+// instead, which persists across restarts/redeploys. With neither var set,
+// this falls back to the old local data.json file (fine for local testing,
+// NOT durable on Render's free tier).
 const DEFAULT_DB = {
   'content/site': {},
   'theme/site': {},
@@ -64,18 +72,52 @@ const DEFAULT_DB = {
   'content/branches': {},
   bookings: []
 };
+const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const USE_UPSTASH = !!(UPSTASH_URL && UPSTASH_TOKEN);
+const DB_KEYS = Object.keys(DEFAULT_DB);
 
-function readDb() {
+async function upstashGet(key) {
+  const res = await fetch(UPSTASH_URL + '/get/technoline:' + encodeURIComponent(key), {
+    headers: { Authorization: 'Bearer ' + UPSTASH_TOKEN }
+  });
+  const data = await res.json();
+  return data && data.result != null ? JSON.parse(data.result) : null;
+}
+async function upstashSet(key, value) {
+  await fetch(UPSTASH_URL + '/set/technoline:' + encodeURIComponent(key), {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + UPSTASH_TOKEN },
+    body: JSON.stringify(value)
+  });
+}
+
+async function readDb() {
+  if (USE_UPSTASH) {
+    try {
+      const values = await Promise.all(DB_KEYS.map(upstashGet));
+      const db = {};
+      DB_KEYS.forEach(function (k, i) { db[k] = values[i] != null ? values[i] : (k === 'bookings' ? [] : {}); });
+      return db;
+    } catch (e) {
+      console.error('Upstash read failed:', e.message);
+      return JSON.parse(JSON.stringify(DEFAULT_DB));
+    }
+  }
   try {
     return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
   } catch (e) {
     return JSON.parse(JSON.stringify(DEFAULT_DB));
   }
 }
-function writeDb(db) {
+async function writeDb(db) {
+  if (USE_UPSTASH) {
+    await Promise.all(DB_KEYS.map(function (k) { return upstashSet(k, db[k]); }));
+    return;
+  }
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2), 'utf8');
 }
-if (!fs.existsSync(DATA_FILE)) writeDb(DEFAULT_DB);
+if (!USE_UPSTASH && !fs.existsSync(DATA_FILE)) writeDb(DEFAULT_DB);
 
 // --- auth (test only — a single shared admin password) ----------------
 // Real Q-Logic already has requireAuth/requireRole; when merging, swap
@@ -120,35 +162,47 @@ const SITE_DOC_KEYS = {
   'content-branches': 'content/branches'
 };
 
-app.get('/api/site/:doc', function (req, res) {
+app.get('/api/site/:doc', async function (req, res) {
   const key = SITE_DOC_KEYS[req.params.doc];
   if (!key) return res.status(404).json({ error: 'unknown_doc' });
-  const db = readDb();
-  res.json(db[key] || {});
+  try {
+    const db = await readDb();
+    res.json(db[key] || {});
+  } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 // One call to fetch all four documents at once (what the storefront
 // needs on page load).
-app.get('/api/site', function (req, res) {
-  const db = readDb();
-  res.json({
-    content: db['content/site'] || {},
-    theme: db['theme/site'] || {},
-    parts: db['content/parts'] || {},
-    branches: db['content/branches'] || {}
-  });
+app.get('/api/site', async function (req, res) {
+  try {
+    const db = await readDb();
+    res.json({
+      content: db['content/site'] || {},
+      theme: db['theme/site'] || {},
+      parts: db['content/parts'] || {},
+      branches: db['content/branches'] || {}
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
-app.put('/api/site/:doc', requireAuth, function (req, res) {
+app.put('/api/site/:doc', requireAuth, async function (req, res) {
   const key = SITE_DOC_KEYS[req.params.doc];
   if (!key) return res.status(404).json({ error: 'unknown_doc' });
   if (typeof req.body !== 'object' || Array.isArray(req.body) || req.body === null) {
     return res.status(400).json({ error: 'invalid_body' });
   }
-  const db = readDb();
-  db[key] = req.body; // full replace, mirrors the old db.doc(path).set(body)
-  writeDb(db);
-  res.json({ ok: true });
+  try {
+    const db = await readDb();
+    db[key] = req.body; // full replace, mirrors the old db.doc(path).set(body)
+    await writeDb(db);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 // --- bookings -----------------------------------------------------------
@@ -212,69 +266,86 @@ app.post('/api/bookings', async function (req, res) {
   if (missing.length) {
     return res.status(400).json({ error: 'missing_fields', fields: missing });
   }
-  const db = readDb();
-  const booking = {
-    id: 'bk_' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex'),
-    confirmationCode: genConfirmationCode(),
-    status: 'received',
-    createdAt: new Date().toISOString(),
-    branchId: b.branchId,
-    serviceType: b.serviceType,
-    date: b.date,
-    timeSlot: b.timeSlot,
-    name: b.name,
-    phone: b.phone,
-    deviceType: b.deviceType || null,
-    issue: b.issue || null,
-    notes: b.notes || null,
-    qlogicId: null,
-    qlogicVerifyCode: null,
-    qlogicSpace: null
-  };
-  db.bookings.push(booking);
-  writeDb(db);
+  let booking;
+  try {
+    const db = await readDb();
+    booking = {
+      id: 'bk_' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex'),
+      confirmationCode: genConfirmationCode(),
+      status: 'received',
+      createdAt: new Date().toISOString(),
+      branchId: b.branchId,
+      serviceType: b.serviceType,
+      date: b.date,
+      timeSlot: b.timeSlot,
+      name: b.name,
+      phone: b.phone,
+      deviceType: b.deviceType || null,
+      issue: b.issue || null,
+      notes: b.notes || null,
+      qlogicId: null,
+      qlogicVerifyCode: null,
+      qlogicSpace: null
+    };
+    db.bookings.push(booking);
+    await writeDb(db);
+  } catch (e) {
+    return res.status(500).json({ error: 'server_error' });
+  }
   res.status(201).json(booking); // respond right away — the site shouldn't wait on Q-Logic
 
   // fire the Q-Logic sync after responding; update the saved record if it succeeds
-  sendToQLogic(booking).then(function (result) {
+  sendToQLogic(booking).then(async function (result) {
     if (!result || !result.booking) return;
-    const db2 = readDb();
+    const db2 = await readDb();
     const idx = db2.bookings.findIndex(function (x) { return x.id === booking.id; });
     if (idx === -1) return;
     db2.bookings[idx].qlogicId = result.booking.id;
     db2.bookings[idx].qlogicVerifyCode = result.booking.verify_code || null;
     db2.bookings[idx].qlogicSpace = result.space ? result.space.name : null;
-    writeDb(db2);
-  });
+    await writeDb(db2);
+  }).catch(function (e) { console.error('post-booking qlogic sync error:', e.message); });
 });
 
-app.get('/api/bookings/:id', function (req, res) {
-  const db = readDb();
-  const booking = db.bookings.find(function (x) { return x.id === req.params.id; });
-  if (!booking) return res.status(404).json({ error: 'not_found' });
-  res.json(booking);
+app.get('/api/bookings/:id', async function (req, res) {
+  try {
+    const db = await readDb();
+    const booking = db.bookings.find(function (x) { return x.id === req.params.id; });
+    if (!booking) return res.status(404).json({ error: 'not_found' });
+    res.json(booking);
+  } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 // staff-only listing, for when the admin panel wants to show recent bookings
-app.get('/api/bookings', requireAuth, function (req, res) {
-  const db = readDb();
-  res.json(db.bookings.slice(-200).reverse());
+app.get('/api/bookings', requireAuth, async function (req, res) {
+  try {
+    const db = await readDb();
+    res.json(db.bookings.slice(-200).reverse());
+  } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 // Called by the local Smart Q-Logic bridge script (runs on the same machine
 // as Q-Logic, since Q-Logic itself isn't reachable from this server) once it
 // has successfully pushed a booking into Q-Logic — records the result here
 // so the bridge (and the admin panel) knows this booking is already synced.
-app.put('/api/bookings/:id/qlogic', requireAuth, function (req, res) {
-  const db = readDb();
-  const idx = db.bookings.findIndex(function (x) { return x.id === req.params.id; });
-  if (idx === -1) return res.status(404).json({ error: 'not_found' });
-  const b = req.body || {};
-  db.bookings[idx].qlogicId = b.qlogicId != null ? b.qlogicId : db.bookings[idx].qlogicId;
-  db.bookings[idx].qlogicVerifyCode = b.qlogicVerifyCode || db.bookings[idx].qlogicVerifyCode;
-  db.bookings[idx].qlogicSpace = b.qlogicSpace || db.bookings[idx].qlogicSpace;
-  writeDb(db);
-  res.json({ ok: true, booking: db.bookings[idx] });
+app.put('/api/bookings/:id/qlogic', requireAuth, async function (req, res) {
+  try {
+    const db = await readDb();
+    const idx = db.bookings.findIndex(function (x) { return x.id === req.params.id; });
+    if (idx === -1) return res.status(404).json({ error: 'not_found' });
+    const b = req.body || {};
+    db.bookings[idx].qlogicId = b.qlogicId != null ? b.qlogicId : db.bookings[idx].qlogicId;
+    db.bookings[idx].qlogicVerifyCode = b.qlogicVerifyCode || db.bookings[idx].qlogicVerifyCode;
+    db.bookings[idx].qlogicSpace = b.qlogicSpace || db.bookings[idx].qlogicSpace;
+    await writeDb(db);
+    res.json({ ok: true, booking: db.bookings[idx] });
+  } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 app.get('/api/health', function (req, res) {
