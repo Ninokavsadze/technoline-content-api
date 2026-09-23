@@ -156,7 +156,56 @@ function genConfirmationCode() {
   return 'TL-' + Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
-app.post('/api/bookings', function (req, res) {
+// --- Smart Q-Logic integration (optional — only fires once both env vars
+// below are set on Render; until then bookings just save locally as before) ---
+// QLOGIC_API_BASE: Smart Q-Logic's own server address (its admin panel ->
+//   "ინტეგრაციები" -> "საიტის ჯავშნების API" page, "Endpoint URL" field) —
+//   just the domain, e.g. https://smart-qlogic.example, no trailing path.
+// QLOGIC_API_KEY: the key shown on that same admin page (👁 button).
+const QLOGIC_API_BASE = process.env.QLOGIC_API_BASE || '';
+const QLOGIC_API_KEY = process.env.QLOGIC_API_KEY || '';
+
+// our local branch id -> Smart Q-Logic's numeric branch_id. Q-Logic
+// currently has only ONE branch configured there (id 1), so every local
+// branch maps to it for now — update this if Q-Logic adds more branches.
+const QLOGIC_BRANCH_MAP = { b1: 1, b2: 1, b3: 1, b4: 1 };
+
+async function sendToQLogic(booking) {
+  if (!QLOGIC_API_BASE || !QLOGIC_API_KEY) return null; // not configured yet
+  const branch_id = QLOGIC_BRANCH_MAP[booking.branchId] || 1;
+  const controller = new AbortController();
+  const timeout = setTimeout(function () { controller.abort(); }, 8000);
+  try {
+    const res = await fetch(QLOGIC_API_BASE.replace(/\/$/, '') + '/api/integrations/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': QLOGIC_API_KEY },
+      signal: controller.signal,
+      body: JSON.stringify({
+        branch_id: branch_id,
+        phone: booking.phone,
+        appt_date: booking.date,
+        appt_time: booking.timeSlot,
+        customer_name: booking.name || undefined,
+        service_type: booking.serviceType || undefined,
+        note: [booking.deviceType, booking.issue, booking.notes].filter(Boolean).join(' / ') || undefined,
+        external_ref: booking.id
+      })
+    });
+    const data = await res.json().catch(function () { return null; });
+    if (!res.ok) {
+      console.error('Smart Q-Logic booking failed:', res.status, data);
+      return null;
+    }
+    return data; // { ok, booking:{ id, verify_code, ... }, space }
+  } catch (e) {
+    console.error('Smart Q-Logic request error:', e.message);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+app.post('/api/bookings', async function (req, res) {
   const b = req.body || {};
   const required = ['branchId', 'serviceType', 'date', 'timeSlot', 'name', 'phone'];
   const missing = required.filter(function (f) { return !b[f]; });
@@ -177,11 +226,26 @@ app.post('/api/bookings', function (req, res) {
     phone: b.phone,
     deviceType: b.deviceType || null,
     issue: b.issue || null,
-    notes: b.notes || null
+    notes: b.notes || null,
+    qlogicId: null,
+    qlogicVerifyCode: null,
+    qlogicSpace: null
   };
   db.bookings.push(booking);
   writeDb(db);
-  res.status(201).json(booking);
+  res.status(201).json(booking); // respond right away — the site shouldn't wait on Q-Logic
+
+  // fire the Q-Logic sync after responding; update the saved record if it succeeds
+  sendToQLogic(booking).then(function (result) {
+    if (!result || !result.booking) return;
+    const db2 = readDb();
+    const idx = db2.bookings.findIndex(function (x) { return x.id === booking.id; });
+    if (idx === -1) return;
+    db2.bookings[idx].qlogicId = result.booking.id;
+    db2.bookings[idx].qlogicVerifyCode = result.booking.verify_code || null;
+    db2.bookings[idx].qlogicSpace = result.space ? result.space.name : null;
+    writeDb(db2);
+  });
 });
 
 app.get('/api/bookings/:id', function (req, res) {
