@@ -1097,6 +1097,25 @@
               <div class="ri"><span id="wr-days-label">დარჩენილი დღეები</span><strong id="wr-days">—</strong></div>
             </div>
             <div id="wr-cta" style="margin-top:20px"></div>
+            <div id="wr-share" style="margin-top:20px" hidden>
+              <a id="wr-pdf-link" href="#" class="btn btn-ghost btn-block" download>საგარანტიო ბარათის ჩამოტვირთვა (PDF)</a>
+              <div class="field-row" style="margin-top:14px">
+                <div class="field">
+                  <label for="wr-email-input">გაგზავნა მეილზე</label>
+                  <div style="display:flex;gap:8px">
+                    <input type="email" id="wr-email-input" placeholder="you@example.com" style="flex:1">
+                    <button type="button" class="btn btn-blue btn-sm" id="wr-send-email">გაგზავნა</button>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="wr-sms-input">გაგზავნა SMS-ით</label>
+                  <div style="display:flex;gap:8px">
+                    <input type="tel" id="wr-sms-input" placeholder="+995 5__ __ __ __" style="flex:1">
+                    <button type="button" class="btn btn-ghost btn-sm" id="wr-send-sms">გაგზავნა</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1926,29 +1945,29 @@
   ===================================================== */
   var wForm = document.getElementById('warranty-form');
   var wResult = document.getElementById('warranty-result');
+  var wShare = document.getElementById('wr-share');
+  var wCurrentSerial = null;
   function daysBetween(a,b){ return Math.round((b-a)/86400000); }
-  wForm.addEventListener('submit', function(e){
-    e.preventDefault();
-    var serial = document.getElementById('w-serial').value.trim().toUpperCase();
-    var rec = WARRANTY_DB[serial];
-    wResult.classList.add('show');
-    if(!rec){
-      wResult.className = 'result-card show status-none';
-      document.getElementById('wr-device-cat').textContent = 'შედეგი ვერ მოიძებნა';
-      document.getElementById('wr-device-name').textContent = 'სერიული ნომერი არ არის ბაზაში';
-      document.getElementById('wr-status-pill').outerHTML = '<span class="status-pill" id="wr-status-pill" style="background:var(--line);color:var(--ink-soft)">უცნობია</span>';
-      document.getElementById('wr-serial').textContent = serial || '—';
-      document.getElementById('wr-purchase').textContent = '—';
-      document.getElementById('wr-end').textContent = '—';
-      document.getElementById('wr-days-label').textContent = 'რჩევა';
-      document.getElementById('wr-days').textContent = 'შეამოწმეთ ნომერი ან დაჯავშნეთ ვიზიტი';
-      document.getElementById('wr-cta').innerHTML = '<a href="#booking" data-route="booking" class="btn btn-blue btn-block">ვიზიტის დაჯავშნა</a>';
-      return;
-    }
-    var today = new Date('2026-09-21');
-    var end = new Date(rec.end);
-    var remaining = daysBetween(today, end);
-    var active = remaining >= 0;
+
+  function renderWarrantyNotFound(serial){
+    wResult.className = 'result-card show status-none';
+    document.getElementById('wr-device-cat').textContent = 'შედეგი ვერ მოიძებნა';
+    document.getElementById('wr-device-name').textContent = 'სერიული ნომერი არ არის ბაზაში';
+    document.getElementById('wr-status-pill').outerHTML = '<span class="status-pill" id="wr-status-pill" style="background:var(--line);color:var(--ink-soft)">უცნობია</span>';
+    document.getElementById('wr-serial').textContent = serial || '—';
+    document.getElementById('wr-purchase').textContent = '—';
+    document.getElementById('wr-end').textContent = '—';
+    document.getElementById('wr-days-label').textContent = 'რჩევა';
+    document.getElementById('wr-days').textContent = 'შეამოწმეთ ნომერი ან დაჯავშნეთ ვიზიტი';
+    document.getElementById('wr-cta').innerHTML = '<a href="#booking" data-route="booking" class="btn btn-blue btn-block">ვიზიტის დაჯავშნა</a>';
+    wCurrentSerial = null;
+    wShare.hidden = true;
+  }
+
+  // fromApi: PDF download / email / SMS need the backend, so those actions
+  // only show once a record has actually come back from /api/warranty —
+  // not for the offline fallback below, where the server isn't reachable anyway.
+  function renderWarrantyFound(serial, rec, active, remainingLabel, fromApi){
     wResult.className = 'result-card show ' + (active ? 'status-active' : 'status-expired');
     document.getElementById('wr-device-cat').textContent = rec.cat;
     document.getElementById('wr-device-name').textContent = rec.device;
@@ -1957,10 +1976,74 @@
     document.getElementById('wr-purchase').textContent = rec.purchase;
     document.getElementById('wr-end').textContent = rec.end;
     document.getElementById('wr-days-label').textContent = active ? 'დარჩენილი დღეები' : 'ვადა გავიდა';
-    document.getElementById('wr-days').textContent = active ? (remaining + ' დღე') : (Math.abs(remaining) + ' დღის წინ');
+    document.getElementById('wr-days').textContent = remainingLabel;
     document.getElementById('wr-cta').innerHTML = active
       ? '<a href="#booking" data-route="booking" class="btn btn-blue btn-block">საგარანტიო ვიზიტის დაჯავშნა</a>'
       : '<a href="#booking" data-route="booking" class="btn btn-ghost btn-block">ჩვეულებრივი ვიზიტის დაჯავშნა</a>';
+    if(fromApi){
+      wCurrentSerial = serial;
+      document.getElementById('wr-pdf-link').href = API_BASE + '/api/warranty/' + encodeURIComponent(serial) + '/card';
+      wShare.hidden = false;
+    } else {
+      wCurrentSerial = null;
+      wShare.hidden = true;
+    }
+  }
+
+  wForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    var serial = document.getElementById('w-serial').value.trim().toUpperCase();
+    wResult.classList.add('show');
+    fetch(API_BASE + '/api/warranty/' + encodeURIComponent(serial), {cache:'no-store'}).then(function(res){
+      if(res.status === 404){ renderWarrantyNotFound(serial); return null; }
+      if(!res.ok) throw new Error('lookup_failed');
+      return res.json();
+    }).then(function(data){
+      if(!data) return;
+      renderWarrantyFound(serial, data, data.active, data.remainingLabel, true);
+    }).catch(function(){
+      // server unreachable — fall back to local demo data so the tool still works
+      var rec = WARRANTY_DB[serial];
+      if(!rec){ renderWarrantyNotFound(serial); return; }
+      var remaining = daysBetween(new Date(), new Date(rec.end));
+      var active = remaining >= 0;
+      var remainingLabel = active ? (remaining + ' დღე') : (Math.abs(remaining) + ' დღის წინ');
+      renderWarrantyFound(serial, rec, active, remainingLabel, false);
+    });
+  });
+
+  document.getElementById('wr-send-email').addEventListener('click', function(){
+    if(!wCurrentSerial){ return; }
+    var email = document.getElementById('wr-email-input').value.trim();
+    if(!email){ toast('შეიყვანეთ მეილის მისამართი'); return; }
+    var btn = this;
+    btn.disabled = true;
+    fetch(API_BASE + '/api/warranty/' + encodeURIComponent(wCurrentSerial) + '/send', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({method:'email', destination: email})
+    }).then(function(res){
+      if(res.ok){ toast('საგარანტიო ბარათი გამოგზავნილია მეილზე'); }
+      else if(res.status === 503){ toast('მეილის გაგზავნის სერვისი ჯერ არ არის მოწყობილი'); }
+      else { toast('ვერ გაიგზავნა — სცადეთ თავიდან'); }
+    }).catch(function(){ toast('ვერ გაიგზავნა — შეამოწმეთ ინტერნეტი'); })
+      .then(function(){ btn.disabled = false; });
+  });
+
+  document.getElementById('wr-send-sms').addEventListener('click', function(){
+    if(!wCurrentSerial){ return; }
+    var phone = document.getElementById('wr-sms-input').value.trim() || document.getElementById('w-phone').value.trim();
+    if(!phone){ toast('შეიყვანეთ ტელეფონის ნომერი'); return; }
+    var btn = this;
+    btn.disabled = true;
+    fetch(API_BASE + '/api/warranty/' + encodeURIComponent(wCurrentSerial) + '/send', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({method:'sms', destination: phone})
+    }).then(function(res){
+      if(res.ok){ toast('საგარანტიო ბარათი გამოგზავნილია SMS-ით'); }
+      else if(res.status === 503){ toast('SMS სერვისი მალე დაემატება'); }
+      else { toast('ვერ გაიგზავნა — სცადეთ თავიდან'); }
+    }).catch(function(){ toast('ვერ გაიგზავნა — შეამოწმეთ ინტერნეტი'); })
+      .then(function(){ btn.disabled = false; });
   });
 
   /* =====================================================
