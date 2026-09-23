@@ -24,6 +24,8 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+const { buildWarrantyCardPdf } = require('./warranty-pdf');
 
 const PORT = process.env.PORT || 4001;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'technoline2026';
@@ -70,6 +72,12 @@ const DEFAULT_DB = {
   'theme/site': {},
   'content/parts': {},
   'content/branches': {},
+  'content/warranty': {
+    'TL-227719-GE': { device: 'iPhone 13 Pro', cat: 'სმარტფონი — ეკრანის შეცვლა', purchase: '2026-04-15', end: '2026-10-15' },
+    'TL-118820-GE': { device: 'MacBook Air M1', cat: 'ლეპტოპი — ბატარეის შეცვლა', purchase: '2023-11-04', end: '2024-05-04' },
+    'TL-330045-GE': { device: 'Samsung Galaxy S23', cat: 'სმარტფონი — ეკრანის შეცვლა (გაფართოებული)', purchase: '2026-08-01', end: '2027-02-01' },
+    'TL-550012-GE': { device: 'Redmi Note 12', cat: 'სმარტფონი — ბატარეის შეცვლა', purchase: '2026-03-25', end: '2026-09-25' }
+  },
   bookings: []
 };
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -344,6 +352,142 @@ app.put('/api/bookings/:id/qlogic', requireAuth, async function (req, res) {
     await writeDb(db);
     res.json({ ok: true, booking: db.bookings[idx] });
   } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// --- Warranty card: lookup, PDF download, email/SMS send -----------------
+// Card visual is generated here (server-side, via warranty-pdf.js) from the
+// 'content/warranty' collection in the DB — same read/write path as the
+// site's other content, so records can later be managed from the admin
+// panel the same way branches/parts are.
+//
+// Email uses SMTP (nodemailer) — set SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS
+// (and optionally SMTP_SECURE=true, SMTP_FROM) as Render env vars to turn it
+// on; until then the endpoint replies 503 { error:'not_configured' }.
+// SMS is meant to go through Wifisher, but its API details aren't known
+// yet — WIFISHER_API_URL/WIFISHER_API_KEY are unset for now, so /send with
+// method:'sms' also replies 503 until those are filled in and
+// sendWifisherSms() below is adjusted to Wifisher's real request format.
+const SMTP_HOST = process.env.SMTP_HOST || '';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
+const SMTP_SECURE = process.env.SMTP_SECURE === 'true';
+const SMTP_USER = process.env.SMTP_USER || '';
+const SMTP_PASS = process.env.SMTP_PASS || '';
+const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
+const EMAIL_CONFIGURED = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
+let mailTransport = null;
+function getMailTransport() {
+  if (!EMAIL_CONFIGURED) return null;
+  if (!mailTransport) {
+    mailTransport = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      secure: SMTP_SECURE,
+      auth: { user: SMTP_USER, pass: SMTP_PASS }
+    });
+  }
+  return mailTransport;
+}
+
+const WIFISHER_API_URL = process.env.WIFISHER_API_URL || '';
+const WIFISHER_API_KEY = process.env.WIFISHER_API_KEY || '';
+const SMS_CONFIGURED = !!(WIFISHER_API_URL && WIFISHER_API_KEY);
+async function sendWifisherSms(destination, text) {
+  // TODO: placeholder request shape — adjust to Wifisher's real API once
+  // its documentation/endpoint is available (same as the Smart Q-Logic
+  // integration earlier: build against the real contract once we have it).
+  const res = await fetch(WIFISHER_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + WIFISHER_API_KEY },
+    body: JSON.stringify({ to: destination, text: text })
+  });
+  if (!res.ok) throw new Error('wifisher_failed_' + res.status);
+}
+
+function warrantyStatus(rec) {
+  const today = new Date();
+  const end = new Date(rec.end + 'T00:00:00');
+  const remaining = Math.round((end - today) / 86400000);
+  const active = remaining >= 0;
+  return {
+    active: active,
+    remainingLabel: active ? (remaining + ' დღე') : (Math.abs(remaining) + ' დღის წინ')
+  };
+}
+
+app.get('/api/warranty/:serial', async function (req, res) {
+  try {
+    const serial = String(req.params.serial || '').trim().toUpperCase();
+    const db = await readDb();
+    const rec = (db['content/warranty'] || {})[serial];
+    if (!rec) return res.status(404).json({ error: 'not_found' });
+    res.json(Object.assign({ serial: serial }, rec, warrantyStatus(rec)));
+  } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.get('/api/warranty/:serial/card', async function (req, res) {
+  try {
+    const serial = String(req.params.serial || '').trim().toUpperCase();
+    const db = await readDb();
+    const rec = (db['content/warranty'] || {})[serial];
+    if (!rec) return res.status(404).json({ error: 'not_found' });
+    const status = warrantyStatus(rec);
+    const pdf = await buildWarrantyCardPdf({
+      device: rec.device, cat: rec.cat, serial: serial, purchase: rec.purchase, end: rec.end,
+      active: status.active, remainingLabel: status.remainingLabel,
+      generatedAt: new Date().toISOString().slice(0, 10)
+    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="warranty-' + serial + '.pdf"');
+    res.send(pdf);
+  } catch (e) {
+    console.error('warranty card generation failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.post('/api/warranty/:serial/send', async function (req, res) {
+  try {
+    const serial = String(req.params.serial || '').trim().toUpperCase();
+    const method = (req.body && req.body.method) || '';
+    const destination = String((req.body && req.body.destination) || '').trim();
+    if (method !== 'email' && method !== 'sms') return res.status(400).json({ error: 'invalid_method' });
+    if (!destination) return res.status(400).json({ error: 'missing_destination' });
+
+    const db = await readDb();
+    const rec = (db['content/warranty'] || {})[serial];
+    if (!rec) return res.status(404).json({ error: 'not_found' });
+    const status = warrantyStatus(rec);
+
+    if (method === 'email') {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destination)) return res.status(400).json({ error: 'invalid_email' });
+      const transport = getMailTransport();
+      if (!transport) return res.status(503).json({ error: 'not_configured', channel: 'email' });
+      const pdf = await buildWarrantyCardPdf({
+        device: rec.device, cat: rec.cat, serial: serial, purchase: rec.purchase, end: rec.end,
+        active: status.active, remainingLabel: status.remainingLabel,
+        generatedAt: new Date().toISOString().slice(0, 10)
+      });
+      await transport.sendMail({
+        from: SMTP_FROM,
+        to: destination,
+        subject: 'თქვენი საგარანტიო ბარათი — ტექნოლაინი',
+        text: 'თანდართულია თქვენი საგარანტიო ბარათი (' + serial + ').\n\ntechnoline.ge',
+        attachments: [{ filename: 'warranty-' + serial + '.pdf', content: pdf }]
+      });
+      return res.json({ ok: true });
+    }
+
+    // method === 'sms'
+    if (!SMS_CONFIGURED) return res.status(503).json({ error: 'not_configured', channel: 'sms' });
+    await sendWifisherSms(destination, 'ტექნოლაინი — თქვენი გარანტია (' + serial + ') ' +
+      (status.active ? 'აქტიურია' : 'ამოწურულია') + ', ვადა: ' + rec.end);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('warranty send failed:', e.message);
     res.status(500).json({ error: 'server_error' });
   }
 });
