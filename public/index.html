@@ -1214,6 +1214,9 @@
           <h2 class="h-display" style="font-size:1.5rem">ვიზიტი წარმატებით დაჯავშნილია</h2>
           <p class="lede" style="margin-inline:auto;margin-top:10px">დაჯავშნის ნომერი გამოგზავნილია SMS-ით მითითებულ ნომერზე.</p>
           <div class="confirm-code" id="booking-code">TL-000000</div>
+          <div class="panel" style="text-align:left;margin-top:16px" id="booking-qlogic-box" hidden>
+            <div class="ri"><span>კიოსკზე შესვლის კოდი</span><strong id="booking-qlogic-code">მოწმდება...</strong></div>
+          </div>
           <div class="panel" style="text-align:left;margin-top:24px" id="booking-final-summary"></div>
           <div style="display:flex;gap:12px;justify-content:center;margin-top:26px;flex-wrap:wrap">
             <a href="#orders" data-route="orders" class="btn btn-blue">ჩემი შეკვეთების ნახვა</a>
@@ -2087,10 +2090,19 @@
     booking.notes = (document.getElementById('bk-notes') || {}).value || '';
     var confirmBtn = document.getElementById('booking-confirm');
     confirmBtn.disabled = true;
-    function finish(code, reachedQueue){
+    function finish(code, reachedQueue, bookingId){
       document.getElementById('booking-code').textContent = code;
       document.getElementById('booking-final-summary').innerHTML = summaryHTML()
         + '<div class="ri" style="margin-top:16px"><span>საკონტაქტო პირი</span><strong>' + booking.name + ' · ' + booking.phone + '</strong></div>';
+      var qBox = document.getElementById('booking-qlogic-box');
+      var qCode = document.getElementById('booking-qlogic-code');
+      if(reachedQueue && bookingId){
+        qBox.hidden = false;
+        qCode.textContent = 'მოწმდება...';
+        pollQlogicCode(bookingId, qCode);
+      } else if(qBox){
+        qBox.hidden = true;
+      }
       goStep('done');
       toast(reachedQueue ? 'ვიზიტი დაჯავშნილია რიგის სისტემაში' : 'ვიზიტი დაჯავშნილია');
       confirmBtn.disabled = false;
@@ -2113,12 +2125,41 @@
       if(!res.ok) throw new Error('booking_failed');
       return res.json();
     }).then(function(data){
-      finish(data.confirmationCode, true);
+      finish(data.confirmationCode, true, data.id);
     }).catch(function(){
       var code = 'TL-' + Math.floor(100000 + Math.random()*899999);
-      finish(code, false);
+      finish(code, false, null);
     });
   });
+
+  // Q-Logic-ის საკიოსკო შესვლის კოდი ჩვენს სერვერზე მხოლოდ მაშინ ჩნდება, როცა
+  // ლოკალური bridge სკრიპტი (რომელიც პერიოდულად პოულობს ახალ ჯავშნებს) წარმატებით
+  // გადასცემს მას Smart Q-Logic-ს — ეს შეიძლება ჯავშნის გაკეთებიდან რამდენიმე წუთში
+  // მოხდეს, ამიტომ აქ პერიოდულად ვამოწმებთ, სანამ დადასტურების ეკრანი ღიაა.
+  function pollQlogicCode(bookingId, el){
+    var attempts = 0;
+    var maxAttempts = 40;
+    function tick(){
+      if(!el || el.offsetParent === null) return; // მომხმარებელმა ეკრანი დატოვა
+      attempts++;
+      fetch(API_BASE + '/api/bookings/' + bookingId, {cache:'no-store'}).then(function(res){
+        if(!res.ok) throw new Error('poll_failed');
+        return res.json();
+      }).then(function(b){
+        if(b && b.qlogicVerifyCode){
+          el.textContent = b.qlogicVerifyCode;
+        } else if(attempts < maxAttempts){
+          setTimeout(tick, 8000);
+        } else {
+          el.textContent = 'იხილეთ SMS';
+        }
+      }).catch(function(){
+        if(attempts < maxAttempts) setTimeout(tick, 8000);
+        else el.textContent = 'იხილეთ SMS';
+      });
+    }
+    tick();
+  }
 
   /* =====================================================
      PROFILE / AUTH
