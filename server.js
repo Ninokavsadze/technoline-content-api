@@ -261,6 +261,22 @@ app.get('/api/bookings', requireAuth, function (req, res) {
   res.json(db.bookings.slice(-200).reverse());
 });
 
+// Called by the local Smart Q-Logic bridge script (runs on the same machine
+// as Q-Logic, since Q-Logic itself isn't reachable from this server) once it
+// has successfully pushed a booking into Q-Logic — records the result here
+// so the bridge (and the admin panel) knows this booking is already synced.
+app.put('/api/bookings/:id/qlogic', requireAuth, function (req, res) {
+  const db = readDb();
+  const idx = db.bookings.findIndex(function (x) { return x.id === req.params.id; });
+  if (idx === -1) return res.status(404).json({ error: 'not_found' });
+  const b = req.body || {};
+  db.bookings[idx].qlogicId = b.qlogicId != null ? b.qlogicId : db.bookings[idx].qlogicId;
+  db.bookings[idx].qlogicVerifyCode = b.qlogicVerifyCode || db.bookings[idx].qlogicVerifyCode;
+  db.bookings[idx].qlogicSpace = b.qlogicSpace || db.bookings[idx].qlogicSpace;
+  writeDb(db);
+  res.json({ ok: true, booking: db.bookings[idx] });
+});
+
 app.get('/api/health', function (req, res) {
   res.json({ ok: true, time: new Date().toISOString() });
 });
