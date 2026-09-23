@@ -422,6 +422,8 @@
   .order-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
   .order-id{font-family:var(--font-display);font-weight:700;font-size:.95rem}
   .order-date{font-size:.78rem;color:var(--ink-faint);margin-top:3px}
+  .order-code{font-size:.78rem;color:var(--ink-soft);margin-top:5px}
+  .order-code strong{color:var(--ink);font-family:var(--font-display);letter-spacing:.02em}
   .badge{font-size:.72rem;font-weight:800;padding:5px 11px;border-radius:999px}
   .badge.received{background:var(--blue-soft);color:var(--blue-deep)}
   .badge.diag{background:var(--gold-ghost);color:var(--gold-deep)}
@@ -1639,11 +1641,14 @@
     'TL-550012-GE': {device:'Redmi Note 12', cat:'სმარტფონი — ბატარეის შეცვლა', purchase:'2026-03-25', end:'2026-09-25'}
   };
 
+  // code: ვიზიტის ჯავშნის კოდი, რომლიდანაც ეს შეკვეთა შეიქმნა. ახლა სადემონსტრაციო
+  // მონაცემია — რეალურ ინტეგრაციაში აქ Q-Logic-დან წამოსული ნამდვილი კოდი ჩაისმება
+  // (ისე, როგორც ადმინ პანელის "დაგეგმილი ვიზიტების" სიაშიც ჩანს).
   var ORDERS = [
-    {id:'TL-849213', date:'2026-09-18', device:'iPhone 13 Pro', issue:'ეკრანის შეცვლა', branch:'ვაჟა-ფშაველას ფილიალი', cost:420, stage:2},
-    {id:'TL-847790', date:'2026-09-10', device:'MacBook Air M1', issue:'ბატარეის შეცვლა', branch:'პეკინის გამზირის ფილიალი', cost:230, stage:4},
-    {id:'TL-841205', date:'2026-08-22', device:'Galaxy S23', issue:'დისპლეის შეცვლა', branch:'ვაჟა-ფშაველას ფილიალი', cost:380, stage:4},
-    {id:'TL-833091', date:'2026-07-30', device:'iPad Air', issue:'წყლის დაზიანება — დიაგნოსტიკა', branch:'რუსთაველის ფილიალი (ბათუმი)', cost:60, stage:1}
+    {id:'TL-849213', code:'375304', date:'2026-09-18', device:'iPhone 13 Pro', issue:'ეკრანის შეცვლა', branch:'ვაჟა-ფშაველას ფილიალი', cost:420, stage:2},
+    {id:'TL-847790', code:'564871', date:'2026-09-10', device:'MacBook Air M1', issue:'ბატარეის შეცვლა', branch:'პეკინის გამზირის ფილიალი', cost:230, stage:4},
+    {id:'TL-841205', code:'298146', date:'2026-08-22', device:'Galaxy S23', issue:'დისპლეის შეცვლა', branch:'ვაჟა-ფშაველას ფილიალი', cost:380, stage:4},
+    {id:'TL-833091', code:'702953', date:'2026-07-30', device:'iPad Air', issue:'წყლის დაზიანება — დიაგნოსტიკა', branch:'რუსთაველის ფილიალი (ბათუმი)', cost:60, stage:1}
   ];
   var ORDER_STAGES = ['მიღებულია','დიაგნოსტიკა','შეკეთება','მზადაა','გაცემულია'];
 
@@ -2307,7 +2312,8 @@
     wrap.innerHTML = ORDERS.map(function(o){
       var badgeClass = ['received','diag','repair','ready','done'][o.stage-1] || 'received';
       return '<div class="order-card">'
-        + '<div class="order-top"><div><div class="order-id">შეკვეთა № ' + o.id + '</div><div class="order-date">' + o.date + ' · ' + o.device + '</div></div>'
+        + '<div class="order-top"><div><div class="order-id">შეკვეთა № ' + o.id + '</div><div class="order-date">' + o.date + ' · ' + o.device + '</div>'
+        + (o.code ? '<div class="order-code">ჯავშნის კოდი: <strong>' + o.code + '</strong></div>' : '') + '</div>'
         + '<span class="badge ' + badgeClass + '">' + ORDER_STAGES[o.stage-1] + '</span></div>'
         + '<div class="order-track">' + ORDER_STAGES.map(function(s,i){
             var pass = (i+1) <= o.stage;
