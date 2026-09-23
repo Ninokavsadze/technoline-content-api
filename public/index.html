@@ -272,6 +272,16 @@
   #view-catalog .page-head{padding-block:8px 24px}
   #view-catalog .page-head .crumbs{margin-bottom:8px}
   #view-catalog>section.tight{padding-block:34px 56px}
+
+  /* ---- catalog page-head: brand mark motif + accent tag, so it reads less flat ---- */
+  #view-catalog .page-head{position:relative;overflow:hidden;background:linear-gradient(120deg,var(--surface-alt) 0%,var(--blue-soft) 145%)}
+  #view-catalog .page-head::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--blue) 22%, transparent) 1px, transparent 0);background-size:24px 24px;-webkit-mask-image:linear-gradient(115deg, rgba(0,0,0,.9), transparent 62%);mask-image:linear-gradient(115deg, rgba(0,0,0,.9), transparent 62%);pointer-events:none}
+  #view-catalog .page-head .head-mark{position:absolute;top:50%;right:-36px;width:200px;height:200px;transform:translateY(-50%);color:var(--blue);opacity:.12;pointer-events:none;animation:cat-mark-spin 46s linear infinite}
+  @keyframes cat-mark-spin{to{transform:translateY(-50%) rotate(360deg)}}
+  #view-catalog .page-head .wrap{position:relative;z-index:1}
+  #view-catalog .page-head .head-tag{display:inline-flex;align-items:center;gap:8px;background:color-mix(in srgb, var(--surface) 78%, transparent);border:1px solid var(--blue-soft-2);padding:6px 14px 6px 10px;border-radius:999px;font-size:.78rem;font-weight:700;color:var(--blue-deep);margin-bottom:12px}
+  #view-catalog .page-head .head-tag .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px rgba(252,187,45,.25);animation:cat-dot-pulse 2.4s ease-in-out infinite}
+  @keyframes cat-dot-pulse{0%,100%{box-shadow:0 0 0 3px rgba(252,187,45,.25)}50%{box-shadow:0 0 0 6px rgba(252,187,45,.1)}}
   .cat-content{display:flex;flex-direction:column;gap:22px}
   .cat-pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:36px;flex-wrap:wrap}
   .cat-pagination button{min-width:38px;height:38px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-weight:600;font-size:.88rem;color:var(--ink-soft);cursor:pointer}
@@ -997,14 +1007,24 @@
 <!-- ============ CATALOG ============ -->
 <section class="view" data-view="catalog" id="view-catalog" hidden>
   <div class="page-head">
+    <svg class="head-mark" aria-hidden="true"><use href="#ic-logo"/></svg>
     <div class="wrap">
       <div class="crumbs"><a href="#home" data-route="home">მთავარი</a> / ნაწილების კატალოგი</div>
+      <span class="head-tag"><span class="dot"></span>მხოლოდ ორიგინალი ნაწილები</span>
       <h1 class="h-display" data-ck="catalog.head.title">ნაწილების კატალოგი</h1>
       <p class="lede" data-ck="catalog.head.lede">ორიგინალი და სერტიფიცირებული სათადარიგო ნაწილები — 6-თვიანი გარანტიით.</p>
     </div>
   </div>
   <section class="tight">
     <div class="wrap">
+      <div class="cat-toolbar">
+        <span class="field-hint" id="cat-count" style="font-size:.86rem">— ნაწილი</span>
+        <select class="sel" id="cat-sort">
+          <option value="popular">პოპულარობით</option>
+          <option value="price-asc">ფასი: ზრდადობით</option>
+          <option value="price-desc">ფასი: კლებადობით</option>
+        </select>
+      </div>
       <div class="cat-layout">
         <aside>
           <div class="filter-group">
@@ -1032,14 +1052,6 @@
           <button class="btn btn-ghost btn-sm btn-block" id="cat-clear">ფილტრების გასუფთავება</button>
         </aside>
         <div class="cat-content">
-          <div class="cat-toolbar">
-            <span class="field-hint" id="cat-count" style="font-size:.86rem">— ნაწილი</span>
-            <select class="sel" id="cat-sort">
-              <option value="popular">პოპულარობით</option>
-              <option value="price-asc">ფასი: ზრდადობით</option>
-              <option value="price-desc">ფასი: კლებადობით</option>
-            </select>
-          </div>
           <div class="product-grid" id="product-grid"></div>
           <p id="cat-empty" class="lede" style="margin-top:30px;text-align:center" hidden>ამ ფილტრებით ნაწილი ვერ მოიძებნა — სცადეთ სხვა კომბინაცია.</p>
           <nav class="cat-pagination" id="cat-pagination" hidden></nav>
