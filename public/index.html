@@ -235,6 +235,23 @@
   .svc-card.lead .svc-icon{background:rgba(255,255,255,.12);color:var(--gold)}
   .svc-more{display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-weight:700;font-size:.86rem;color:var(--gold)}
 
+  /* ---- home services: themed rail, one large photo-style tile per device category ---- */
+  .svc-rail-wrap{position:relative}
+  .svc-rail-wrap::after{content:"";position:absolute;top:0;right:0;bottom:8px;width:56px;background:linear-gradient(90deg, transparent, var(--surface));pointer-events:none}
+  .svc-rail{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none}
+  .svc-rail::-webkit-scrollbar{display:none}
+  .svc-tile{scroll-snap-align:start;flex:0 0 auto;width:300px;min-height:400px;border-radius:var(--radius-l);padding:28px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;color:#fff;transition:transform .4s cubic-bezier(.16,1,.3,1), box-shadow .4s}
+  .svc-tile:hover{transform:translateY(-6px);box-shadow:var(--shadow-3)}
+  .svc-tile .tile-eyebrow{position:relative;z-index:2;display:block;font-size:.78rem;font-weight:700;letter-spacing:.04em;color:rgba(255,255,255,.72)}
+  .svc-tile h3{position:relative;z-index:2;font-size:1.22rem;font-weight:800;margin-top:8px;line-height:1.28;max-width:19ch}
+  .svc-tile p{position:relative;z-index:2;font-size:.87rem;color:rgba(255,255,255,.78);margin-top:10px;line-height:1.55;max-width:25ch}
+  .svc-tile .tile-art{position:absolute;right:-20px;bottom:-20px;width:180px;height:180px;opacity:.14;color:#fff;transition:transform .5s cubic-bezier(.16,1,.3,1), opacity .4s}
+  .svc-tile:hover .tile-art{transform:scale(1.08) rotate(-4deg);opacity:.22}
+  .svc-tile .tile-more{position:relative;z-index:2;margin-top:auto;align-self:flex-end;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;transition:background .2s,transform .2s}
+  .svc-tile .tile-more svg{width:16px;height:16px}
+  .svc-tile:hover .tile-more{background:rgba(255,255,255,.28);transform:scale(1.08)}
+  @media (max-width:600px){ .svc-tile{width:78vw;min-height:370px} }
+
   .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;counter-reset:step}
   .step{position:relative;padding-top:8px}
   .step .step-num{font-family:var(--font-display);font-size:2.6rem;font-weight:700;color:var(--blue-soft-2);line-height:1}
@@ -791,34 +808,53 @@
         <h2 class="h-display" style="font-size:clamp(1.7rem,3vw,2.3rem)" data-ck="home.services.title">ერთი ცენტრი, ყველა მოწყობილობისთვის</h2>
         <p class="lede" data-ck="home.services.lede">დიაგნოსტიკიდან შეკეთებამდე — ჩვენი ინჟინრები მუშაობენ ყველა ძირითად ბრენდთან და მოწყობილობის ტიპთან.</p>
       </div>
-      <div class="svc-grid">
-        <div class="svc-card lead">
-          <div>
-            <div class="svc-icon"><svg><use href="#ic-phone"/></svg></div>
-            <h3 style="font-size:1.3rem" data-ck="home.services.lead.title">სმარტფონების შეკეთება</h3>
-            <p data-ck="home.services.lead.desc">ეკრანი, ბატარეა, კამერა, წყლის დაზიანება — ორიგინალი ნაწილებით, უმეტესად იმავე დღეს.</p>
+      <div class="svc-rail-wrap">
+        <div class="svc-rail">
+          <div class="svc-tile" style="background:linear-gradient(165deg,var(--blue-deep),var(--blue-deeper))">
+            <div>
+              <span class="tile-eyebrow">სმარტფონები</span>
+              <h3 data-ck="home.services.lead.title">სმარტფონების შეკეთება</h3>
+              <p data-ck="home.services.lead.desc">ეკრანი, ბატარეა, კამერა, წყლის დაზიანება — ორიგინალი ნაწილებით, უმეტესად იმავე დღეს.</p>
+            </div>
+            <svg class="tile-art" aria-hidden="true"><use href="#ic-phone"/></svg>
+            <a href="#services" data-route="services" class="tile-more" aria-label="დეტალურად"><svg><use href="#ic-arrow"/></svg></a>
           </div>
-          <a href="#services" data-route="services" class="svc-more">დეტალურად <svg style="width:14px;height:14px"><use href="#ic-arrow"/></svg></a>
-        </div>
-        <div class="svc-card">
-          <div class="svc-icon"><svg><use href="#ic-laptop"/></svg></div>
-          <h3 data-ck="home.services.card2.title">ლეპტოპები და კომპიუტერები</h3>
-          <p data-ck="home.services.card2.desc">დედაპლატის დიაგნოსტიკა, კლავიატურის და ეკრანის შეცვლა, სისტემის აღდგენა.</p>
-        </div>
-        <div class="svc-card">
-          <div class="svc-icon"><svg><use href="#ic-tablet"/></svg></div>
-          <h3 data-ck="home.services.card3.title">პლანშეტები</h3>
-          <p data-ck="home.services.card3.desc">iPad და Android პლანშეტების ეკრანის, ბატარეისა და პორტების შეკეთება.</p>
-        </div>
-        <div class="svc-card">
-          <div class="svc-icon"><svg><use href="#ic-watch"/></svg></div>
-          <h3 data-ck="home.services.card4.title">სმარტ-საათები</h3>
-          <p data-ck="home.services.card4.desc">ეკრანის, ღილაკებისა და დატენვის მოდულის შეკეთება ყველა ძირითადი ბრენდისთვის.</p>
-        </div>
-        <div class="svc-card">
-          <div class="svc-icon"><svg><use href="#ic-console"/></svg></div>
-          <h3 data-ck="home.services.card5.title">სათამაშო კონსოლები</h3>
-          <p data-ck="home.services.card5.desc">PlayStation, Xbox და Nintendo კონსოლების გაწმენდა, გაცხელების და HDMI პრობლემები.</p>
+          <div class="svc-tile" style="background:linear-gradient(160deg,var(--blue-deeper),#050D18)">
+            <div>
+              <span class="tile-eyebrow">კომპიუტერები</span>
+              <h3 data-ck="home.services.card2.title">ლეპტოპები და კომპიუტერები</h3>
+              <p data-ck="home.services.card2.desc">დედაპლატის დიაგნოსტიკა, კლავიატურის და ეკრანის შეცვლა, სისტემის აღდგენა.</p>
+            </div>
+            <svg class="tile-art" aria-hidden="true"><use href="#ic-laptop"/></svg>
+            <a href="#services" data-route="services" class="tile-more" aria-label="დეტალურად"><svg><use href="#ic-arrow"/></svg></a>
+          </div>
+          <div class="svc-tile" style="background:linear-gradient(160deg, color-mix(in srgb, var(--gold-deep) 55%, var(--blue-deeper) 45%), var(--blue-deeper))">
+            <div>
+              <span class="tile-eyebrow">პლანშეტები</span>
+              <h3 data-ck="home.services.card3.title">პლანშეტები</h3>
+              <p data-ck="home.services.card3.desc">iPad და Android პლანშეტების ეკრანის, ბატარეისა და პორტების შეკეთება.</p>
+            </div>
+            <svg class="tile-art" aria-hidden="true"><use href="#ic-tablet"/></svg>
+            <a href="#services" data-route="services" class="tile-more" aria-label="დეტალურად"><svg><use href="#ic-arrow"/></svg></a>
+          </div>
+          <div class="svc-tile" style="background:linear-gradient(200deg,var(--blue-mid),var(--blue-deeper))">
+            <div>
+              <span class="tile-eyebrow">სმარტ-საათები</span>
+              <h3 data-ck="home.services.card4.title">სმარტ-საათები</h3>
+              <p data-ck="home.services.card4.desc">ეკრანის, ღილაკებისა და დატენვის მოდულის შეკეთება ყველა ძირითადი ბრენდისთვის.</p>
+            </div>
+            <svg class="tile-art" aria-hidden="true"><use href="#ic-watch"/></svg>
+            <a href="#services" data-route="services" class="tile-more" aria-label="დეტალურად"><svg><use href="#ic-arrow"/></svg></a>
+          </div>
+          <div class="svc-tile" style="background:radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--gold) 28%, transparent), transparent 60%), linear-gradient(165deg,var(--blue-deep),var(--blue-deeper))">
+            <div>
+              <span class="tile-eyebrow">სათამაშო კონსოლები</span>
+              <h3 data-ck="home.services.card5.title">სათამაშო კონსოლები</h3>
+              <p data-ck="home.services.card5.desc">PlayStation, Xbox და Nintendo კონსოლების გაწმენდა, გაცხელების და HDMI პრობლემები.</p>
+            </div>
+            <svg class="tile-art" aria-hidden="true"><use href="#ic-console"/></svg>
+            <a href="#services" data-route="services" class="tile-more" aria-label="დეტალურად"><svg><use href="#ic-arrow"/></svg></a>
+          </div>
         </div>
       </div>
     </div>
