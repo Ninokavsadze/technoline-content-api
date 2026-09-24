@@ -202,13 +202,13 @@
   .hero-stats .wrap{max-width:1320px;padding-inline:20px}
 
   /* full-bleed video moment (Apple-style), used mid-page */
-  .video-feature{position:relative;min-height:min(560px,78vw);display:flex;align-items:flex-end;overflow:hidden;color:#fff}
+  .video-feature{position:relative;min-height:min(560px,78vw);display:flex;align-items:var(--craft-align-v, flex-end);overflow:hidden;color:#fff}
   .video-feature-media{position:absolute;inset:0;z-index:0}
   .video-feature-media video{width:100%;height:100%;object-fit:cover;display:block}
   .video-feature-media .craft-bg-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;z-index:0}
   .video-feature-media::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg, rgba(5,20,36,.9) 0%, rgba(5,20,36,.4) 48%, rgba(5,20,36,.12) 100%)}
   @media (prefers-reduced-motion: reduce){ .video-feature-media video{display:none} .video-feature-media{background:linear-gradient(155deg,var(--blue-deep),var(--blue-deeper))} }
-  .video-feature-copy{position:relative;z-index:1;padding-block:52px;max-width:620px}
+  .video-feature-copy{position:relative;z-index:1;padding-block:52px;max-width:620px;margin-inline:var(--craft-align-h, auto)}
   .video-feature-copy .eyebrow{display:block;margin-bottom:14px;color:var(--gold-soft)}
   .video-feature-copy h2{font-size:clamp(1.7rem,3vw,2.3rem);color:#fff}
   .video-feature-copy .lede{margin-top:14px;color:#D7E4F2}
@@ -2562,6 +2562,12 @@
     });
     applyVideoBg('.hero-video-wrap video', '.hero-bg-photo', 'heroBgType', 'heroBgPhoto', 'heroBgVideo');
     applyVideoBg('.video-feature-media video', '.craft-bg-photo', 'craftBgType', 'craftBgPhoto', 'craftBgVideo');
+    var craftAlignV = siteContent.theme.craftAlignV;
+    if(craftAlignV) document.documentElement.style.setProperty('--craft-align-v', craftAlignV);
+    else document.documentElement.style.removeProperty('--craft-align-v');
+    var craftAlignH = siteContent.theme.craftAlignH;
+    if(craftAlignH) document.documentElement.style.setProperty('--craft-align-h', craftAlignH);
+    else document.documentElement.style.removeProperty('--craft-align-h');
   }
   function applyVideoBg(videoSel, photoSel, typeKey, photoKey, videoKey){
     var video = document.querySelector(videoSel);

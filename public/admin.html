@@ -788,11 +788,30 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       + '</div>';
     return renderBgTypeSection('Hero ბანერის ფონი და ზომა', 'herobg', HERO_BG_PHOTO_KEY, photoVal, type, extra, HERO_BG_VIDEO_KEY, videoVal);
   }
+  var CRAFT_ALIGN_OPTIONS = [
+    {v:'flex-start', h:'0 auto', label:'ზედა მარცხნივ'},
+    {v:'flex-start', h:'auto', label:'ზედა შუაში'},
+    {v:'flex-start', h:'auto 0', label:'ზედა მარჯვნივ'},
+    {v:'flex-end', h:'0 auto', label:'ქვედა მარცხნივ'},
+    {v:'flex-end', h:'auto', label:'ქვედა შუაში (ნაგულისხმევი)'},
+    {v:'flex-end', h:'auto 0', label:'ქვედა მარჯვნივ'}
+  ];
   function renderCraftBgSection(){
     var type = state.theme.craftBgType === 'photo' ? 'photo' : 'video';
     var photoVal = state.theme.craftBgPhoto || '';
     var videoVal = state.theme.craftBgVideo || '';
-    return renderBgTypeSection('„ჩვენი ინჟინრები საქმეში" ბანერის ფონი', 'craftbg', CRAFT_BG_PHOTO_KEY, photoVal, type, '', CRAFT_BG_VIDEO_KEY, videoVal);
+    var curV = state.theme.craftAlignV || 'flex-end';
+    var curH = state.theme.craftAlignH || 'auto';
+    var alignHtml = '<div class="field-block">'
+      + '<label>ტექსტის მდებარეობა ბანერზე</label>'
+      + '<div class="bg-type-row" style="flex-wrap:wrap">'
+      + CRAFT_ALIGN_OPTIONS.map(function(o){
+          var active = (o.v === curV && o.h === curH);
+          return '<button type="button" class="bg-type-btn'+(active?' is-active':'')+'" data-craft-align-v="'+o.v+'" data-craft-align-h="'+o.h+'" style="flex:1 1 30%">'+o.label+'</button>';
+        }).join('')
+      + '</div>'
+      + '</div>';
+    return renderBgTypeSection('„ჩვენი ინჟინრები საქმეში" ბანერის ფონი', 'craftbg', CRAFT_BG_PHOTO_KEY, photoVal, type, alignHtml, CRAFT_BG_VIDEO_KEY, videoVal);
   }
 
   function renderDragPreview(groupKey){
@@ -973,6 +992,16 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     wireBgTypeVideo('herobg', 'heroBgVideo');
     wireBgTypePhoto('craftbg', 'craftBgType', 'craftBgPhoto');
     wireBgTypeVideo('craftbg', 'craftBgVideo');
+
+    main.querySelectorAll('[data-craft-align-v]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        state.theme.craftAlignV = btn.getAttribute('data-craft-align-v');
+        state.theme.craftAlignH = btn.getAttribute('data-craft-align-h');
+        setDirty(tab, true);
+        updateStatusChip(tab);
+        main.querySelectorAll('[data-craft-align-v]').forEach(function(b){ b.classList.toggle('is-active', b===btn); });
+      });
+    });
 
     var heightInp = main.querySelector('[data-herobg-height]');
     if(heightInp){
@@ -1232,6 +1261,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         });
         delete state.theme.heroBgType; delete state.theme.heroBgPhoto; delete state.theme.heroMinHeight; delete state.theme.heroBgVideo;
         delete state.theme.craftBgType; delete state.theme.craftBgPhoto; delete state.theme.craftBgVideo;
+        delete state.theme.craftAlignV; delete state.theme.craftAlignH;
       }
       else if(tab.kind === 'parts'){ state.parts = {}; }
       else if(tab.kind === 'branches'){ state.branches = {}; }
