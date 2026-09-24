@@ -1,4 +1,3 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Technoline სერვისი</title>
 <style>
   /* ============ TOKENS ============ */
@@ -245,8 +244,12 @@
   .svc-tile .tile-eyebrow{position:relative;z-index:2;display:block;font-size:.78rem;font-weight:700;letter-spacing:.04em;color:rgba(255,255,255,.72)}
   .svc-tile h3{position:relative;z-index:2;font-size:1.22rem;font-weight:800;margin-top:8px;line-height:1.28;max-width:19ch}
   .svc-tile p{position:relative;z-index:2;font-size:.87rem;color:rgba(255,255,255,.78);margin-top:10px;line-height:1.55;max-width:25ch}
-  .svc-tile .tile-art{position:absolute;right:-20px;bottom:-20px;width:180px;height:180px;opacity:.14;color:#fff;transition:transform .5s cubic-bezier(.16,1,.3,1), opacity .4s}
+  .svc-tile .tile-art{position:absolute;right:-20px;bottom:-20px;width:180px;height:180px;opacity:.14;color:#fff;transition:transform .5s cubic-bezier(.16,1,.3,1), opacity .4s;z-index:0}
   .svc-tile:hover .tile-art{transform:scale(1.08) rotate(-4deg);opacity:.22}
+  .svc-tile .tile-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+  .svc-tile.has-photo::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(190deg, rgba(5,20,36,.08) 0%, rgba(5,20,36,.85) 100%);pointer-events:none}
+  .svc-tile.has-photo .tile-art{display:none}
+  .svc-tile:hover .tile-photo{transform:scale(1.05);transition:transform .5s cubic-bezier(.16,1,.3,1)}
   .svc-tile .tile-more{position:relative;z-index:2;margin-top:auto;align-self:flex-end;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;transition:background .2s,transform .2s}
   .svc-tile .tile-more svg{width:16px;height:16px}
   .svc-tile:hover .tile-more{background:rgba(255,255,255,.28);transform:scale(1.08)}
@@ -432,6 +435,13 @@
   .acct-card{border:1px solid var(--line);border-radius:var(--radius-m);padding:28px}
   .acct-card + .acct-card{margin-top:20px}
   .acct-card h3{font-size:1.06rem;margin-bottom:18px}
+  /* ---- services & tariffs page: compact card grid (no stretched dead space) ---- */
+  .svc-tariff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+  .svc-tariff-card{border:1px solid var(--line);border-radius:var(--radius-m);padding:28px;background:var(--surface);display:flex;flex-direction:column;transition:border-color .15s,box-shadow .15s,transform .15s}
+  .svc-tariff-card:hover{border-color:var(--blue-mid);box-shadow:var(--shadow-2);transform:translateY(-3px)}
+  .svc-tariff-card h3{font-size:1.06rem;margin-bottom:4px}
+  .svc-tariff-card p{color:var(--ink-soft);font-size:.9rem;line-height:1.55;flex:1 0 auto}
+  .svc-tariff-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px;padding-top:18px;border-top:1px solid var(--line-soft)}
   .profile-head{display:flex;align-items:center;gap:16px;margin-bottom:6px}
   .profile-avatar{width:60px;height:60px;border-radius:50%;background:var(--blue-soft);color:var(--blue-deep);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;font-size:1.2rem;flex-shrink:0}
   .device-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--line-soft)}
@@ -811,6 +821,7 @@
       <div class="svc-rail-wrap">
         <div class="svc-rail">
           <div class="svc-tile" style="background:linear-gradient(165deg,var(--blue-deep),var(--blue-deeper))">
+            <img class="tile-photo" data-ck-img="home.services.lead.image" alt="" hidden>
             <div>
               <span class="tile-eyebrow">სმარტფონები</span>
               <h3 data-ck="home.services.lead.title">სმარტფონების შეკეთება</h3>
@@ -820,6 +831,7 @@
             <a href="#services" data-route="services" class="tile-more" aria-label="დეტალურად"><svg><use href="#ic-arrow"/></svg></a>
           </div>
           <div class="svc-tile" style="background:linear-gradient(160deg,var(--blue-deeper),#050D18)">
+            <img class="tile-photo" data-ck-img="home.services.card2.image" alt="" hidden>
             <div>
               <span class="tile-eyebrow">კომპიუტერები</span>
               <h3 data-ck="home.services.card2.title">ლეპტოპები და კომპიუტერები</h3>
@@ -829,6 +841,7 @@
             <a href="#services" data-route="services" class="tile-more" aria-label="დეტალურად"><svg><use href="#ic-arrow"/></svg></a>
           </div>
           <div class="svc-tile" style="background:linear-gradient(160deg, color-mix(in srgb, var(--gold-deep) 55%, var(--blue-deeper) 45%), var(--blue-deeper))">
+            <img class="tile-photo" data-ck-img="home.services.card3.image" alt="" hidden>
             <div>
               <span class="tile-eyebrow">პლანშეტები</span>
               <h3 data-ck="home.services.card3.title">პლანშეტები</h3>
@@ -838,6 +851,7 @@
             <a href="#services" data-route="services" class="tile-more" aria-label="დეტალურად"><svg><use href="#ic-arrow"/></svg></a>
           </div>
           <div class="svc-tile" style="background:linear-gradient(200deg,var(--blue-mid),var(--blue-deeper))">
+            <img class="tile-photo" data-ck-img="home.services.card4.image" alt="" hidden>
             <div>
               <span class="tile-eyebrow">სმარტ-საათები</span>
               <h3 data-ck="home.services.card4.title">სმარტ-საათები</h3>
@@ -847,6 +861,7 @@
             <a href="#services" data-route="services" class="tile-more" aria-label="დეტალურად"><svg><use href="#ic-arrow"/></svg></a>
           </div>
           <div class="svc-tile" style="background:radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--gold) 28%, transparent), transparent 60%), linear-gradient(165deg,var(--blue-deep),var(--blue-deeper))">
+            <img class="tile-photo" data-ck-img="home.services.card5.image" alt="" hidden>
             <div>
               <span class="tile-eyebrow">სათამაშო კონსოლები</span>
               <h3 data-ck="home.services.card5.title">სათამაშო კონსოლები</h3>
@@ -1002,37 +1017,43 @@
   </div>
   <section class="tight">
     <div class="wrap">
-      <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="svc-tariff-grid">
 
-        <div class="acct-card" style="display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center">
-          <div class="svc-icon" style="margin:0"><svg><use href="#ic-phone"/></svg></div>
-          <div><h3 style="margin-bottom:4px" data-ck="services.row1.title">სმარტფონის შეკეთება</h3><p style="color:var(--ink-soft);font-size:.9rem" data-ck="services.row1.desc">ეკრანი, ბატარეა, კამერა, დამტენი პორტი, წყლის დაზიანება</p></div>
-          <div style="text-align:right"><div class="price" data-ck="services.row1.price">85 ₾ – დან</div><a href="#booking" data-route="booking" class="btn btn-ghost btn-sm" style="margin-top:8px">დაჯავშნა</a></div>
+        <div class="svc-tariff-card">
+          <div class="svc-icon"><svg><use href="#ic-phone"/></svg></div>
+          <h3 data-ck="services.row1.title">სმარტფონის შეკეთება</h3>
+          <p data-ck="services.row1.desc">ეკრანი, ბატარეა, კამერა, დამტენი პორტი, წყლის დაზიანება</p>
+          <div class="svc-tariff-foot"><div class="price" data-ck="services.row1.price">85 ₾ – დან</div><a href="#booking" data-route="booking" class="btn btn-ghost btn-sm">დაჯავშნა</a></div>
         </div>
-        <div class="acct-card" style="display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center">
-          <div class="svc-icon" style="margin:0"><svg><use href="#ic-laptop"/></svg></div>
-          <div><h3 style="margin-bottom:4px" data-ck="services.row2.title">ლეპტოპისა და კომპიუტერის შეკეთება</h3><p style="color:var(--ink-soft);font-size:.9rem" data-ck="services.row2.desc">დედაპლატის დიაგნოსტიკა, კლავიატურა, გაცხელება, SSD/RAM განახლება</p></div>
-          <div style="text-align:right"><div class="price" data-ck="services.row2.price">120 ₾ – დან</div><a href="#booking" data-route="booking" class="btn btn-ghost btn-sm" style="margin-top:8px">დაჯავშნა</a></div>
+        <div class="svc-tariff-card">
+          <div class="svc-icon"><svg><use href="#ic-laptop"/></svg></div>
+          <h3 data-ck="services.row2.title">ლეპტოპისა და კომპიუტერის შეკეთება</h3>
+          <p data-ck="services.row2.desc">დედაპლატის დიაგნოსტიკა, კლავიატურა, გაცხელება, SSD/RAM განახლება</p>
+          <div class="svc-tariff-foot"><div class="price" data-ck="services.row2.price">120 ₾ – დან</div><a href="#booking" data-route="booking" class="btn btn-ghost btn-sm">დაჯავშნა</a></div>
         </div>
-        <div class="acct-card" style="display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center">
-          <div class="svc-icon" style="margin:0"><svg><use href="#ic-tablet"/></svg></div>
-          <div><h3 style="margin-bottom:4px" data-ck="services.row3.title">პლანშეტის შეკეთება</h3><p style="color:var(--ink-soft);font-size:.9rem" data-ck="services.row3.desc">ეკრანი, ბატარეა, დამტენი პორტი — iPad და Android</p></div>
-          <div style="text-align:right"><div class="price" data-ck="services.row3.price">95 ₾ – დან</div><a href="#booking" data-route="booking" class="btn btn-ghost btn-sm" style="margin-top:8px">დაჯავშნა</a></div>
+        <div class="svc-tariff-card">
+          <div class="svc-icon"><svg><use href="#ic-tablet"/></svg></div>
+          <h3 data-ck="services.row3.title">პლანშეტის შეკეთება</h3>
+          <p data-ck="services.row3.desc">ეკრანი, ბატარეა, დამტენი პორტი — iPad და Android</p>
+          <div class="svc-tariff-foot"><div class="price" data-ck="services.row3.price">95 ₾ – დან</div><a href="#booking" data-route="booking" class="btn btn-ghost btn-sm">დაჯავშნა</a></div>
         </div>
-        <div class="acct-card" style="display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center">
-          <div class="svc-icon" style="margin:0"><svg><use href="#ic-watch"/></svg></div>
-          <div><h3 style="margin-bottom:4px" data-ck="services.row4.title">სმარტ-საათის შეკეთება</h3><p style="color:var(--ink-soft);font-size:.9rem" data-ck="services.row4.desc">ეკრანი, ღილაკები, დატენვის მოდული</p></div>
-          <div style="text-align:right"><div class="price" data-ck="services.row4.price">70 ₾ – დან</div><a href="#booking" data-route="booking" class="btn btn-ghost btn-sm" style="margin-top:8px">დაჯავშნა</a></div>
+        <div class="svc-tariff-card">
+          <div class="svc-icon"><svg><use href="#ic-watch"/></svg></div>
+          <h3 data-ck="services.row4.title">სმარტ-საათის შეკეთება</h3>
+          <p data-ck="services.row4.desc">ეკრანი, ღილაკები, დატენვის მოდული</p>
+          <div class="svc-tariff-foot"><div class="price" data-ck="services.row4.price">70 ₾ – დან</div><a href="#booking" data-route="booking" class="btn btn-ghost btn-sm">დაჯავშნა</a></div>
         </div>
-        <div class="acct-card" style="display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center">
-          <div class="svc-icon" style="margin:0"><svg><use href="#ic-console"/></svg></div>
-          <div><h3 style="margin-bottom:4px" data-ck="services.row5.title">სათამაშო კონსოლის შეკეთება</h3><p style="color:var(--ink-soft);font-size:.9rem" data-ck="services.row5.desc">გაწმენდა, გაცხელება, HDMI/კონტროლერის პრობლემები</p></div>
-          <div style="text-align:right"><div class="price" data-ck="services.row5.price">90 ₾ – დან</div><a href="#booking" data-route="booking" class="btn btn-ghost btn-sm" style="margin-top:8px">დაჯავშნა</a></div>
+        <div class="svc-tariff-card">
+          <div class="svc-icon"><svg><use href="#ic-console"/></svg></div>
+          <h3 data-ck="services.row5.title">სათამაშო კონსოლის შეკეთება</h3>
+          <p data-ck="services.row5.desc">გაწმენდა, გაცხელება, HDMI/კონტროლერის პრობლემები</p>
+          <div class="svc-tariff-foot"><div class="price" data-ck="services.row5.price">90 ₾ – დან</div><a href="#booking" data-route="booking" class="btn btn-ghost btn-sm">დაჯავშნა</a></div>
         </div>
-        <div class="acct-card" style="display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center">
-          <div class="svc-icon" style="margin:0"><svg><use href="#ic-home-appl"/></svg></div>
-          <div><h3 style="margin-bottom:4px" data-ck="services.row6.title">საყოფაცხოვრებო ტექნიკა</h3><p style="color:var(--ink-soft);font-size:.9rem" data-ck="services.row6.desc">დიაგნოსტიკა და შეკეთება მცირე საყოფაცხოვრებო ტექნიკისთვის</p></div>
-          <div style="text-align:right"><div class="price" data-ck="services.row6.price">60 ₾ – დან</div><a href="#booking" data-route="booking" class="btn btn-ghost btn-sm" style="margin-top:8px">დაჯავშნა</a></div>
+        <div class="svc-tariff-card">
+          <div class="svc-icon"><svg><use href="#ic-home-appl"/></svg></div>
+          <h3 data-ck="services.row6.title">საყოფაცხოვრებო ტექნიკა</h3>
+          <p data-ck="services.row6.desc">დიაგნოსტიკა და შეკეთება მცირე საყოფაცხოვრებო ტექნიკისთვის</p>
+          <div class="svc-tariff-foot"><div class="price" data-ck="services.row6.price">60 ₾ – დან</div><a href="#booking" data-route="booking" class="btn btn-ghost btn-sm">დაჯავშნა</a></div>
         </div>
 
       </div>
@@ -1624,7 +1645,7 @@
 
   /* Site content + booking API — swap this one line when Q-Logic's
      production endpoints are ready (see qlogic-content-api/README.md). */
-  var API_BASE = '';
+  var API_BASE = 'https://technoline-content-api.onrender.com';
   var ADMIN_PANEL_URL = 'https://claude.ai/artifact/XxTSVQBUgQ4rUqNCnJRe5k';
 
   /* ---------- safe storage ---------- */
@@ -2387,6 +2408,12 @@
     var k = el.getAttribute('data-ck');
     if(!Object.prototype.hasOwnProperty.call(CONTENT_DEFAULTS, k)){ CONTENT_DEFAULTS[k] = el.innerHTML; CONTENT_ORDER.push(k); }
   });
+  // image fields (home services tiles) — same admin-editable content map,
+  // but the value is a photo data URL applied as .src, not innerHTML
+  document.querySelectorAll('[data-ck-img]').forEach(function(el){
+    var k = el.getAttribute('data-ck-img');
+    if(!Object.prototype.hasOwnProperty.call(CONTENT_DEFAULTS, k)){ CONTENT_DEFAULTS[k] = ''; CONTENT_ORDER.push(k); }
+  });
 
   var THEME_TOKENS = [
     {key:'gold', varName:'--gold'}, {key:'goldDeep', varName:'--gold-deep'}, {key:'goldSoft', varName:'--gold-soft'},
@@ -2403,6 +2430,13 @@
       var k = el.getAttribute('data-ck');
       var v = Object.prototype.hasOwnProperty.call(siteContent.content, k) ? siteContent.content[k] : CONTENT_DEFAULTS[k];
       if(el.innerHTML !== v) el.innerHTML = v;
+    });
+    document.querySelectorAll('[data-ck-img]').forEach(function(el){
+      var k = el.getAttribute('data-ck-img');
+      var v = Object.prototype.hasOwnProperty.call(siteContent.content, k) ? siteContent.content[k] : '';
+      var tile = el.closest('.svc-tile');
+      if(v){ el.src = v; el.hidden = false; if(tile) tile.classList.add('has-photo'); }
+      else { el.removeAttribute('src'); el.hidden = true; if(tile) tile.classList.remove('has-photo'); }
     });
   }
   function applyThemeOverrides(){
@@ -2467,5 +2501,3 @@
   loadSiteContent();
 })();
 </script>
-
-</body></html>

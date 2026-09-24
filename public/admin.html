@@ -1,4 +1,3 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!DOCTYPE html>
 <html lang="ka">
 <head>
@@ -268,7 +267,7 @@
 
   /* Swap this one line when Q-Logic's production endpoints are ready —
      see qlogic-content-api/README.md for the migration contract. */
-  var API_BASE = '';
+  var API_BASE = 'https://technoline-content-api.onrender.com';
   var SITE_URL = 'https://claude.ai/artifact/9DgADmJr7vngx4u3beCKHc';
 
 var CONTENT_ORDER = ["common.brandName","common.tagline","common.bookCta","common.catalogCta","home.hero.eyebrow","home.hero.title","home.hero.lede","common.warrantyCheckCta","home.hero.badge1","home.hero.badge2Num","home.hero.badge2Label","home.hero.badge3Num","home.hero.badge3Label","home.stat1Num","home.stat1Label","home.stat2Num","home.stat2Label","home.stat3Num","home.stat3Label","home.stat4Num","home.stat4Label","home.services.eyebrow","home.services.title","home.services.lede","home.services.lead.title","home.services.lead.desc","home.services.card2.title","home.services.card2.desc","home.services.card3.title","home.services.card3.desc","home.services.card4.title","home.services.card4.desc","home.services.card5.title","home.services.card5.desc","home.steps.eyebrow","home.steps.title","home.steps.step1.title","home.steps.step1.desc","home.steps.step2.title","home.steps.step2.desc","home.steps.step3.title","home.steps.step3.desc","home.steps.step4.title","home.steps.step4.desc","home.craft.eyebrow","home.craft.title","home.craft.lede","home.band.title","home.band.desc","home.reviews.eyebrow","home.reviews.title","home.reviews.quote1","home.reviews.quote2","home.reviews.quote3","about.head.title","about.head.lede","about.history.eyebrow","about.history.title","about.history.p1","about.history.p2","about.stat1Num","about.stat1Label","about.stat2Num","about.stat2Label","about.stat3Num","about.stat3Label","about.stat4Num","about.stat4Label","about.principles.eyebrow","about.principles.title","about.p1.title","about.p1.desc","about.p2.title","about.p2.desc","about.p3.title","about.p3.desc","about.p4.title","about.p4.desc","about.p5.title","about.p5.desc","about.p6.title","about.p6.desc","about.band.title","about.band.desc","services.head.title","services.head.lede","services.row1.title","services.row1.desc","services.row1.price","services.row2.title","services.row2.desc","services.row2.price","services.row3.title","services.row3.desc","services.row3.price","services.row4.title","services.row4.desc","services.row4.price","services.row5.title","services.row5.desc","services.row5.price","services.row6.title","services.row6.desc","services.row6.price","catalog.head.title","catalog.head.lede","warranty-check.head.title","warranty-check.head.lede","warranty-check.side.title","warranty-check.side.desc","warranty-check.side.item1","warranty-check.side.item2","warranty-check.side.item3","booking.head.title","booking.head.lede","wservice.head.title","wservice.head.lede","wservice.s1.title","wservice.s1.desc","wservice.s1.list","wservice.s2.title","wservice.s2.desc","wservice.s2.list","wservice.s3.title","wservice.s3.desc","wservice.s4.title","wservice.s4.desc","wservice.s5.title","wservice.s5.desc","wservice.band.title","wservice.band.desc","profile.head.title","profile.head.lede","orders.head.title","orders.head.lede","terms.head.title","terms.head.date","terms.s1.title","terms.s1.body","terms.s2.title","terms.s2.body","terms.s2.list","terms.s3.title","terms.s3.body","terms.s4.title","terms.s4.body","terms.s5.title","terms.s5.body","terms.s6.title","terms.s6.body","terms.s7.title","contact.head.title","contact.head.lede","contact.center.title","contact.center.phone","contact.center.email","contact.corp.title","contact.corp.phone","contact.corp.email","contact.branches.eyebrow","contact.branches.title","footer.blurb","common.phone","common.email","footer.address","footer.copyright"];
@@ -536,6 +535,35 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     return '<div class="panel-head"><div><h2>'+tab.label+'</h2><p>'+desc+'</p></div>' + statusChipHtml(tab) + '</div>';
   }
 
+  // home services rail tiles: each card can carry an optional photo,
+  // stored under its own key in the same generic content map (rendered
+  // as a photo-upload widget instead of a textarea, right after that
+  // card's description field).
+  var SVC_TILE_IMAGE_MAP = {
+    'home.services.lead.desc': 'home.services.lead.image',
+    'home.services.card2.desc': 'home.services.card2.image',
+    'home.services.card3.desc': 'home.services.card3.image',
+    'home.services.card4.desc': 'home.services.card4.image',
+    'home.services.card5.desc': 'home.services.card5.image'
+  };
+  var SVC_PHOTO_MAX_W = 640;
+  var SVC_PHOTO_QUALITY = 0.82;
+
+  function renderSvcPhotoField(imgKey){
+    var val = state.content[imgKey];
+    return '<div class="field-block">'
+      + '<label>ბარათის ფოტო (არასავალდებულო)<span class="ck-key">' + imgKey + '</span></label>'
+      + '<div class="part-photo-cell" data-svc-photo-cell="'+escAttr(imgKey)+'">'
+        + (val ? '<img class="part-thumb" src="'+val+'" alt="">' : '<div class="part-thumb-empty">—</div>')
+        + '<div class="part-photo-actions">'
+          + '<label>ატვირთვა<input type="file" accept="image/*" data-svc-photo></label>'
+          + (val ? '<button type="button" data-svc-photo-clear>წაშლა</button>' : '')
+        + '</div>'
+      + '</div>'
+      + '<p class="field-hint" style="margin-top:6px">თუ ფოტო არ ატვირთავთ, ბარათზე ფერადი ფონი და ხატულა დარჩება.</p>'
+      + '</div>';
+  }
+
   function renderContentPanel(main, tab){
     var keys = CONTENT_ORDER.filter(function(k){ return parseCk(k).page === tab.page; });
     var html = panelHeadHtml(tab, 'შეცვალეთ ტექსტი და დააჭირეთ „ცვლილებების შენახვას“. მარტივი HTML ტეგები (em, strong, br) დაშვებულია და შენარჩუნდება საიტზე.');
@@ -552,6 +580,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         + '<label>' + labelForCk(k) + '<span class="ck-key">' + k + '</span></label>'
         + '<textarea data-ck-edit="'+escAttr(k)+'">' + escHtml(val) + '</textarea>'
         + '</div>';
+      if(SVC_TILE_IMAGE_MAP[k]) html += renderSvcPhotoField(SVC_TILE_IMAGE_MAP[k]);
     });
     html += '</div>';
     html += saveBarHtml();
@@ -564,6 +593,57 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         updateStatusChip(tab);
       });
     });
+
+    function refreshSvcPhotoCell(imgKey){
+      var cell = main.querySelector('[data-svc-photo-cell="'+imgKey+'"]');
+      if(!cell) return;
+      var val = state.content[imgKey];
+      cell.innerHTML = (val ? '<img class="part-thumb" src="'+val+'" alt="">' : '<div class="part-thumb-empty">—</div>')
+        + '<div class="part-photo-actions">'
+          + '<label>ატვირთვა<input type="file" accept="image/*" data-svc-photo></label>'
+          + (val ? '<button type="button" data-svc-photo-clear>წაშლა</button>' : '')
+        + '</div>';
+      wireSvcPhotoCell(imgKey);
+    }
+    function wireSvcPhotoCell(imgKey){
+      var cell = main.querySelector('[data-svc-photo-cell="'+imgKey+'"]');
+      if(!cell) return;
+      var fileInp = cell.querySelector('[data-svc-photo]');
+      if(fileInp){
+        fileInp.addEventListener('change', function(){
+          var file = fileInp.files && fileInp.files[0];
+          if(!file) return;
+          var reader = new FileReader();
+          reader.onload = function(){
+            var img = new Image();
+            img.onload = function(){
+              var scale = Math.min(1, SVC_PHOTO_MAX_W / img.width);
+              var w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+              var canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              state.content[imgKey] = canvas.toDataURL('image/jpeg', SVC_PHOTO_QUALITY);
+              setDirty(tab, true);
+              updateStatusChip(tab);
+              refreshSvcPhotoCell(imgKey);
+            };
+            img.src = reader.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+      var clearBtn = cell.querySelector('[data-svc-photo-clear]');
+      if(clearBtn){
+        clearBtn.addEventListener('click', function(){
+          delete state.content[imgKey];
+          setDirty(tab, true);
+          updateStatusChip(tab);
+          refreshSvcPhotoCell(imgKey);
+        });
+      }
+    }
+    Object.keys(SVC_TILE_IMAGE_MAP).forEach(function(descKey){ wireSvcPhotoCell(SVC_TILE_IMAGE_MAP[descKey]); });
+
     wireSaveBar(tab, function(){ return {path:'content-site', body: state.content}; });
   }
 
@@ -831,5 +911,3 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
 </script>
 </body>
 </html>
-
-</body></html>
