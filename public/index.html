@@ -87,7 +87,10 @@
     -webkit-font-smoothing:antialiased;
     padding-left:max(16px, env(safe-area-inset-left,0px));
     padding-right:max(16px, env(safe-area-inset-right,0px));
+    opacity:0;
   }
+  body.is-ready{opacity:1;transition:opacity .22s ease}
+  @media (prefers-reduced-motion: reduce){ body.is-ready{transition:none} }
   h1,h2,h3,h4,p,ul,figure{margin:0}
   ul{padding:0;list-style:none}
   a{color:inherit;text-decoration:none}
@@ -597,6 +600,7 @@
     .band-dark{padding:32px 24px}
   }
 </style>
+<noscript><style>body{opacity:1 !important}</style></noscript>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800;900&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -2630,6 +2634,19 @@
   function loadSiteContent(){
     var adminLink = document.getElementById('admin-btn');
     if(adminLink && ADMIN_PANEL_URL && ADMIN_PANEL_URL.indexOf('PLACEHOLDER') === -1) adminLink.href = ADMIN_PANEL_URL;
+    // Keep the page hidden for a short grace window so saved admin content
+    // (text/theme/photos/videos) is already applied before first paint —
+    // avoids a visible "default content, then it changes" flash. If the
+    // API is slow (e.g. a cold-start backend) or unreachable, reveal with
+    // built-in defaults anyway after the grace window rather than leaving
+    // the page blank.
+    var revealed = false;
+    function reveal(){
+      if(revealed) return;
+      revealed = true;
+      document.body.classList.add('is-ready');
+    }
+    var revealTimer = setTimeout(reveal, 900);
     fetch(API_BASE + '/api/site', {cache:'no-store'}).then(function(res){
       if(!res.ok) throw new Error('site_fetch_failed');
       return res.json();
@@ -2645,6 +2662,9 @@
     }).catch(function(){
       /* test/production API not reachable right now — the page already
          renders correctly from its built-in defaults, so fail silently */
+    }).finally(function(){
+      clearTimeout(revealTimer);
+      reveal();
     });
   }
 
