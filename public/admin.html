@@ -1608,9 +1608,15 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
             + '<td>—</td>'
             + '</tr>';
         }).join('') + '</tbody></table>';
-    }).catch(function(){
+    }).catch(function(err){
       var card = document.getElementById('users-card');
-      if(card) card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>მომხმარებლების ჩატვირთვა ვერ მოხერხდა — შეამოწმეთ სერვერთან კავშირი.</p></div>';
+      if(!card) return;
+      if(err && err.status === 401){
+        card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ავტორიზაცია ვადაგასულია — გთხოვთ თავიდან შეხვიდეთ.</p></div>';
+        document.getElementById('logout-btn').click();
+        return;
+      }
+      card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>მომხმარებლების ჩატვირთვა ვერ მოხერხდა — შეამოწმეთ სერვერთან კავშირი.</p></div>';
     });
   }
 
