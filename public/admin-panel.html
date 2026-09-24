@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Technoline — ადმინ პანელი</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800;900&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0B1B2B; --ink-soft:#4A5A6C; --ink-faint:#7C8CA0;
+    --paper:#FFFFFF; --paper-soft:#F6F8FB; --paper-deep:#EEF2F7;
+    --line:#E1E7EF; --line-soft:#EDF1F6;
+    --blue:#0E4F8E; --blue-deep:#0A3A69; --blue-deeper:#082B4E; --blue-soft:#DCEAF6; --blue-soft-2:#B8D2E8; --blue-mid:#5C86AE;
+    --gold:#FCBB2D; --gold-deep:#C98A08; --gold-soft:#FFD788; --gold-ghost:#FFEAC5;
+    --ok:#1E8E5A; --warn:#C98A08; --err:#C0392B;
+    --font-geo:'Noto Sans Georgian','Segoe UI',sans-serif;
+    --font-display:'Unbounded','Noto Sans Georgian',sans-serif;
+    --radius:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#EEF4FB; --ink-soft:#AFC0D5; --ink-faint:#7E93AC;
+      --paper:#0C1826; --paper-soft:#0F1F32; --paper-deep:#13273D;
+      --line:#1E3B58; --line-soft:#173049;
+      --blue:#5FA0DC; --blue-deep:#82B4E6; --blue-deeper:#B8D2E8; --blue-soft:#123350; --blue-soft-2:#1B4468; --blue-mid:#7FA9D2;
+      --gold:#FCBB2D; --gold-deep:#FFD054; --gold-soft:#E4A028; --gold-ghost:#2E2410;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#EEF4FB; --ink-soft:#AFC0D5; --ink-faint:#7E93AC;
+    --paper:#0C1826; --paper-soft:#0F1F32; --paper-deep:#13273D;
+    --line:#1E3B58; --line-soft:#173049;
+    --blue:#5FA0DC; --blue-deep:#82B4E6; --blue-deeper:#B8D2E8; --blue-soft:#123350; --blue-soft-2:#1B4468; --blue-mid:#7FA9D2;
+    --gold:#FCBB2D; --gold-deep:#FFD054; --gold-soft:#E4A028; --gold-ghost:#2E2410;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:var(--font-geo);background:var(--paper-soft);color:var(--ink);-webkit-font-smoothing:antialiased}
+  svg{display:block}
+  button{font-family:inherit;cursor:pointer}
+  input,textarea,select{font-family:inherit}
+  :focus-visible{outline:2.5px solid var(--gold-deep);outline-offset:2px;border-radius:4px}
+  .icon{width:20px;height:20px}
+
+  /* ---------- login screen ---------- */
+  #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:
+    radial-gradient(1200px 600px at 15% -10%, var(--blue-soft), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, var(--gold-ghost), transparent 55%), var(--paper-soft);}
+  .login-card{width:100%;max-width:400px;background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:36px 32px;box-shadow:0 24px 60px -24px rgba(10,30,55,.25)}
+  .login-brand{display:flex;align-items:center;gap:10px;margin-bottom:26px}
+  .login-brand svg{width:34px;height:34px;color:var(--blue)}
+  .login-brand .lb-text{display:flex;flex-direction:column;line-height:1.15}
+  .login-brand b{font-family:var(--font-display);font-weight:800;font-size:1.05rem;color:var(--ink)}
+  .login-brand span{font-size:.72rem;color:var(--ink-faint);font-weight:600;letter-spacing:.02em}
+  .login-card h1{font-family:var(--font-display);font-size:1.3rem;font-weight:700;margin:0 0 6px}
+  .login-card p{font-size:.9rem;color:var(--ink-soft);margin:0 0 22px;line-height:1.5}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:.78rem;font-weight:700;color:var(--ink-soft);margin-bottom:6px}
+  .field input{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink);font-size:.95rem;transition:border-color .15s}
+  .field input:focus{border-color:var(--blue);background:var(--paper)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:11px;padding:12px 20px;font-weight:700;font-size:.92rem;transition:transform .12s,box-shadow .12s,background .12s}
+  .btn:active{transform:scale(.97)}
+  .btn-gold{background:var(--gold);color:#241A00;box-shadow:0 10px 22px -10px rgba(201,138,8,.55)}
+  .btn-gold:hover{background:var(--gold-deep)}
+  .btn-gold:disabled{opacity:.55;cursor:default;box-shadow:none}
+  .btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+  .btn-ghost:hover{border-color:var(--blue);color:var(--blue)}
+  .btn-block{width:100%}
+  .login-err{margin-top:12px;font-size:.85rem;color:var(--err);font-weight:600;display:none}
+  .login-err.show{display:block}
+  .login-foot{margin-top:22px;padding-top:18px;border-top:1px solid var(--line-soft);font-size:.78rem;color:var(--ink-faint);line-height:1.6}
+  .login-foot code{background:var(--paper-deep);padding:1px 6px;border-radius:5px;font-size:.78em}
+
+  /* ---------- app shell ---------- */
+  #app{display:none;min-height:100vh;grid-template-columns:252px 1fr;grid-template-rows:64px 1fr;grid-template-areas:"side top" "side main"}
+  #app.is-active{display:grid}
+  #topbar{grid-area:top;display:flex;align-items:center;justify-content:space-between;padding:0 26px;background:var(--paper);border-bottom:1px solid var(--line);gap:16px}
+  .tb-title{font-family:var(--font-display);font-weight:700;font-size:1.02rem}
+  .tb-sub{font-size:.78rem;color:var(--ink-faint);margin-top:1px}
+  .tb-right{display:flex;align-items:center;gap:10px}
+  .conn-pill{display:flex;align-items:center;gap:7px;font-size:.78rem;font-weight:700;color:var(--ink-soft);background:var(--paper-soft);border:1px solid var(--line);padding:6px 12px;border-radius:999px}
+  .conn-dot{width:8px;height:8px;border-radius:50%;background:var(--ink-faint);flex:none}
+  .conn-pill.ok .conn-dot{background:var(--ok)}
+  .conn-pill.err .conn-dot{background:var(--err)}
+  .icon-btn{width:38px;height:38px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper);display:flex;align-items:center;justify-content:center;color:var(--ink-soft);transition:border-color .15s,color .15s}
+  .icon-btn:hover{border-color:var(--blue);color:var(--blue)}
+  .icon-btn svg{width:18px;height:18px}
+
+  #sidebar{grid-area:side;background:var(--paper);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+  .side-brand{display:flex;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid var(--line-soft)}
+  .side-brand svg{width:28px;height:28px;color:var(--blue);flex:none}
+  .side-brand b{font-family:var(--font-display);font-weight:800;font-size:.98rem;display:block}
+  .side-brand span{font-size:.68rem;color:var(--ink-faint);font-weight:700;letter-spacing:.03em}
+  .side-scroll{flex:1;overflow-y:auto;padding:14px 12px 20px}
+  .side-group{margin-bottom:4px}
+  .side-group-label{font-size:.68rem;font-weight:800;letter-spacing:.05em;color:var(--ink-faint);text-transform:uppercase;padding:14px 10px 6px}
+  .side-btn{width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:10px;border:none;background:transparent;color:var(--ink-soft);font-size:.87rem;font-weight:600;margin-bottom:2px;transition:background .12s,color .12s}
+  .side-btn:hover{background:var(--paper-soft);color:var(--ink)}
+  .side-btn.is-active{background:var(--blue-soft);color:var(--blue-deep);font-weight:800}
+  :root[data-theme="dark"] .side-btn.is-active{color:var(--blue)}
+  @media (prefers-color-scheme: dark){ .side-btn.is-active{color:var(--blue)} }
+  .side-btn .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.55;flex:none}
+  .side-foot{padding:14px 20px;border-top:1px solid var(--line-soft)}
+  .side-foot .btn{width:100%}
+
+  #main{grid-area:main;overflow-y:auto;padding:28px 34px 60px}
+  .panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+  .panel-head h2{font-family:var(--font-display);font-size:1.35rem;font-weight:700;margin:0 0 4px}
+  .panel-head p{margin:0;font-size:.87rem;color:var(--ink-soft);max-width:62ch;line-height:1.55}
+  .status-chip{font-size:.78rem;font-weight:700;padding:6px 13px;border-radius:999px;white-space:nowrap}
+  .status-chip.saved{background:var(--blue-soft);color:var(--blue-deep)}
+  .status-chip.dirty{background:var(--gold-ghost);color:var(--gold-deep)}
+  .status-chip.saving{background:var(--paper-deep);color:var(--ink-faint)}
+
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin-bottom:18px}
+  .field-block{margin-bottom:18px}
+  .field-block:last-child{margin-bottom:0}
+  .field-block label{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:.82rem;font-weight:700;color:var(--ink-soft);margin-bottom:7px}
+  .field-block label .ck-key{font-weight:600;font-family:monospace;font-size:.72rem;color:var(--ink-faint);background:var(--paper-soft);padding:1px 7px;border-radius:6px}
+  .field-block textarea{width:100%;min-height:64px;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink);font-size:.88rem;line-height:1.55;resize:vertical;transition:border-color .15s}
+  .field-block textarea:focus{border-color:var(--blue);background:var(--paper)}
+  .field-block input[type=text]{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink);font-size:.9rem;transition:border-color .15s}
+  .field-block input[type=text]:focus{border-color:var(--blue);background:var(--paper)}
+  .seg-label{margin:26px 0 10px;font-weight:800;font-size:.86rem;color:var(--blue)}
+  .seg-label:first-child{margin-top:0}
+
+  .color-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--line-soft)}
+  .color-row:last-child{border-bottom:none}
+  .color-row input[type=color]{width:46px;height:46px;padding:0;border:1.5px solid var(--line);border-radius:11px;background:none;cursor:pointer}
+  .color-row .cr-label{flex:1;font-size:.9rem;font-weight:700}
+  .color-row .cr-hex{font-family:monospace;font-size:.82rem;color:var(--ink-faint);background:var(--paper-soft);padding:3px 9px;border-radius:7px}
+
+  table.admin-table{width:100%;border-collapse:collapse}
+  table.admin-table th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);font-weight:800;padding:0 10px 10px;border-bottom:1.5px solid var(--line)}
+  table.admin-table td{padding:8px 10px;border-bottom:1px solid var(--line-soft)}
+  table.admin-table tr:last-child td{border-bottom:none}
+  table.admin-table input{width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-soft);color:var(--ink);font-size:.86rem}
+  table.admin-table input:focus{border-color:var(--blue);background:var(--paper)}
+  .part-photo-cell{display:flex;align-items:center;gap:10px}
+  .part-thumb{width:52px;height:52px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper-soft);object-fit:cover;flex:none}
+  .part-thumb-empty{width:52px;height:52px;border-radius:10px;border:1.5px dashed var(--line);background:var(--paper-soft);flex:none;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-size:1.3rem}
+  .part-photo-actions{display:flex;flex-direction:column;gap:4px}
+  .part-photo-actions label{font-size:.76rem;font-weight:700;color:var(--blue);cursor:pointer;background:none;border:none;padding:0;text-align:left}
+  .part-photo-actions button{font-size:.76rem;font-weight:700;color:var(--ink-faint);cursor:pointer;background:none;border:none;padding:0;text-align:left}
+  .part-photo-actions input[type=file]{display:none}
+
+  .branch-card{border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  .branch-card:last-child{margin-bottom:0}
+  .branch-card h3{margin:0 0 12px;font-size:.95rem;font-weight:800;color:var(--blue)}
+  .branch-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:760px){.branch-grid{grid-template-columns:1fr}}
+
+  .save-bar{position:sticky;bottom:0;display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:14px 0 4px;margin-top:6px;background:linear-gradient(180deg, transparent, var(--paper-soft) 30%)}
+
+  .booking-row{display:grid;grid-template-columns:110px 1fr 140px 90px;gap:12px;align-items:center;padding:13px 6px;border-bottom:1px solid var(--line-soft);font-size:.86rem}
+  .booking-row:last-child{border-bottom:none}
+  .booking-row .bcode{font-family:monospace;font-weight:800;color:var(--blue)}
+  .booking-row .bname{font-weight:700}
+  .booking-row .bmeta{color:var(--ink-faint);font-size:.8rem;margin-top:2px}
+  .booking-row .bstatus{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:4px 10px;border-radius:999px;background:var(--blue-soft);color:var(--blue-deep);text-align:center;white-space:nowrap}
+  @media (max-width:760px){.booking-row{grid-template-columns:1fr;gap:4px}}
+
+  .empty-state{text-align:center;padding:50px 20px;color:var(--ink-faint)}
+  .empty-state svg{width:40px;height:40px;margin:0 auto 14px;opacity:.5}
+  .empty-state p{margin:0;font-size:.9rem}
+
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);padding:12px 22px;border-radius:12px;font-size:.86rem;font-weight:600;box-shadow:0 14px 34px -14px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:999}
+  :root[data-theme="dark"] .toast{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+  @media (prefers-color-scheme: dark){ .toast{background:var(--paper);color:var(--ink);border:1px solid var(--line)} }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media (max-width:880px){
+    #app{grid-template-columns:1fr;grid-template-areas:"top" "main"}
+    #sidebar{position:fixed;inset:0 auto 0 0;width:270px;z-index:40;transform:translateX(-100%);transition:transform .2s;box-shadow:0 0 40px rgba(0,0,0,.25)}
+    #sidebar.is-open{transform:translateX(0)}
+    #sidebar-scrim{display:none;position:fixed;inset:0;background:rgba(8,18,30,.4);z-index:39}
+    #sidebar-scrim.show{display:block}
+    #main{padding:20px}
+  }
+  @media (min-width:881px){ #sidebar-scrim{display:none} }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="ic-logo" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round">
+      <path d="M32 6c14.36 0 26 11.64 26 26S46.36 58 32 58"/>
+      <path d="M14 50.2C9.02 45.28 6 38.48 6 31c0-13.8 11.2-25 25-25"/>
+      <circle cx="32" cy="32" r="17.5"/>
+    </g>
+    <path d="M32 20.5v8.3M25 26a9 9 0 1 0 14 0" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.1 5.9l-1.9 1.9M7.8 16.3l-1.9 1.9M18.1 18.1l-1.9-1.9M7.8 7.7 5.9 5.9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="ic-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.8-1.9 0-.5-.2-.9-.5-1.3-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H16a5 5 0 0 0 5-5c0-3.9-4-6.8-9-6.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7.5" cy="10.5" r="1.3" fill="currentColor"/><circle cx="10.5" cy="7" r="1.3" fill="currentColor"/><circle cx="15.2" cy="7.6" r="1.3" fill="currentColor"/></symbol>
+  <symbol id="ic-box" viewBox="0 0 24 24"><path d="M3 8l9-4.5L21 8v8l-9 4.5L3 16V8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 8l9 4.5L21 8M12 12.5V21" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="9" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="ic-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="ic-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M19 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="ic-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="ic-inbox" viewBox="0 0 24 24"><path d="M3 12h5l1.6 3h4.8L16 12h5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 12v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6L18 5a2 2 0 0 0-1.8-1H7.8A2 2 0 0 0 6 5L3 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+</svg>
+
+<!-- ============ LOGIN ============ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-brand">
+      <svg><use href="#ic-logo"/></svg>
+      <div class="lb-text"><b>Technoline</b><span>ADMIN PANEL</span></div>
+    </div>
+    <h1>ავტორიზაცია</h1>
+    <p>შედით საიტის სამართავად — კონტენტი, ფერები, ნაწილების კატალოგი, ფილიალები და ვიზიტების ჯავშნები.</p>
+    <div class="field">
+      <label for="login-password">პაროლი</label>
+      <input type="password" id="login-password" placeholder="შეიყვანეთ პაროლი" autocomplete="current-password">
+    </div>
+    <button class="btn btn-gold btn-block" id="login-btn">შესვლა</button>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-foot">
+      სერვერი: <code id="login-api-base">—</code><br>
+      სატესტო გარემოში ნაგულისხმევი პაროლია <code>technoline2026</code>, თუ ცვლილი არ არის.
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="sidebar-scrim"></div>
+<div id="app">
+  <aside id="sidebar">
+    <div class="side-brand">
+      <svg><use href="#ic-logo"/></svg>
+      <div><b>Technoline</b><span>ADMIN</span></div>
+    </div>
+    <nav class="side-scroll" id="side-nav"></nav>
+    <div class="side-foot">
+      <button class="btn btn-ghost" id="logout-btn"><svg class="icon" style="width:16px;height:16px"><use href="#ic-logout"/></svg>&nbsp; გასვლა</button>
+    </div>
+  </aside>
+
+  <header id="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="icon-btn" id="mobile-nav-btn" style="display:none"><svg><use href="#ic-menu"/></svg></button>
+      <div>
+        <div class="tb-title" id="tb-title">მართვის პანელი</div>
+        <div class="tb-sub" id="tb-sub">Technoline.ge</div>
+      </div>
+    </div>
+    <div class="tb-right">
+      <span class="conn-pill" id="conn-pill"><span class="conn-dot"></span><span id="conn-text">მოწმდება…</span></span>
+      <a class="icon-btn" id="open-site-btn" href="#" target="_blank" rel="noopener" title="საიტის გახსნა"><svg><use href="#ic-external"/></svg></a>
+    </div>
+  </header>
+
+  <main id="main"></main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* Swap this one line when Q-Logic's production endpoints are ready —
+     see qlogic-content-api/README.md for the migration contract. */
+  var API_BASE = 'https://technoline-content-api.onrender.com';
+  var SITE_URL = 'https://claude.ai/artifact/9DgADmJr7vngx4u3beCKHc';
+
+var CONTENT_ORDER = ["common.brandName","common.tagline","common.bookCta","common.catalogCta","home.hero.eyebrow","home.hero.title","home.hero.lede","common.warrantyCheckCta","home.hero.badge1","home.hero.badge2Num","home.hero.badge2Label","home.hero.badge3Num","home.hero.badge3Label","home.stat1Num","home.stat1Label","home.stat2Num","home.stat2Label","home.stat3Num","home.stat3Label","home.stat4Num","home.stat4Label","home.services.eyebrow","home.services.title","home.services.lede","home.services.lead.title","home.services.lead.desc","home.services.card2.title","home.services.card2.desc","home.services.card3.title","home.services.card3.desc","home.services.card4.title","home.services.card4.desc","home.services.card5.title","home.services.card5.desc","home.steps.eyebrow","home.steps.title","home.steps.step1.title","home.steps.step1.desc","home.steps.step2.title","home.steps.step2.desc","home.steps.step3.title","home.steps.step3.desc","home.steps.step4.title","home.steps.step4.desc","home.craft.eyebrow","home.craft.title","home.craft.lede","home.band.title","home.band.desc","home.reviews.eyebrow","home.reviews.title","home.reviews.quote1","home.reviews.quote2","home.reviews.quote3","about.head.title","about.head.lede","about.history.eyebrow","about.history.title","about.history.p1","about.history.p2","about.stat1Num","about.stat1Label","about.stat2Num","about.stat2Label","about.stat3Num","about.stat3Label","about.stat4Num","about.stat4Label","about.principles.eyebrow","about.principles.title","about.p1.title","about.p1.desc","about.p2.title","about.p2.desc","about.p3.title","about.p3.desc","about.p4.title","about.p4.desc","about.p5.title","about.p5.desc","about.p6.title","about.p6.desc","about.band.title","about.band.desc","services.head.title","services.head.lede","services.row1.title","services.row1.desc","services.row1.price","services.row2.title","services.row2.desc","services.row2.price","services.row3.title","services.row3.desc","services.row3.price","services.row4.title","services.row4.desc","services.row4.price","services.row5.title","services.row5.desc","services.row5.price","services.row6.title","services.row6.desc","services.row6.price","catalog.head.title","catalog.head.lede","warranty-check.head.title","warranty-check.head.lede","warranty-check.side.title","warranty-check.side.desc","warranty-check.side.item1","warranty-check.side.item2","warranty-check.side.item3","booking.head.title","booking.head.lede","wservice.head.title","wservice.head.lede","wservice.s1.title","wservice.s1.desc","wservice.s1.list","wservice.s2.title","wservice.s2.desc","wservice.s2.list","wservice.s3.title","wservice.s3.desc","wservice.s4.title","wservice.s4.desc","wservice.s5.title","wservice.s5.desc","wservice.band.title","wservice.band.desc","profile.head.title","profile.head.lede","orders.head.title","orders.head.lede","terms.head.title","terms.head.date","terms.s1.title","terms.s1.body","terms.s2.title","terms.s2.body","terms.s2.list","terms.s3.title","terms.s3.body","terms.s4.title","terms.s4.body","terms.s5.title","terms.s5.body","terms.s6.title","terms.s6.body","terms.s7.title","contact.head.title","contact.head.lede","contact.center.title","contact.center.phone","contact.center.email","contact.corp.title","contact.corp.phone","contact.corp.email","contact.branches.eyebrow","contact.branches.title","footer.blurb","common.phone","common.email","footer.address","footer.copyright"];
+var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","common.tagline":"TECHNOLINE SERVICE","common.bookCta":"ვიზიტის დაჯავშნა","common.catalogCta":"კატალოგის ნახვა","home.hero.eyebrow":"<span class=\"dot\"></span>თბილისში, ბათუმსა და ქუთაისში — 9 ფილიალი","home.hero.title":"თქვენი ტექნიკა, <em>სანდო</em> ხელებში","home.hero.lede":"ტექნოლაინი აღადგენს სმარტფონებს, ლეპტოპებს, პლანშეტებსა და სხვა ციფრულ მოწყობილობებს — ორიგინალი ნაწილებით, გამჭვირვალე ფასად და საშუალოდ 48 საათში.","common.warrantyCheckCta":"საგარანტიოს შემოწმება","home.hero.badge1":"ორიგინალი<br>ნაწილები","home.hero.badge2Num":"48სთ","home.hero.badge2Label":"საშუალო<br>შეკეთების ვადა","home.hero.badge3Num":"12","home.hero.badge3Label":"წელი<br>გამოცდილება","home.stat1Num":"45,000+","home.stat1Label":"შეკეთებული მოწყობილობა","home.stat2Num":"9","home.stat2Label":"სერვის-ცენტრი საქართველოში","home.stat3Num":"4.8/5","home.stat3Label":"მომხმარებლის შეფასება","home.stat4Num":"6 თვე","home.stat4Label":"გარანტია ყველა შეკეთებაზე","home.services.eyebrow":"სერვისები","home.services.title":"ერთი ცენტრი, ყველა მოწყობილობისთვის","home.services.lede":"დიაგნოსტიკიდან შეკეთებამდე — ჩვენი ინჟინრები მუშაობენ ყველა ძირითად ბრენდთან და მოწყობილობის ტიპთან.","home.services.lead.title":"სმარტფონების შეკეთება","home.services.lead.desc":"ეკრანი, ბატარეა, კამერა, წყლის დაზიანება — ორიგინალი ნაწილებით, უმეტესად იმავე დღეს.","home.services.card2.title":"ლეპტოპები და კომპიუტერები","home.services.card2.desc":"დედაპლატის დიაგნოსტიკა, კლავიატურის და ეკრანის შეცვლა, სისტემის აღდგენა.","home.services.card3.title":"პლანშეტები","home.services.card3.desc":"iPad და Android პლანშეტების ეკრანის, ბატარეისა და პორტების შეკეთება.","home.services.card4.title":"სმარტ-საათები","home.services.card4.desc":"ეკრანის, ღილაკებისა და დატენვის მოდულის შეკეთება ყველა ძირითადი ბრენდისთვის.","home.services.card5.title":"სათამაშო კონსოლები","home.services.card5.desc":"PlayStation, Xbox და Nintendo კონსოლების გაწმენდა, გაცხელების და HDMI პრობლემები.","home.steps.eyebrow":"როგორ მუშაობს","home.steps.title":"დიაგნოსტიკიდან გატანამდე — 4 ნაბიჯი","home.steps.step1.title":"დაჯავშნა","home.steps.step1.desc":"აირჩიეთ ფილიალი და დრო ონლაინ, ან მიუტანეთ მოწყობილობა უშუალოდ სერვის-ცენტრში.","home.steps.step2.title":"უფასო დიაგნოსტიკა","home.steps.step2.desc":"ინჟინერი ადგენს პრობლემას და გიგზავნით ფასის ზუსტ შეთავაზებას 30 წუთში.","home.steps.step3.title":"შეკეთება","home.steps.step3.desc":"დამტკიცების შემდეგ ვიწყებთ სამუშაოს ორიგინალი ან სერტიფიცირებული ნაწილებით.","home.steps.step4.title":"გატანა და გარანტია","home.steps.step4.desc":"იღებთ მზა მოწყობილობას 6-თვიანი გარანტიით და SMS შეტყობინებით.","home.craft.eyebrow":"ჩვენი ინჟინრები საქმეში","home.craft.title":"სიზუსტე, რომელიც წლების გამოცდილებით შენდება","home.craft.lede":"დედაპლატის მიკრო-შედუღებიდან ბატარეის უსაფრთხო შეცვლამდე — ყოველი შეკეთება გადის იმავე ხარისხის კონტროლს, დამოუკიდებლად მოწყობილობის ბრენდისგან.","home.band.title":"შეამოწმეთ თქვენი მოწყობილობის საგარანტიო სტატუსი 10 წამში","home.band.desc":"შეიყვანეთ სერიული ნომერი ან IMEI და გაიგეთ, ფარავს თუ არა გარანტია მიმდინარე პრობლემას.","home.reviews.eyebrow":"მომხმარებელთა გამოხმაურება","home.reviews.title":"რას ამბობენ ჩვენი კლიენტები","home.reviews.quote1":"„ეკრანი ერთ საათში შემიცვალეს iPhone-ზე, ხარისხი — თითქოს ახალი მოწყობილობა მაქვს.“","home.reviews.quote2":"„ლეპტოპს წყალი დაესხა, ფიქრობდი ჩამორეცხილი იყო — 3 დღეში სრულად აღადგინეს მონაცემებთან ერთად.“","home.reviews.quote3":"„ონლაინ დავჯავშნე ვიზიტი, რიგში არ დამიდგამს და ფასიც წინასწარ ვიცოდი — მაქსიმალურად კომფორტული სერვისი.“","about.head.title":"ტექნოლაინის შესახებ","about.head.lede":"2013 წლიდან ვაწვდით საქართველოს ბაზარს ციფრული ტექნიკის სერვისს — გამჭვირვალედ, სწრაფად და ორიგინალი ნაწილებით.","about.history.eyebrow":"ჩვენი ისტორია","about.history.title":"დაიწყო ერთი სახელოსნოთი, გაგრძელდა ქვეყნის მასშტაბით","about.history.p1":"ტექნოლაინი დაარსდა თბილისში, როგორც პატარა სახელოსნო სმარტფონების შეკეთებისთვის. დღეს ჩვენ ვართ ერთ-ერთი უმსხვილესი დამოუკიდებელი სერვის-ცენტრების ქსელი საქართველოში — 9 ფილიალით სამ ქალაქში, 60-ზე მეტი სერტიფიცირებული ინჟინრით და საკუთარი ნაწილების ლაბორატორიით.","about.history.p2":"ჩვენი მიზანია, ტექნიკის შეკეთება იყოს ისეთივე მარტივი და გასაგები, როგორც მისი შეძენა — გამჭვირვალე ფასებით, რეალურ დროში სტატუსის თვალყურის დევნებით და გარანტიით ყველა სამუშაოზე.","about.stat1Num":"2013","about.stat1Label":"დაარსების წელი","about.stat2Num":"9","about.stat2Label":"ფილიალი","about.stat3Num":"60+","about.stat3Label":"სერტიფიცირებული ინჟინერი","about.stat4Num":"45,000+","about.stat4Label":"შეკეთებული მოწყობილობა","about.principles.eyebrow":"ჩვენი პრინციპები","about.principles.title":"რატომ გვირჩევენ","about.p1.title":"ორიგინალი ნაწილები","about.p1.desc":"ვმუშაობთ მხოლოდ სერტიფიცირებულ მომწოდებლებთან და გავცემთ 6-თვიან გარანტიას ყველა ნაწილზე.","about.p2.title":"სწრაფი შესრულება","about.p2.desc":"სტანდარტული შეკეთებების 80% სრულდება იმავე ან მომდევნო სამუშაო დღეს.","about.p3.title":"მონაცემთა უსაფრთხოება","about.p3.desc":"თქვენი პირადი მონაცემები დაცულია — მუშაობის დაწყებამდე ვაფორმებთ კონფიდენციალურობის ხელშეკრულებას.","about.p4.title":"გამოცდილი ინჟინრები","about.p4.desc":"გუნდი გადის რეგულარულ ტრენინგებს მწარმოებელთა უახლეს სტანდარტებზე.","about.p5.title":"გამჭვირვალე ფასები","about.p5.desc":"ფასს ადასტურებთ დიაგნოსტიკის შემდეგ — დამალული საფასურების გარეშე.","about.p6.title":"9 ფილიალი","about.p6.desc":"თბილისში, ბათუმსა და ქუთაისში — მოწყობილობა ყოველთვის ახლოსაა.","about.band.title":"გუნდი, რომელსაც შეგიძლიათ ენდოთ","about.band.desc":"60-ზე მეტი სერტიფიცირებული ინჟინერი, საკუთარი ხარისხის კონტროლის ლაბორატორია და 12 წლიანი გამოცდილება ციფრული ტექნიკის ბაზარზე.","services.head.title":"სერვისები და ტარიფები","services.head.lede":"საორიენტაციო ფასები — საბოლოო ღირებულებას ადასტურებთ უფასო დიაგნოსტიკის შემდეგ.","services.row1.title":"სმარტფონის შეკეთება","services.row1.desc":"ეკრანი, ბატარეა, კამერა, დამტენი პორტი, წყლის დაზიანება","services.row1.price":"85 ₾ – დან","services.row2.title":"ლეპტოპისა და კომპიუტერის შეკეთება","services.row2.desc":"დედაპლატის დიაგნოსტიკა, კლავიატურა, გაცხელება, SSD/RAM განახლება","services.row2.price":"120 ₾ – დან","services.row3.title":"პლანშეტის შეკეთება","services.row3.desc":"ეკრანი, ბატარეა, დამტენი პორტი — iPad და Android","services.row3.price":"95 ₾ – დან","services.row4.title":"სმარტ-საათის შეკეთება","services.row4.desc":"ეკრანი, ღილაკები, დატენვის მოდული","services.row4.price":"70 ₾ – დან","services.row5.title":"სათამაშო კონსოლის შეკეთება","services.row5.desc":"გაწმენდა, გაცხელება, HDMI/კონტროლერის პრობლემები","services.row5.price":"90 ₾ – დან","services.row6.title":"საყოფაცხოვრებო ტექნიკა","services.row6.desc":"დიაგნოსტიკა და შეკეთება მცირე საყოფაცხოვრებო ტექნიკისთვის","services.row6.price":"60 ₾ – დან","catalog.head.title":"ნაწილების კატალოგი","catalog.head.lede":"ორიგინალი და სერტიფიცირებული სათადარიგო ნაწილები — 6-თვიანი გარანტიით.","warranty-check.head.title":"საგარანტიო პერიოდის შემოწმება","warranty-check.head.lede":"შეიყვანეთ მოწყობილობის სერიული ნომერი ან IMEI და გაიგეთ გარანტიის სტატუსი მყისიერად.","warranty-check.side.title":"როგორ მუშაობს გარანტია","warranty-check.side.desc":"ყველა შეკეთებულ მოწყობილობასა და გაყიდულ ნაწილს ახლავს 6-თვიანი გარანტია დეფექტებზე.","warranty-check.side.item1":"გარანტია ვრცელდება შეცვლილ ნაწილსა და შესრულებულ სამუშაოზე","warranty-check.side.item2":"სერიული ნომერი იძებნება მოწყობილობის პარამეტრებში ან ყუთზე","warranty-check.side.item3":"საგარანტიო შეკეთება უფასოა, თუ დაზიანება არ არის მექანიკური","booking.head.title":"ვიზიტის დაჯავშნა სერვის ცენტრში","booking.head.lede":"აირჩიეთ ფილიალი, მომსახურება და თქვენთვის მოსახერხებელი დრო — 4 მარტივი ნაბიჯი.","wservice.head.title":"საგარანტიო მომსახურება","wservice.head.lede":"რას ფარავს გარანტია, როგორ გამოვიყენოთ და რა ვადებში ხდება საგარანტიო შეკეთება.","wservice.s1.title":"რას მოიცავს გარანტია","wservice.s1.desc":"ტექნოლაინში შესრულებულ ყველა სამუშაოსა და გაყიდულ სათადარიგო ნაწილს ახლავს სტანდარტული 6-თვიანი გარანტია. გარანტია მოქმედებს შემდეგზე:","wservice.s1.list":"\n            <li>შეცვლილი ნაწილის ქარხნული დეფექტი (ეკრანი, ბატარეა, კამერა, დამტენი პორტი და სხვ.)</li>\n            <li>შესრულებული სამუშაოს ხარისხი — თუ იგივე პრობლემა განმეორდა შეკეთების შემდეგ</li>\n            <li>მონტაჟის დროს წარმოქმნილი დაზიანება</li>\n          ","wservice.s2.title":"რას არ მოიცავს გარანტია","wservice.s2.desc":"გარანტია არ ვრცელდება შემდეგ შემთხვევებზე:","wservice.s2.list":"\n            <li>ახალი მექანიკური დაზიანება გარანტიის პერიოდში (ჩავარდნა, დარტყმა, ცემა)</li>\n            <li>წყლის ან სითხის ახალი ზემოქმედება, თუ თავდაპირველი პრობლემა სხვა იყო</li>\n            <li>სხვა სერვის-ცენტრის მიერ განხორციელებული ჩარევა შეკეთების შემდეგ</li>\n            <li>პროგრამული პრობლემები, რომლებიც არ უკავშირდება შესრულებულ სამუშაოს</li>\n          ","wservice.s3.title":"როგორ გამოვიყენოთ გარანტია","wservice.s3.desc":"საგარანტიო შემთხვევის დაფიქსირებისთვის:","wservice.s4.title":"შესრულების ვადები","wservice.s4.desc":"საგარანტიო შემთხვევების უმეტესობა მოგვარდება <strong>1–3 სამუშაო დღეში</strong>. თუ საჭიროა ნაწილის დამატებითი შეკვეთა, ვადა შესაძლოა გაიზარდოს 5–7 დღემდე — ამის შესახებ წინასწარ გეცნობებათ.","wservice.s5.title":"გაფართოებული გარანტია","wservice.s5.desc":"შეკეთების დასრულებისას შეგიძლიათ შეიძინოთ გაფართოებული, 12-თვიანი გარანტიის პაკეტი, რომელიც დამატებით მოიცავს ერთჯერად უფასო დიაგნოსტიკას მომდევნო წელს.","wservice.band.title":"გინდათ გაარკვიოთ, ფარავს თუ არა გარანტია თქვენს შემთხვევას?","wservice.band.desc":"შეამოწმეთ სერიული ნომერი ონლაინ ან დაჯავშნეთ ვიზიტი უფასო დიაგნოსტიკისთვის.","profile.head.title":"ჩემი პროფილი","profile.head.lede":"მართეთ თქვენი პირადი მონაცემები და დამატებული მოწყობილობები.","orders.head.title":"ჩემი შეკვეთები","orders.head.lede":"თვალი ადევნეთ თქვენი მიმდინარე და დასრულებული შეკეთებების სტატუსს.","terms.head.title":"წესები და პირობები","terms.head.date":"ბოლო განახლება: 1 სექტემბერი, 2026","terms.s1.title":"1. ზოგადი დებულებები","terms.s1.body":"წინამდებარე დოკუმენტი არეგულირებს ურთიერთობას შპს „ტექნოლაინსა\" (შემდგომში — კომპანია) და მომხმარებელს შორის, რომელიც სარგებლობს კომპანიის ვებგვერდით ან სერვის-ცენტრების მომსახურებით. ვებგვერდით სარგებლობით მომხმარებელი ეთანხმება ქვემოთ მოცემულ პირობებს.","terms.s2.title":"2. მომსახურების პირობები","terms.s2.body":"დიაგნოსტიკა უფასოა ყველა მოწყობილობისთვის. შეკეთების საბოლოო ღირებულება მომხმარებელს დასტურდება წერილობით (SMS ან ელფოსტა) დიაგნოსტიკის დასრულების შემდეგ, სამუშაოს დაწყებამდე.","terms.s2.list":"\n            <li>მოწყობილობის მიღებისას გაიცემა მიღება-ჩაბარების ქვითარი უნიკალური ნომრით</li>\n            <li>სტანდარტული შეკეთების ვადა შეადგენს 1–3 სამუშაო დღეს, გართულებული შემთხვევებისთვის — 5–7 დღეს</li>\n            <li>თუ დიაგნოსტიკის შემდეგ მომხმარებელი უარს იტყვის შეკეთებაზე, დიაგნოსტიკის საფასური არ ჩამოიჭრება</li>\n          ","terms.s3.title":"3. ანგარიშსწორება","terms.s3.body":"ანგარიშსწორება ხდება ნაღდი ან უნაღდო ფორმით, მოწყობილობის გატანისას. კორპორატიული კლიენტებისთვის შესაძლებელია განვადებით ანგარიშსწორება ხელშეკრულების საფუძველზე.","terms.s4.title":"4. მონაცემთა დაცვა","terms.s4.body":"კომპანია იცავს მომხმარებლის პირად მონაცემებსა და მოწყობილობაზე დაცულ ინფორმაციას საქართველოს კანონმდებლობის შესაბამისად. მოწყობილობის მონაცემებზე წვდომა ეზღუდება მხოლოდ დიაგნოსტიკისა და შეკეთებისთვის საჭირო პერსონალს. მომხმარებელს რეკომენდირებულია მოწყობილობის მონაცემთა სარეზერვო ასლის შექმნა შეკეთებამდე.","terms.s5.title":"5. პასუხისმგებლობა","terms.s5.body":"კომპანია პასუხისმგებელია შესრულებული სამუშაოს ხარისხზე გარანტიის ვადის განმავლობაში. კომპანია არ არის პასუხისმგებელი მონაცემთა დაკარგვაზე, თუ მომხმარებელს არ შეუქმნია სარეზერვო ასლი და დაზიანება არ იყო გამოწვეული შესრულებული სამუშაოთი.","terms.s6.title":"6. გაუქმება და დაბრუნება","terms.s6.body":"დაჯავშნილი ვიზიტის გაუქმება ან გადატანა შესაძლებელია ვიზიტამდე მინიმუმ 2 საათით ადრე, უფასოდ. შეძენილი ნაწილის დაბრუნება შესაძლებელია შეძენიდან 14 დღის განმავლობაში, თუ ნაწილი არ არის დამონტაჟებული და შენარჩუნებულია სასაქონლო სახე.","terms.s7.title":"7. კონტაქტი","contact.head.title":"საკონტაქტო ინფორმაცია","contact.head.lede":"დაგვიკავშირდით ნებისმიერი შეკითხვით ან მოგვინახულეთ უახლოეს ფილიალში.","contact.center.title":"საკონტაქტო ცენტრი","contact.center.phone":"+995 322 12 34 56 (ყოველდღე, 09:00–21:00)","contact.center.email":"info@technoline.ge","contact.corp.title":"კორპორატიული კლიენტები","contact.corp.phone":"+995 322 12 34 57","contact.corp.email":"business@technoline.ge","contact.branches.eyebrow":"ფილიალები","contact.branches.title":"9 ფილიალი, 3 ქალაქი","footer.blurb":"ციფრული ტექნიკის სერვის ცენტრების ქსელი საქართველოში — 2013 წლიდან, ორიგინალი ნაწილებითა და გამჭვირვალე მომსახურებით.","common.phone":"+995 322 12 34 56","common.email":"info@technoline.ge","footer.address":"ვაჟა-ფშაველას გამზ. 71,<br>თბილისი","footer.copyright":"© 2026 შპს „ტექნოლაინი\". ყველა უფლება დაცულია."};
+
+  var THEME_TOKENS = [
+    {key:'gold', varName:'--gold', label:'ოქროსფერი — მთავარი აქცენტი', def:'#FCBB2D'},
+    {key:'goldDeep', varName:'--gold-deep', label:'ოქროსფერი — მუქი ტონი', def:'#C98A08'},
+    {key:'goldSoft', varName:'--gold-soft', label:'ოქროსფერი — ღია ტონი', def:'#FFD788'},
+    {key:'blue', varName:'--blue', label:'ლურჯი — ბრენდის ძირითადი', def:'#0E4F8E'},
+    {key:'blueDeep', varName:'--blue-deep', label:'ლურჯი — მუქი ტონი', def:'#0A3A69'},
+    {key:'blueMid', varName:'--blue-mid', label:'ლურჯი — საშუალო ტონი', def:'#5C86AE'}
+  ];
+
+  var BRANCHES_FIELDS = [
+    {key:'name', label:'დასახელება'}, {key:'addr', label:'მისამართი'},
+    {key:'hours', label:'სამუშაო საათები'}, {key:'phone', label:'ტელეფონი'}
+  ];
+
+  var PARTS_DEFAULTS = [
+    {id:'p1', name:'iPhone 13 Pro დისპლეი (OLED)', price:420, stock:'in'},
+    {id:'p2', name:'iPhone 12 დისპლეი', price:310, stock:'in'},
+    {id:'p3', name:'iPhone 11 ბატარეა', price:95, stock:'in'},
+    {id:'p4', name:'MacBook Air M1 ბატარეა', price:230, stock:'low'},
+    {id:'p5', name:'Galaxy S23 დისპლეი', price:380, stock:'in'},
+    {id:'p6', name:'Galaxy A54 ბატარეა', price:75, stock:'in'},
+    {id:'p7', name:'Galaxy S22 უკანა კამერა', price:165, stock:'low'},
+    {id:'p8', name:'Redmi Note 12 დისპლეი', price:135, stock:'in'},
+    {id:'p9', name:'Xiaomi 13 ბატარეა', price:88, stock:'in'},
+    {id:'p10', name:'USB-C სწრაფი დამტენი 30W', price:45, stock:'in'},
+    {id:'p11', name:'Huawei P40 დისპლეი', price:210, stock:'low'},
+    {id:'p12', name:'Lightning კაბელი 1მ', price:38, stock:'in'},
+    {id:'p13', name:'iPhone დამცავი მინა', price:25, stock:'in'},
+    {id:'p14', name:'სილიკონის ქეისი', price:29, stock:'in'}
+  ];
+
+  var BRANCHES_DEFAULTS = [
+    {id:'b1', name:'ვაჟა-ფშაველას ფილიალი', addr:'ვაჟა-ფშაველას გამზ. 71', hours:'ორშ–შაბ, 10:00–20:00', phone:'+995 322 55 11 01'},
+    {id:'b2', name:'პეკინის გამზირის ფილიალი', addr:'პეკინის გამზ. 14', hours:'ორშ–კვ, 10:00–21:00', phone:'+995 322 55 11 02'},
+    {id:'b3', name:'რუსთაველის ფილიალი', addr:'რუსთაველის ქ. 22', hours:'ორშ–შაბ, 10:00–19:00', phone:'+995 422 22 11 03'},
+    {id:'b4', name:'ცენტრალური ფილიალი', addr:'თამარ მეფის ქ. 8', hours:'ორშ–შაბ, 10:00–19:00', phone:'+995 431 22 11 04'}
+  ];
+
+  var PAGE_ORDER = ['common','home','about','services','catalog','warranty-check','booking','wservice','profile','orders','terms','contact','footer'];
+  var PAGE_LABELS = {
+    common:'საერთო ელემენტები', home:'მთავარი გვერდი', about:'ჩვენ შესახებ', services:'სერვისები',
+    catalog:'ნაწილების კატალოგი (თავსართი)', 'warranty-check':'საგარანტიოს შემოწმება', booking:'ვიზიტის დაჯავშნა',
+    wservice:'საგარანტიო მომსახურება', profile:'პროფილი (თავსართი)', orders:'შეკვეთები (თავსართი)',
+    terms:'წესები და პირობები', contact:'კონტაქტი', footer:'ქვედა კოლონტიტული (Footer)'
+  };
+  var SEGMENT_LABELS = {
+    head:'გვერდის თავსართი', hero:'მთავარი ბანერი', band:'ქვედა ბანერი (CTA)',
+    services:'სერვისების სექცია', reviews:'შეფასებები', steps:'ეტაპები', principles:'პრინციპები',
+    history:'ისტორია', branches:'ფილიალები', center:'საკონტაქტო ცენტრი', corp:'კორპორატიული კლიენტები',
+    side:'გვერდითი პანელი', lead:'მთავარი ბარათი', card:'ბარათი', row:'სერვისი', step:'ნაბიჯი',
+    p:'აბზაცი', s:'პუნქტი', stat:'სტატისტიკა', quote:'ციტატა', item:'პუნქტი'
+  };
+  var CK_FIELD_LABELS = {
+    title:'სათაური', lede:'შესავალი', desc:'აღწერა', eyebrow:'ზედწერილი', body:'ტექსტი',
+    list:'სია', date:'თარიღი', copyright:'საავტორო უფლება', blurb:'მოკლე აღწერა',
+    address:'მისამართი', phone:'ტელეფონი', email:'ელფოსტა', tagline:'სლოგანი',
+    brandName:'ბრენდის სახელი', bookCta:'ღილაკი „ვიზიტის დაჯავშნა"', catalogCta:'ღილაკი „კატალოგი"',
+    warrantyCheckCta:'ღილაკი „საგარანტიოს შემოწმება"', price:'ფასი', Num:'რიცხვი', Label:'წარწერა',
+    badge1:'ბეჯის ტექსტი'
+  };
+
+  function parseCk(key){
+    var parts = key.split('.');
+    var page = parts[0];
+    if(parts.length >= 3) return {page:page, sub:parts[1], field:parts.slice(2).join('.')};
+    var last = parts[1];
+    var m = last.match(/^([a-zA-Z]+)(\d)(Num|Label)$/);
+    if(m) return {page:page, sub:m[1]+m[2], field:m[3]};
+    return {page:page, sub:null, field:last};
+  }
+  function humanizeSegment(seg){
+    var m = seg.match(/^([a-zA-Z]+?)(\d+)$/);
+    if(m) return (SEGMENT_LABELS[m[1]] || m[1]) + ' ' + m[2];
+    return SEGMENT_LABELS[seg] || seg;
+  }
+  function labelForCk(key){ return CK_FIELD_LABELS[parseCk(key).field] || parseCk(key).field; }
+  function escAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+  function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  /* ---------- toast ---------- */
+  var toastTimer;
+  function toast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2400);
+  }
+
+  /* ---------- auth state ---------- */
+  var authToken = null;
+  try{ authToken = sessionStorage.getItem('tl_admin_token') || null; }catch(e){}
+
+  function authHeaders(){ return authToken ? {'Authorization':'Bearer '+authToken} : {}; }
+
+  function apiGet(path){
+    return fetch(API_BASE + path, {headers: authHeaders()}).then(function(res){
+      if(!res.ok) return res.json().catch(function(){ return {}; }).then(function(b){ throw Object.assign(new Error('http_'+res.status), {body:b, status:res.status}); });
+      return res.json();
+    });
+  }
+  function apiPut(path, body){
+    return fetch(API_BASE + path, {
+      method:'PUT',
+      headers: Object.assign({'Content-Type':'application/json'}, authHeaders()),
+      body: JSON.stringify(body)
+    }).then(function(res){
+      if(!res.ok) return res.json().catch(function(){ return {}; }).then(function(b){ throw Object.assign(new Error('http_'+res.status), {body:b, status:res.status}); });
+      return res.json();
+    });
+  }
+
+  /* ---------- connection status ---------- */
+  function checkConnection(){
+    var pill = document.getElementById('conn-pill');
+    var text = document.getElementById('conn-text');
+    fetch(API_BASE + '/api/health', {cache:'no-store'}).then(function(res){
+      if(!res.ok) throw new Error('bad');
+      pill.className = 'conn-pill ok';
+      text.textContent = 'სერვერი დაკავშირებულია';
+    }).catch(function(){
+      pill.className = 'conn-pill err';
+      text.textContent = 'სერვერთან კავშირი ვერ დამყარდა';
+    });
+  }
+
+  /* ---------- login ---------- */
+  document.getElementById('login-api-base').textContent = API_BASE;
+  document.getElementById('open-site-btn').href = SITE_URL;
+
+  function doLogin(){
+    var pwd = document.getElementById('login-password').value;
+    var errEl = document.getElementById('login-err');
+    var btn = document.getElementById('login-btn');
+    errEl.classList.remove('show');
+    if(!pwd){ errEl.textContent = 'შეიყვანეთ პაროლი'; errEl.classList.add('show'); return; }
+    btn.disabled = true; btn.textContent = 'შემოწმება…';
+    fetch(API_BASE + '/api/auth/login', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password: pwd})
+    }).then(function(res){
+      if(!res.ok) throw new Error('bad_login');
+      return res.json();
+    }).then(function(data){
+      authToken = data.token;
+      try{ sessionStorage.setItem('tl_admin_token', authToken); }catch(e){}
+      enterApp();
+    }).catch(function(){
+      errEl.textContent = 'პაროლი არასწორია ან სერვერთან კავშირი ვერ დამყარდა (' + API_BASE + ')';
+      errEl.classList.add('show');
+    }).finally(function(){
+      btn.disabled = false; btn.textContent = 'შესვლა';
+    });
+  }
+  document.getElementById('login-btn').addEventListener('click', doLogin);
+  document.getElementById('login-password').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+
+  document.getElementById('logout-btn').addEventListener('click', function(){
+    authToken = null;
+    try{ sessionStorage.removeItem('tl_admin_token'); }catch(e){}
+    document.getElementById('app').classList.remove('is-active');
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('login-password').value = '';
+  });
+
+  /* ---------- app state ---------- */
+  var state = { content:{}, theme:{}, parts:{}, branches:{} };
+  var dirty = { content:{}, theme:false, parts:false, branches:false };
+  var TABS = [];
+  var activeTab = null;
+  var bookingsLoaded = false;
+
+  function buildTabs(){
+    TABS = [];
+    var seenPages = {};
+    CONTENT_ORDER.forEach(function(k){ seenPages[parseCk(k).page] = true; });
+    PAGE_ORDER.forEach(function(page){
+      if(seenPages[page]) TABS.push({id:'content:'+page, label:PAGE_LABELS[page] || page, kind:'content', page:page, group:'content'});
+    });
+    TABS.push({id:'colors', label:'ბრენდის ფერები', kind:'colors', group:'other'});
+    TABS.push({id:'parts', label:'ნაწილების კატალოგი', kind:'parts', group:'other'});
+    TABS.push({id:'branches', label:'ფილიალები', kind:'branches', group:'other'});
+    TABS.push({id:'bookings', label:'ვიზიტების ჯავშნები', kind:'bookings', group:'other'});
+  }
+
+  var TAB_ICONS = { content:'ic-inbox', colors:'ic-palette', parts:'ic-box', branches:'ic-pin', bookings:'ic-calendar' };
+
+  function renderNav(){
+    var nav = document.getElementById('side-nav');
+    var html = '<div class="side-group-label">კონტენტი გვერდების მიხედვით</div>';
+    TABS.filter(function(t){ return t.group === 'content'; }).forEach(function(t){
+      html += navBtn(t);
+    });
+    html += '<div class="side-group-label">საერთო მართვა</div>';
+    TABS.filter(function(t){ return t.group === 'other'; }).forEach(function(t){
+      html += navBtn(t);
+    });
+    nav.innerHTML = html;
+    nav.querySelectorAll('[data-tab]').forEach(function(b){
+      b.addEventListener('click', function(){
+        selectTab(b.getAttribute('data-tab'));
+        document.getElementById('sidebar').classList.remove('is-open');
+        document.getElementById('sidebar-scrim').classList.remove('show');
+      });
+    });
+  }
+  function navBtn(t){
+    var icon = TAB_ICONS[t.kind] || 'ic-inbox';
+    return '<button class="side-btn' + (t.id===activeTab?' is-active':'') + '" data-tab="'+t.id+'">'
+      + '<svg class="icon" style="width:16px;height:16px"><use href="#'+icon+'"/></svg>'
+      + '<span>'+t.label+'</span></button>';
+  }
+
+  function dirtyKeyForTab(tab){
+    if(tab.kind==='content') return 'content:'+tab.page;
+    return tab.kind;
+  }
+  function isDirty(tab){
+    if(tab.kind==='content') return !!dirty.content[tab.page];
+    return !!dirty[tab.kind];
+  }
+  function setDirty(tab, val){
+    if(tab.kind==='content') dirty.content[tab.page] = val;
+    else dirty[tab.kind] = val;
+  }
+
+  function selectTab(id){
+    activeTab = id;
+    renderNav();
+    renderMain();
+  }
+
+  function statusChipHtml(tab){
+    if(!tab || tab.kind === 'bookings') return '';
+    var d = isDirty(tab);
+    return '<span class="status-chip ' + (d?'dirty':'saved') + '" id="status-chip">' + (d?'ცვლილება არ არის შენახული':'შენახულია') + '</span>';
+  }
+  function updateStatusChip(tab){
+    var el = document.getElementById('status-chip');
+    if(!el) return;
+    var d = isDirty(tab);
+    el.className = 'status-chip ' + (d?'dirty':'saved');
+    el.textContent = d ? 'ცვლილება არ არის შენახული' : 'შენახულია';
+  }
+
+  function renderMain(){
+    var main = document.getElementById('main');
+    var tab = TABS.find(function(t){ return t.id === activeTab; });
+    document.getElementById('tb-title').textContent = tab ? tab.label : 'მართვის პანელი';
+
+    if(!tab){ main.innerHTML=''; return; }
+
+    if(tab.kind === 'content') return renderContentPanel(main, tab);
+    if(tab.kind === 'colors') return renderColorsPanel(main, tab);
+    if(tab.kind === 'parts') return renderPartsPanel(main, tab);
+    if(tab.kind === 'branches') return renderBranchesPanel(main, tab);
+    if(tab.kind === 'bookings') return renderBookingsPanel(main, tab);
+  }
+
+  function panelHeadHtml(tab, desc){
+    return '<div class="panel-head"><div><h2>'+tab.label+'</h2><p>'+desc+'</p></div>' + statusChipHtml(tab) + '</div>';
+  }
+
+  // home services rail tiles: each card can carry an optional photo,
+  // stored under its own key in the same generic content map (rendered
+  // as a photo-upload widget instead of a textarea, right after that
+  // card's description field).
+  var SVC_TILE_IMAGE_MAP = {
+    'home.services.lead.desc': 'home.services.lead.image',
+    'home.services.card2.desc': 'home.services.card2.image',
+    'home.services.card3.desc': 'home.services.card3.image',
+    'home.services.card4.desc': 'home.services.card4.image',
+    'home.services.card5.desc': 'home.services.card5.image'
+  };
+  var SVC_PHOTO_MAX_W = 640;
+  var SVC_PHOTO_QUALITY = 0.82;
+
+  function renderSvcPhotoField(imgKey){
+    var val = state.content[imgKey];
+    return '<div class="field-block">'
+      + '<label>ბარათის ფოტო (არასავალდებულო)<span class="ck-key">' + imgKey + '</span></label>'
+      + '<div class="part-photo-cell" data-svc-photo-cell="'+escAttr(imgKey)+'">'
+        + (val ? '<img class="part-thumb" src="'+val+'" alt="">' : '<div class="part-thumb-empty">—</div>')
+        + '<div class="part-photo-actions">'
+          + '<label>ატვირთვა<input type="file" accept="image/*" data-svc-photo></label>'
+          + (val ? '<button type="button" data-svc-photo-clear>წაშლა</button>' : '')
+        + '</div>'
+      + '</div>'
+      + '<p class="field-hint" style="margin-top:6px">თუ ფოტო არ ატვირთავთ, ბარათზე ფერადი ფონი და ხატულა დარჩება.</p>'
+      + '</div>';
+  }
+
+  function renderContentPanel(main, tab){
+    var keys = CONTENT_ORDER.filter(function(k){ return parseCk(k).page === tab.page; });
+    var html = panelHeadHtml(tab, 'შეცვალეთ ტექსტი და დააჭირეთ „ცვლილებების შენახვას“. მარტივი HTML ტეგები (em, strong, br) დაშვებულია და შენარჩუნდება საიტზე.');
+    html += '<div class="card">';
+    var lastSub;
+    keys.forEach(function(k){
+      var p = parseCk(k);
+      if(p.sub !== lastSub){
+        if(p.sub) html += '<div class="seg-label">' + humanizeSegment(p.sub) + '</div>';
+        lastSub = p.sub;
+      }
+      var val = Object.prototype.hasOwnProperty.call(state.content,k) ? state.content[k] : CONTENT_DEFAULTS[k];
+      html += '<div class="field-block">'
+        + '<label>' + labelForCk(k) + '<span class="ck-key">' + k + '</span></label>'
+        + '<textarea data-ck-edit="'+escAttr(k)+'">' + escHtml(val) + '</textarea>'
+        + '</div>';
+      if(SVC_TILE_IMAGE_MAP[k]) html += renderSvcPhotoField(SVC_TILE_IMAGE_MAP[k]);
+    });
+    html += '</div>';
+    html += saveBarHtml();
+    main.innerHTML = html;
+
+    main.querySelectorAll('[data-ck-edit]').forEach(function(ta){
+      ta.addEventListener('input', function(){
+        state.content[ta.getAttribute('data-ck-edit')] = ta.value;
+        setDirty(tab, true);
+        updateStatusChip(tab);
+      });
+    });
+
+    function refreshSvcPhotoCell(imgKey){
+      var cell = main.querySelector('[data-svc-photo-cell="'+imgKey+'"]');
+      if(!cell) return;
+      var val = state.content[imgKey];
+      cell.innerHTML = (val ? '<img class="part-thumb" src="'+val+'" alt="">' : '<div class="part-thumb-empty">—</div>')
+        + '<div class="part-photo-actions">'
+          + '<label>ატვირთვა<input type="file" accept="image/*" data-svc-photo></label>'
+          + (val ? '<button type="button" data-svc-photo-clear>წაშლა</button>' : '')
+        + '</div>';
+      wireSvcPhotoCell(imgKey);
+    }
+    function wireSvcPhotoCell(imgKey){
+      var cell = main.querySelector('[data-svc-photo-cell="'+imgKey+'"]');
+      if(!cell) return;
+      var fileInp = cell.querySelector('[data-svc-photo]');
+      if(fileInp){
+        fileInp.addEventListener('change', function(){
+          var file = fileInp.files && fileInp.files[0];
+          if(!file) return;
+          var reader = new FileReader();
+          reader.onload = function(){
+            var img = new Image();
+            img.onload = function(){
+              var scale = Math.min(1, SVC_PHOTO_MAX_W / img.width);
+              var w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+              var canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              state.content[imgKey] = canvas.toDataURL('image/jpeg', SVC_PHOTO_QUALITY);
+              setDirty(tab, true);
+              updateStatusChip(tab);
+              refreshSvcPhotoCell(imgKey);
+            };
+            img.src = reader.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+      var clearBtn = cell.querySelector('[data-svc-photo-clear]');
+      if(clearBtn){
+        clearBtn.addEventListener('click', function(){
+          delete state.content[imgKey];
+          setDirty(tab, true);
+          updateStatusChip(tab);
+          refreshSvcPhotoCell(imgKey);
+        });
+      }
+    }
+    Object.keys(SVC_TILE_IMAGE_MAP).forEach(function(descKey){ wireSvcPhotoCell(SVC_TILE_IMAGE_MAP[descKey]); });
+
+    wireSaveBar(tab, function(){ return {path:'content-site', body: state.content}; });
+  }
+
+  function renderColorsPanel(main, tab){
+    var html = panelHeadHtml(tab, 'ეს ფერები გამოიყენება საიტის მასშტაბით — ღილაკები, აქცენტები, ბანერები — ღია და მუქ რეჟიმში ერთნაირად.');
+    html += '<div class="card">';
+    THEME_TOKENS.forEach(function(t){
+      var v = state.theme[t.key] || t.def;
+      html += '<div class="color-row">'
+        + '<input type="color" data-theme-edit="'+t.key+'" value="'+v+'">'
+        + '<span class="cr-label">'+t.label+'</span>'
+        + '<span class="cr-hex">'+v.toUpperCase()+'</span>'
+        + '</div>';
+    });
+    html += '</div>';
+    html += saveBarHtml();
+    main.innerHTML = html;
+
+    main.querySelectorAll('[data-theme-edit]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        state.theme[inp.getAttribute('data-theme-edit')] = inp.value;
+        setDirty(tab, true);
+        inp.parentElement.querySelector('.cr-hex').textContent = inp.value.toUpperCase();
+        updateStatusChip(tab);
+      });
+    });
+    wireSaveBar(tab, function(){ return {path:'theme-site', body: state.theme}; });
+  }
+
+  var PART_PHOTO_MAX_W = 640;
+  var PART_PHOTO_QUALITY = 0.82;
+
+  function renderPartsThumb(id){
+    var o = state.parts[id] || {};
+    return o.image
+      ? '<img class="part-thumb" src="'+o.image+'" alt="">'
+      : '<div class="part-thumb-empty">—</div>';
+  }
+
+  function renderPartsPanel(main, tab){
+    var html = panelHeadHtml(tab, 'შეცვალეთ ნაწილის დასახელება, ფასი, მარაგის სტატუსი (in — მარაგშია, low — მცირდება) ან ატვირთეთ საკუთარი ფოტო — თუ ფოტო არ ატვირთეთ, საიტზე საერთო ტიპის ილუსტრაცია გამოჩნდება.');
+    html += '<div class="card"><table class="admin-table"><thead><tr><th style="width:150px">ფოტო</th><th>ნაწილი</th><th style="width:110px">ფასი ₾</th><th style="width:100px">მარაგი</th></tr></thead><tbody>';
+    PARTS_DEFAULTS.forEach(function(def){
+      var o = state.parts[def.id] || {};
+      html += '<tr>'
+        + '<td><div class="part-photo-cell" data-part-photo-cell="'+def.id+'">'
+          + renderPartsThumb(def.id)
+          + '<div class="part-photo-actions">'
+            + '<label>ატვირთვა<input type="file" accept="image/*" data-parts-photo="'+def.id+'"></label>'
+            + (o.image ? '<button type="button" data-parts-photo-clear="'+def.id+'">წაშლა</button>' : '')
+          + '</div>'
+        + '</div></td>'
+        + '<td><input type="text" data-parts-edit="'+def.id+'" data-parts-field="name" value="'+escAttr(o.name!=null?o.name:def.name)+'"></td>'
+        + '<td><input type="text" data-parts-edit="'+def.id+'" data-parts-field="price" value="'+escAttr(o.price!=null?o.price:def.price)+'"></td>'
+        + '<td><input type="text" data-parts-edit="'+def.id+'" data-parts-field="stock" value="'+escAttr(o.stock!=null?o.stock:def.stock)+'"></td>'
+        + '</tr>';
+    });
+    html += '</tbody></table></div>';
+    html += saveBarHtml();
+    main.innerHTML = html;
+
+    main.querySelectorAll('[data-parts-edit]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var id = inp.getAttribute('data-parts-edit'), field = inp.getAttribute('data-parts-field');
+        if(!state.parts[id]) state.parts[id] = {};
+        state.parts[id][field] = inp.value;
+        setDirty(tab, true);
+        updateStatusChip(tab);
+      });
+    });
+
+    function refreshPhotoCell(id){
+      var cell = main.querySelector('[data-part-photo-cell="'+id+'"]');
+      if(!cell) return;
+      var o = state.parts[id] || {};
+      cell.innerHTML = renderPartsThumb(id)
+        + '<div class="part-photo-actions">'
+          + '<label>ატვირთვა<input type="file" accept="image/*" data-parts-photo="'+id+'"></label>'
+          + (o.image ? '<button type="button" data-parts-photo-clear="'+id+'">წაშლა</button>' : '')
+        + '</div>';
+      wirePhotoCell(id);
+    }
+
+    function wirePhotoCell(id){
+      var cell = main.querySelector('[data-part-photo-cell="'+id+'"]');
+      if(!cell) return;
+      var fileInp = cell.querySelector('[data-parts-photo="'+id+'"]');
+      if(fileInp){
+        fileInp.addEventListener('change', function(){
+          var file = fileInp.files && fileInp.files[0];
+          if(!file) return;
+          var reader = new FileReader();
+          reader.onload = function(){
+            var img = new Image();
+            img.onload = function(){
+              var scale = Math.min(1, PART_PHOTO_MAX_W / img.width);
+              var w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+              var canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              var dataUrl = canvas.toDataURL('image/jpeg', PART_PHOTO_QUALITY);
+              if(!state.parts[id]) state.parts[id] = {};
+              state.parts[id].image = dataUrl;
+              setDirty(tab, true);
+              updateStatusChip(tab);
+              refreshPhotoCell(id);
+            };
+            img.src = reader.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+      var clearBtn = cell.querySelector('[data-parts-photo-clear="'+id+'"]');
+      if(clearBtn){
+        clearBtn.addEventListener('click', function(){
+          if(state.parts[id]) delete state.parts[id].image;
+          setDirty(tab, true);
+          updateStatusChip(tab);
+          refreshPhotoCell(id);
+        });
+      }
+    }
+
+    PARTS_DEFAULTS.forEach(function(def){ wirePhotoCell(def.id); });
+
+    wireSaveBar(tab, function(){ return {path:'content-parts', body: state.parts}; });
+  }
+
+  function renderBranchesPanel(main, tab){
+    var html = panelHeadHtml(tab, 'შეცვალეთ ფილიალის დასახელება, მისამართი, სამუშაო საათები ან ტელეფონი — გამოჩნდება ჯავშნისა და კონტაქტის გვერდებზე.');
+    BRANCHES_DEFAULTS.forEach(function(def){
+      var o = state.branches[def.id] || {};
+      html += '<div class="branch-card"><h3>' + (o.name!=null?o.name:def.name) + '</h3><div class="branch-grid">';
+      BRANCHES_FIELDS.forEach(function(f){
+        var val = o[f.key]!=null ? o[f.key] : def[f.key];
+        html += '<div class="field-block" style="margin-bottom:0">'
+          + '<label>'+f.label+'</label>'
+          + '<input type="text" data-branch-edit="'+def.id+'" data-branch-field="'+f.key+'" value="'+escAttr(val)+'">'
+          + '</div>';
+      });
+      html += '</div></div>';
+    });
+    html += saveBarHtml();
+    main.innerHTML = html;
+
+    main.querySelectorAll('[data-branch-edit]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var id = inp.getAttribute('data-branch-edit'), field = inp.getAttribute('data-branch-field');
+        if(!state.branches[id]) state.branches[id] = {};
+        state.branches[id][field] = inp.value;
+        setDirty(tab, true);
+        if(field === 'name'){ var h3 = inp.closest('.branch-card').querySelector('h3'); h3.textContent = inp.value; }
+        updateStatusChip(tab);
+      });
+    });
+    wireSaveBar(tab, function(){ return {path:'content-branches', body: state.branches}; });
+  }
+
+  function renderBookingsPanel(main, tab){
+    var html = panelHeadHtml(tab, 'ბოლო ვიზიტის ჯავშნები, საიტიდან შემოსული (სატესტო/საწარმოო API-დან).');
+    html += '<div class="card" id="bookings-card"><div class="empty-state"><p>იტვირთება…</p></div></div>';
+    main.innerHTML = html;
+
+    apiGet('/api/bookings').then(function(list){
+      var card = document.getElementById('bookings-card');
+      if(!card) return;
+      if(!list.length){
+        card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ჯერ არცერთი ჯავშანი არ დაფიქსირებულა.</p></div>';
+        return;
+      }
+      card.innerHTML = list.map(function(b){
+        var when = (b.date||'') + ' · ' + (b.timeSlot||'');
+        return '<div class="booking-row">'
+          + '<div class="bcode">'+escHtml(b.confirmationCode)+'</div>'
+          + '<div><div class="bname">'+escHtml(b.name)+'</div><div class="bmeta">'+escHtml(b.phone)+' · '+escHtml(b.serviceType||b.issue||'')+'</div></div>'
+          + '<div class="bmeta">'+escHtml(when)+'</div>'
+          + '<div class="bstatus">'+escHtml(b.status||'received')+'</div>'
+          + '</div>';
+      }).join('');
+    }).catch(function(){
+      var card = document.getElementById('bookings-card');
+      if(card) card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ჯავშნების ჩატვირთვა ვერ მოხერხდა — შეამოწმეთ სერვერთან კავშირი.</p></div>';
+    });
+  }
+
+  function saveBarHtml(){
+    return '<div class="save-bar"><button class="btn btn-ghost" id="btn-reset">ნაგულისხმევზე დაბრუნება</button><button class="btn btn-gold" id="btn-save">ცვლილებების შენახვა</button></div>';
+  }
+
+  function wireSaveBar(tab, getPayload){
+    var saveBtn = document.getElementById('btn-save');
+    var resetBtn = document.getElementById('btn-reset');
+    if(saveBtn) saveBtn.addEventListener('click', function(){
+      var payload = getPayload();
+      saveBtn.disabled = true; saveBtn.textContent = 'ინახება…';
+      apiPut('/api/site/' + payload.path, payload.body).then(function(){
+        setDirty(tab, false);
+        updateStatusChip(tab);
+        toast('ცვლილებები შენახულია');
+      }).catch(function(err){
+        var msg = (err && err.status === 401) ? 'ავტორიზაცია ვადაგასულია — გთხოვთ თავიდან შეხვიდეთ' : 'შენახვა ვერ მოხერხდა — სცადეთ თავიდან';
+        toast(msg);
+        if(err && err.status === 401) document.getElementById('logout-btn').click();
+      }).finally(function(){
+        saveBtn.disabled = false; saveBtn.textContent = 'ცვლილებების შენახვა';
+      });
+    });
+    if(resetBtn) resetBtn.addEventListener('click', function(){
+      if(!confirm('დარწმუნებული ხართ, რომ გსურთ ამ ჩანართის ნაგულისხმევ მდგომარეობაში დაბრუნება?')) return;
+      if(tab.kind === 'content'){
+        CONTENT_ORDER.filter(function(k){ return parseCk(k).page === tab.page; }).forEach(function(k){ delete state.content[k]; });
+      } else if(tab.kind === 'colors'){ state.theme = {}; }
+      else if(tab.kind === 'parts'){ state.parts = {}; }
+      else if(tab.kind === 'branches'){ state.branches = {}; }
+      setDirty(tab, true);
+      renderMain();
+    });
+  }
+
+  /* ---------- boot ---------- */
+  function loadAll(){
+    return apiGet('/api/site').then(function(data){
+      state.content = data.content || {};
+      state.theme = data.theme || {};
+      state.parts = data.parts || {};
+      state.branches = data.branches || {};
+    }).catch(function(){
+      toast('კონტენტის ჩატვირთვა ვერ მოხერხდა — ნაგულისხმევი მონაცემები გამოჩნდება');
+    });
+  }
+
+  function enterApp(){
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').classList.add('is-active');
+    buildTabs();
+    checkConnection();
+    loadAll().then(function(){
+      selectTab(TABS[0].id);
+    });
+  }
+
+  document.getElementById('mobile-nav-btn').addEventListener('click', function(){
+    document.getElementById('sidebar').classList.add('is-open');
+    document.getElementById('sidebar-scrim').classList.add('show');
+  });
+  document.getElementById('sidebar-scrim').addEventListener('click', function(){
+    document.getElementById('sidebar').classList.remove('is-open');
+    document.getElementById('sidebar-scrim').classList.remove('show');
+  });
+  function updateMobileNavVisibility(){
+    document.getElementById('mobile-nav-btn').style.display = window.innerWidth <= 880 ? 'flex' : 'none';
+  }
+  window.addEventListener('resize', updateMobileNavVisibility);
+  updateMobileNavVisibility();
+
+  /* Auto-enter if a token from an earlier session in this tab is still around. */
+  if(authToken){
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').classList.add('is-active');
+    buildTabs();
+    checkConnection();
+    loadAll().then(function(){ selectTab(TABS[0].id); }).catch(function(){});
+  }
+})();
+</script>
+</body>
+</html>
