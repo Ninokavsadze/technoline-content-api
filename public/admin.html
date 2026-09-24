@@ -282,6 +282,31 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     {key:'blueMid', varName:'--blue-mid', label:'ლურჯი — საშუალო ტონი', def:'#5C86AE'}
   ];
 
+  /* Banner typography — text color/size on the hero, the home-services
+     rail tiles, and the dark CTA bands. Stored in the same theme doc as
+     THEME_TOKENS (zero backend changes); size fields hold a bare rem
+     number, color fields a hex string. */
+  var TYPOGRAPHY_GROUPS = [
+    { label:'მთავარი ბანერი (Hero)', fields:[
+      {key:'heroTitleColor', type:'color', label:'სათაურის ფერი', def:'#FFFFFF'},
+      {key:'heroTitleSize', type:'size', label:'სათაურის ზომა', def:3.0, min:1.6, max:4.5, step:0.1},
+      {key:'heroLedeColor', type:'color', label:'აღწერის ფერი', def:'#C6D7E9'},
+      {key:'heroLedeSize', type:'size', label:'აღწერის ზომა', def:1.16, min:0.85, max:1.6, step:0.05}
+    ]},
+    { label:'მთავარი გვერდის სერვის-ბარათები', fields:[
+      {key:'tileTitleColor', type:'color', label:'სათაურის ფერი', def:'#FFFFFF'},
+      {key:'tileTitleSize', type:'size', label:'სათაურის ზომა', def:1.22, min:0.9, max:2.0, step:0.05},
+      {key:'tileDescColor', type:'color', label:'აღწერის ფერი', def:'#C7D6E8'},
+      {key:'tileDescSize', type:'size', label:'აღწერის ზომა', def:0.87, min:0.7, max:1.3, step:0.05}
+    ]},
+    { label:'ქვედა CTA ბანერები', fields:[
+      {key:'bandTitleColor', type:'color', label:'სათაურის ფერი', def:'#FFFFFF'},
+      {key:'bandTitleSize', type:'size', label:'სათაურის ზომა', def:1.75, min:1.2, max:2.6, step:0.05},
+      {key:'bandDescColor', type:'color', label:'აღწერის ფერი', def:'#C6D7E9'},
+      {key:'bandDescSize', type:'size', label:'აღწერის ზომა', def:1.0, min:0.8, max:1.5, step:0.05}
+    ]}
+  ];
+
   var BRANCHES_FIELDS = [
     {key:'name', label:'დასახელება'}, {key:'addr', label:'მისამართი'},
     {key:'hours', label:'სამუშაო საათები'}, {key:'phone', label:'ტელეფონი'}
@@ -452,12 +477,13 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       if(seenPages[page]) TABS.push({id:'content:'+page, label:PAGE_LABELS[page] || page, kind:'content', page:page, group:'content'});
     });
     TABS.push({id:'colors', label:'ბრენდის ფერები', kind:'colors', group:'other'});
+    TABS.push({id:'typography', label:'ბანერების ტექსტი', kind:'typography', group:'other'});
     TABS.push({id:'parts', label:'ნაწილების კატალოგი', kind:'parts', group:'other'});
     TABS.push({id:'branches', label:'ფილიალები', kind:'branches', group:'other'});
     TABS.push({id:'bookings', label:'ვიზიტების ჯავშნები', kind:'bookings', group:'other'});
   }
 
-  var TAB_ICONS = { content:'ic-inbox', colors:'ic-palette', parts:'ic-box', branches:'ic-pin', bookings:'ic-calendar' };
+  var TAB_ICONS = { content:'ic-inbox', colors:'ic-palette', typography:'ic-palette', parts:'ic-box', branches:'ic-pin', bookings:'ic-calendar' };
 
   function renderNav(){
     var nav = document.getElementById('side-nav');
@@ -526,6 +552,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
 
     if(tab.kind === 'content') return renderContentPanel(main, tab);
     if(tab.kind === 'colors') return renderColorsPanel(main, tab);
+    if(tab.kind === 'typography') return renderTypographyPanel(main, tab);
     if(tab.kind === 'parts') return renderPartsPanel(main, tab);
     if(tab.kind === 'branches') return renderBranchesPanel(main, tab);
     if(tab.kind === 'bookings') return renderBookingsPanel(main, tab);
@@ -667,6 +694,52 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         state.theme[inp.getAttribute('data-theme-edit')] = inp.value;
         setDirty(tab, true);
         inp.parentElement.querySelector('.cr-hex').textContent = inp.value.toUpperCase();
+        updateStatusChip(tab);
+      });
+    });
+    wireSaveBar(tab, function(){ return {path:'theme-site', body: state.theme}; });
+  }
+
+  function renderTypographyPanel(main, tab){
+    var html = panelHeadHtml(tab, 'დაარეგულირეთ ტექსტის ფერი და ზომა საიტის ბანერებზე — მთავარი ბანერი, მთავარი გვერდის სერვის-ბარათები და ქვედა CTA ბლოკები. თუ არაფერს შეცვლით, საიტის ნაგულისხმევი დიზაინი დარჩება.');
+    TYPOGRAPHY_GROUPS.forEach(function(g){
+      html += '<div class="card"><div class="seg-label" style="margin-top:0">'+g.label+'</div>';
+      g.fields.forEach(function(f){
+        if(f.type === 'color'){
+          var v = state.theme[f.key] || f.def;
+          html += '<div class="color-row">'
+            + '<input type="color" data-typo-color="'+f.key+'" value="'+v+'">'
+            + '<span class="cr-label">'+f.label+'</span>'
+            + '<span class="cr-hex">'+v.toUpperCase()+'</span>'
+            + '</div>';
+        } else {
+          var sv = (state.theme[f.key] != null && state.theme[f.key] !== '') ? Number(state.theme[f.key]) : f.def;
+          html += '<div class="field-block">'
+            + '<label>'+f.label+'<span class="ck-key" data-typo-readout="'+f.key+'">'+sv.toFixed(2)+'rem</span></label>'
+            + '<input type="range" data-typo-size="'+f.key+'" min="'+f.min+'" max="'+f.max+'" step="'+f.step+'" value="'+sv+'" style="width:100%">'
+            + '</div>';
+        }
+      });
+      html += '</div>';
+    });
+    html += saveBarHtml();
+    main.innerHTML = html;
+
+    main.querySelectorAll('[data-typo-color]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        state.theme[inp.getAttribute('data-typo-color')] = inp.value;
+        setDirty(tab, true);
+        inp.parentElement.querySelector('.cr-hex').textContent = inp.value.toUpperCase();
+        updateStatusChip(tab);
+      });
+    });
+    main.querySelectorAll('[data-typo-size]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var key = inp.getAttribute('data-typo-size');
+        state.theme[key] = inp.value;
+        setDirty(tab, true);
+        var ro = main.querySelector('[data-typo-readout="'+key+'"]');
+        if(ro) ro.textContent = Number(inp.value).toFixed(2)+'rem';
         updateStatusChip(tab);
       });
     });
@@ -855,7 +928,8 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       if(!confirm('დარწმუნებული ხართ, რომ გსურთ ამ ჩანართის ნაგულისხმევ მდგომარეობაში დაბრუნება?')) return;
       if(tab.kind === 'content'){
         CONTENT_ORDER.filter(function(k){ return parseCk(k).page === tab.page; }).forEach(function(k){ delete state.content[k]; });
-      } else if(tab.kind === 'colors'){ state.theme = {}; }
+      } else if(tab.kind === 'colors'){ THEME_TOKENS.forEach(function(t){ delete state.theme[t.key]; }); }
+      else if(tab.kind === 'typography'){ TYPOGRAPHY_GROUPS.forEach(function(g){ g.fields.forEach(function(f){ delete state.theme[f.key]; }); }); }
       else if(tab.kind === 'parts'){ state.parts = {}; }
       else if(tab.kind === 'branches'){ state.branches = {}; }
       setDirty(tab, true);

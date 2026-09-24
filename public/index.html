@@ -189,9 +189,9 @@
   .hero-copy{padding-block:44px;position:relative;z-index:2}
   .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);padding:7px 14px 7px 8px;border-radius:999px;font-size:.8rem;font-weight:700;color:var(--gold-soft);margin-bottom:22px}
   .hero-eyebrow .dot{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(252,187,45,.25)}
-  .hero h1{font-size:clamp(2.3rem,4.6vw,3.7rem);color:#fff;max-width:14ch}
+  .hero h1{font-size:var(--hero-title-size, clamp(2.3rem,4.6vw,3.7rem));color:var(--hero-title-color, #fff);max-width:14ch}
   .hero h1 em{font-style:normal;color:var(--gold)}
-  .hero .lede{color:#C6D7E9;margin-top:20px;font-size:1.16rem}
+  .hero .lede{color:var(--hero-lede-color, #C6D7E9);margin-top:20px;font-size:var(--hero-lede-size, 1.16rem)}
   .hero-cta{display:flex;flex-wrap:wrap;gap:14px;margin-top:34px}
   .hero-art{position:relative;height:min(560px,68vw);display:flex;align-items:center;justify-content:center}
   .ring-orbit{position:absolute;border-radius:50%;border:1.5px solid rgba(255,255,255,.16)}
@@ -250,8 +250,8 @@
   .svc-tile{scroll-snap-align:start;flex:0 0 auto;width:300px;min-height:400px;border-radius:var(--radius-l);padding:28px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;color:#fff;transition:transform .4s cubic-bezier(.16,1,.3,1), box-shadow .4s}
   .svc-tile:hover{transform:translateY(-6px);box-shadow:var(--shadow-3)}
   .svc-tile .tile-eyebrow{position:relative;z-index:2;display:block;font-size:.78rem;font-weight:700;letter-spacing:.04em;color:rgba(255,255,255,.72)}
-  .svc-tile h3{position:relative;z-index:2;font-size:1.22rem;font-weight:800;margin-top:8px;line-height:1.28;max-width:19ch}
-  .svc-tile p{position:relative;z-index:2;font-size:.87rem;color:rgba(255,255,255,.78);margin-top:10px;line-height:1.55;max-width:25ch}
+  .svc-tile h3{position:relative;z-index:2;font-size:var(--tile-title-size, 1.22rem);color:var(--tile-title-color, #fff);font-weight:800;margin-top:8px;line-height:1.28;max-width:19ch}
+  .svc-tile p{position:relative;z-index:2;font-size:var(--tile-desc-size, .87rem);color:var(--tile-desc-color, rgba(255,255,255,.78));margin-top:10px;line-height:1.55;max-width:25ch}
   .svc-tile .tile-art{position:absolute;right:-20px;bottom:-20px;width:180px;height:180px;opacity:.14;color:#fff;transition:transform .5s cubic-bezier(.16,1,.3,1), opacity .4s;z-index:0}
   .svc-tile:hover .tile-art{transform:scale(1.08) rotate(-4deg);opacity:.22}
   .svc-tile .tile-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
@@ -271,8 +271,8 @@
   .step:not(:last-child)::after{content:"";position:absolute;top:22px;left:calc(100% - 4px);width:calc(100% - 34px);height:1.5px;background:repeating-linear-gradient(90deg,var(--line) 0 6px,transparent 6px 12px)}
 
   .band-dark{background:linear-gradient(120deg,var(--blue-deeper),var(--blue-deep));color:#fff;border-radius:var(--radius-l);padding:56px;display:grid;grid-template-columns:1.3fr auto;gap:32px;align-items:center}
-  .band-dark h3{font-size:clamp(1.5rem,2.6vw,2rem);max-width:20ch}
-  .band-dark p{color:#C6D7E9;margin-top:10px;max-width:46ch}
+  .band-dark h3{font-size:var(--band-title-size, clamp(1.5rem,2.6vw,2rem));color:var(--band-title-color, #fff);max-width:20ch}
+  .band-dark p{color:var(--band-desc-color, #C6D7E9);margin-top:10px;max-width:46ch;font-size:var(--band-desc-size, 1rem)}
 
   .review-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
   .review{border:1px solid var(--line);border-radius:var(--radius-m);padding:26px;background:var(--surface)}
@@ -2430,6 +2430,26 @@
     {key:'blue', varName:'--blue'}, {key:'blueDeep', varName:'--blue-deep'}, {key:'blueMid', varName:'--blue-mid'}
   ];
 
+  /* Banner typography — lets the admin panel adjust text size/color on the
+     hero, the home-services rail tiles, and the dark CTA bands, without
+     touching the shared .lede/.h-display classes used elsewhere on the site.
+     Size tokens are stored as a bare rem number and get the 'rem' unit
+     appended when applied; color tokens are stored as a hex string. */
+  var TYPOGRAPHY_TOKENS = [
+    {key:'heroTitleSize', varName:'--hero-title-size', unit:'rem'},
+    {key:'heroTitleColor', varName:'--hero-title-color', unit:''},
+    {key:'heroLedeSize', varName:'--hero-lede-size', unit:'rem'},
+    {key:'heroLedeColor', varName:'--hero-lede-color', unit:''},
+    {key:'tileTitleSize', varName:'--tile-title-size', unit:'rem'},
+    {key:'tileTitleColor', varName:'--tile-title-color', unit:''},
+    {key:'tileDescSize', varName:'--tile-desc-size', unit:'rem'},
+    {key:'tileDescColor', varName:'--tile-desc-color', unit:''},
+    {key:'bandTitleSize', varName:'--band-title-size', unit:'rem'},
+    {key:'bandTitleColor', varName:'--band-title-color', unit:''},
+    {key:'bandDescSize', varName:'--band-desc-size', unit:'rem'},
+    {key:'bandDescColor', varName:'--band-desc-color', unit:''}
+  ];
+
   var PARTS_DEFAULTS = PARTS.map(function(p){ return {id:p.id, name:p.name, price:p.price, stock:p.stock}; });
   var BRANCHES_DEFAULTS = BRANCHES.map(function(b){ return {id:b.id, name:b.name, addr:b.addr, hours:b.hours, phone:b.phone}; });
 
@@ -2475,6 +2495,11 @@
     THEME_TOKENS.forEach(function(t){
       var v = siteContent.theme[t.key];
       if(v) document.documentElement.style.setProperty(t.varName, v);
+      else document.documentElement.style.removeProperty(t.varName);
+    });
+    TYPOGRAPHY_TOKENS.forEach(function(t){
+      var v = siteContent.theme[t.key];
+      if(v !== undefined && v !== null && v !== '') document.documentElement.style.setProperty(t.varName, v + (t.unit || ''));
       else document.documentElement.style.removeProperty(t.varName);
     });
   }
