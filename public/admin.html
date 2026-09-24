@@ -216,6 +216,7 @@
   <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
   <symbol id="ic-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="ic-inbox" viewBox="0 0 24 24"><path d="M3 12h5l1.6 3h4.8L16 12h5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 12v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6L18 5a2 2 0 0 0-1.8-1H7.8A2 2 0 0 0 6 5L3 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.3-3.8 4.3-5.8 7.5-5.8s6.2 2 7.5 5.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
 </svg>
 
 <!-- ============ LOGIN ============ -->
@@ -450,6 +451,18 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       return res.json();
     });
   }
+  // like apiPut/apiGet but for endpoints that return a PDF binary (the
+  // warranty-template test-preview) rather than JSON.
+  function apiPostPdf(path, body){
+    return fetch(API_BASE + path, {
+      method:'POST',
+      headers: Object.assign({'Content-Type':'application/json'}, authHeaders()),
+      body: JSON.stringify(body || {})
+    }).then(function(res){
+      if(!res.ok) return res.json().catch(function(){ return {}; }).then(function(b){ throw Object.assign(new Error('http_'+res.status), {body:b, status:res.status}); });
+      return res.blob();
+    });
+  }
 
   /* ---------- connection status ---------- */
   function checkConnection(){
@@ -504,11 +517,13 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   });
 
   /* ---------- app state ---------- */
-  var state = { content:{}, theme:{}, parts:{}, branches:{} };
-  var dirty = { content:{}, theme:false, parts:false, branches:false };
+  var state = { content:{}, theme:{}, parts:{}, branches:{}, warranty:{}, warrantyTemplate:{} };
+  var dirty = { content:{}, theme:false, parts:false, branches:false, warrantyRecords:false, warrantyTemplate:false };
   var TABS = [];
   var activeTab = null;
   var bookingsLoaded = false;
+  var warrantyLoaded = { records:false, template:false };
+  var warrantySubTab = 'records';
 
   function buildTabs(){
     TABS = [];
@@ -522,10 +537,12 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     TABS.push({id:'typography', label:'ბანერები', kind:'typography', group:'other'});
     TABS.push({id:'parts', label:'ნაწილების კატალოგი', kind:'parts', group:'other'});
     TABS.push({id:'branches', label:'ფილიალები', kind:'branches', group:'other'});
+    TABS.push({id:'warranty', label:'საგარანტიო ბარათი', kind:'warranty', group:'other'});
     TABS.push({id:'bookings', label:'ვიზიტების ჯავშნები', kind:'bookings', group:'other'});
+    TABS.push({id:'users', label:'მომხმარებლები', kind:'users', group:'other'});
   }
 
-  var TAB_ICONS = { content:'ic-inbox', pages:'ic-menu', colors:'ic-palette', typography:'ic-palette', parts:'ic-box', branches:'ic-pin', bookings:'ic-calendar' };
+  var TAB_ICONS = { content:'ic-inbox', pages:'ic-menu', colors:'ic-palette', typography:'ic-palette', parts:'ic-box', branches:'ic-pin', warranty:'ic-lock', bookings:'ic-calendar', users:'ic-user' };
 
   function renderNav(){
     var nav = document.getElementById('side-nav');
@@ -573,7 +590,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   }
 
   function statusChipHtml(tab){
-    if(!tab || tab.kind === 'bookings') return '';
+    if(!tab || tab.kind === 'bookings' || tab.kind === 'warranty') return '';
     var d = isDirty(tab);
     return '<span class="status-chip ' + (d?'dirty':'saved') + '" id="status-chip">' + (d?'ცვლილება არ არის შენახული':'შენახულია') + '</span>';
   }
@@ -598,7 +615,9 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(tab.kind === 'typography') return renderTypographyPanel(main, tab);
     if(tab.kind === 'parts') return renderPartsPanel(main, tab);
     if(tab.kind === 'branches') return renderBranchesPanel(main, tab);
+    if(tab.kind === 'warranty') return renderWarrantyPanel(main, tab);
     if(tab.kind === 'bookings') return renderBookingsPanel(main, tab);
+    if(tab.kind === 'users') return renderUsersPanel(main, tab);
   }
 
   function panelHeadHtml(tab, desc){
@@ -1231,6 +1250,306 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     wireSaveBar(tab, function(){ return {path:'content-branches', body: state.branches}; });
   }
 
+  /* ---------- warranty cards: records + optional PDF template ---------- */
+  var WARRANTY_FIELD_KEYS = ['customerName','serial','model','purchase','warrantyEnd'];
+  var WARRANTY_FIELD_LABELS = {
+    customerName:'მომხმარებლის სახელი', serial:'სერიული ნომერი', model:'მოდელი',
+    purchase:'შეძენის თარიღი', warrantyEnd:'გარანტიის ვადა'
+  };
+  var WARRANTY_FIELD_DEFAULTS = {
+    customerName: {xPct:6, yPct:24, size:12},
+    serial:       {xPct:6, yPct:34, size:12},
+    model:        {xPct:6, yPct:44, size:12},
+    purchase:     {xPct:6, yPct:54, size:12},
+    warrantyEnd:  {xPct:6, yPct:64, size:12}
+  };
+  var WARRANTY_PDF_MAX_BYTES = 8 * 1024 * 1024;
+
+  function warrantySaveBarHtml(resetLabel){
+    return '<div class="save-bar"><button class="btn btn-ghost" id="btn-warranty-reset">'+resetLabel+'</button><button class="btn btn-gold" id="btn-warranty-save">ცვლილებების შენახვა</button></div>';
+  }
+
+  function renderWarrantyPanel(main, tab){
+    var html = panelHeadHtml(tab, 'მართეთ საგარანტიო ბარათების ჩანაწერები, ან ატვირთეთ საკუთარი დიზაინის PDF შაბლონი — თუ არ ატვირთავთ, ბარათი გენერირდება ჩაშენებული დიზაინით.');
+    html += '<div class="bg-type-row">'
+      + '<button type="button" class="bg-type-btn'+(warrantySubTab==='records'?' is-active':'')+'" data-warranty-subtab="records">ჩანაწერები</button>'
+      + '<button type="button" class="bg-type-btn'+(warrantySubTab==='template'?' is-active':'')+'" data-warranty-subtab="template">PDF შაბლონი</button>'
+      + '</div>';
+    html += '<div id="warranty-subpanel"><div class="empty-state"><p>იტვირთება…</p></div></div>';
+    main.innerHTML = html;
+
+    main.querySelectorAll('[data-warranty-subtab]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        warrantySubTab = btn.getAttribute('data-warranty-subtab');
+        renderMain();
+      });
+    });
+
+    var loaders = [];
+    if(!warrantyLoaded.records) loaders.push(apiGet('/api/site/warranty').then(function(d){ state.warranty = d || {}; warrantyLoaded.records = true; }));
+    if(!warrantyLoaded.template) loaders.push(apiGet('/api/site/warranty-template').then(function(d){ state.warrantyTemplate = d || {}; warrantyLoaded.template = true; }));
+
+    Promise.all(loaders).then(function(){
+      if(warrantySubTab === 'template') renderWarrantyTemplateSubpanel(tab);
+      else renderWarrantyRecordsSubpanel(tab);
+    }).catch(function(){
+      var host = document.getElementById('warranty-subpanel');
+      if(host) host.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ჩატვირთვა ვერ მოხერხდა — შეამოწმეთ სერვერთან კავშირი.</p></div>';
+    });
+  }
+
+  function warrantyRecordRowHtml(serial, rec){
+    rec = rec || {};
+    return '<tr data-warranty-row="'+escAttr(serial)+'">'
+      + '<td><input type="text" data-warranty-field="serial" value="'+escAttr(serial)+'"></td>'
+      + '<td><input type="text" data-warranty-field="customerName" value="'+escAttr(rec.customerName||'')+'"></td>'
+      + '<td><input type="text" data-warranty-field="device" value="'+escAttr(rec.device||'')+'"></td>'
+      + '<td><input type="text" data-warranty-field="cat" value="'+escAttr(rec.cat||'')+'"></td>'
+      + '<td><input type="text" data-warranty-field="purchase" placeholder="YYYY-MM-DD" value="'+escAttr(rec.purchase||'')+'"></td>'
+      + '<td><input type="text" data-warranty-field="end" placeholder="YYYY-MM-DD" value="'+escAttr(rec.end||'')+'"></td>'
+      + '<td><button type="button" class="drag-eye" data-warranty-delete title="წაშლა">🗑</button></td>'
+      + '</tr>';
+  }
+
+  function renderWarrantyRecordsSubpanel(tab){
+    var host = document.getElementById('warranty-subpanel');
+    if(!host) return;
+    var serials = Object.keys(state.warranty).sort();
+    var html = '<div class="card"><table class="admin-table"><thead><tr>'
+      + '<th style="width:150px">სერიული №</th><th>მომხმარებელი</th><th>მოწყობილობა</th><th>კატეგორია</th><th style="width:120px">შეძენა</th><th style="width:120px">ვადა</th><th style="width:34px"></th>'
+      + '</tr></thead><tbody id="warranty-records-tbody">'
+      + serials.map(function(s){ return warrantyRecordRowHtml(s, state.warranty[s]); }).join('')
+      + '</tbody></table>'
+      + '<button type="button" class="btn btn-ghost" id="warranty-add-record" style="margin-top:16px">+ ახალი ჩანაწერი</button>'
+      + '</div>';
+    html += warrantySaveBarHtml('ბოლო შენახულის დაბრუნება');
+    host.innerHTML = html;
+
+    host.querySelectorAll('[data-warranty-row]').forEach(function(row){
+      var serial = row.getAttribute('data-warranty-row');
+      row.querySelectorAll('[data-warranty-field]').forEach(function(inp){
+        inp.addEventListener('input', function(){
+          var field = inp.getAttribute('data-warranty-field');
+          if(field === 'serial'){
+            var newSerial = inp.value.trim().toUpperCase();
+            if(newSerial && newSerial !== serial && !state.warranty[newSerial]){
+              state.warranty[newSerial] = state.warranty[serial];
+              delete state.warranty[serial];
+              row.setAttribute('data-warranty-row', newSerial);
+              serial = newSerial;
+            }
+          } else {
+            if(!state.warranty[serial]) state.warranty[serial] = {};
+            state.warranty[serial][field] = inp.value;
+          }
+          dirty.warrantyRecords = true;
+        });
+      });
+      var delBtn = row.querySelector('[data-warranty-delete]');
+      if(delBtn) delBtn.addEventListener('click', function(){
+        if(!confirm('წავშალო ეს ჩანაწერი?')) return;
+        delete state.warranty[serial];
+        dirty.warrantyRecords = true;
+        renderWarrantyRecordsSubpanel(tab);
+      });
+    });
+
+    document.getElementById('warranty-add-record').addEventListener('click', function(){
+      var serial = prompt('სერიული ნომერი (მაგ. TL-000000-GE):');
+      if(!serial) return;
+      serial = serial.trim().toUpperCase();
+      if(!serial) return;
+      if(state.warranty[serial]){ toast('ეს სერიული ნომერი უკვე არსებობს'); return; }
+      state.warranty[serial] = {customerName:'', device:'', cat:'', purchase:'', end:''};
+      dirty.warrantyRecords = true;
+      renderWarrantyRecordsSubpanel(tab);
+    });
+
+    var saveBtn = document.getElementById('btn-warranty-save');
+    var resetBtn = document.getElementById('btn-warranty-reset');
+    saveBtn.addEventListener('click', function(){
+      saveBtn.disabled = true; saveBtn.textContent = 'ინახება…';
+      apiPut('/api/site/warranty', state.warranty).then(function(){
+        dirty.warrantyRecords = false;
+        toast('ცვლილებები შენახულია');
+      }).catch(function(err){
+        toast(err && err.status === 401 ? 'ავტორიზაცია ვადაგასულია — გთხოვთ თავიდან შეხვიდეთ' : 'შენახვა ვერ მოხერხდა');
+        if(err && err.status === 401) document.getElementById('logout-btn').click();
+      }).finally(function(){
+        saveBtn.disabled = false; saveBtn.textContent = 'ცვლილებების შენახვა';
+      });
+    });
+    resetBtn.addEventListener('click', function(){
+      if(!confirm('ბოლო შენახული მდგომარეობა ხელახლა ჩამოიტვირთოს? შეუნახავი ცვლილებები დაიკარგება.')) return;
+      apiGet('/api/site/warranty').then(function(d){
+        state.warranty = d || {};
+        dirty.warrantyRecords = false;
+        renderWarrantyRecordsSubpanel(tab);
+      });
+    });
+  }
+
+  function renderWarrantyTemplateSubpanel(tab){
+    var host = document.getElementById('warranty-subpanel');
+    if(!host) return;
+    var t = state.warrantyTemplate || {};
+    var hasPdf = !!t.pdf;
+    var fields = t.fields || {};
+
+    var html = '<div class="card">';
+    html += '<div class="field-block">'
+      + '<label>PDF შაბლონი (არასავალდებულო)</label>'
+      + '<div class="part-photo-actions" style="flex-direction:row;gap:14px;align-items:center">'
+        + '<label class="btn btn-ghost" style="display:inline-flex">აირჩიეთ PDF<input type="file" accept="application/pdf" id="warranty-pdf-upload" style="display:none"></label>'
+        + (hasPdf ? '<button type="button" class="btn btn-ghost" id="warranty-pdf-clear">შაბლონის წაშლა</button>' : '<span class="field-hint">არ არის ატვირთული — ბარათი გენერირდება ჩაშენებული დიზაინით</span>')
+      + '</div>'
+      + '</div>';
+
+    if(hasPdf){
+      html += '<p class="field-hint" style="margin-bottom:10px">გადაათრიეთ ველები შაბლონზე სასურველ ადგილას — პოზიცია პროცენტულად გამოითვლება, ამიტომ PDF-ის ნებისმიერ ზომასთან იმუშავებს.</p>';
+      html += '<div id="warranty-pdf-preview" style="position:relative;width:100%;aspect-ratio:1/1.414;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper-soft)">'
+        + '<iframe src="'+escAttr(t.pdf)+'#toolbar=0&navpanes=0" style="width:100%;height:100%;border:none;pointer-events:none" title="შაბლონის გადახედვა"></iframe>';
+      WARRANTY_FIELD_KEYS.forEach(function(key){
+        var f = fields[key] || WARRANTY_FIELD_DEFAULTS[key];
+        html += '<div class="drag-chip" data-warranty-chip="'+key+'" style="position:absolute;left:'+f.xPct+'%;top:'+f.yPct+'%">'
+          + '<span class="drag-chip-label">'+WARRANTY_FIELD_LABELS[key]+'</span>'
+          + '</div>';
+      });
+      html += '</div>';
+
+      html += '<div class="seg-label">ველების ზომა (pt)</div>';
+      WARRANTY_FIELD_KEYS.forEach(function(key){
+        var f = fields[key] || WARRANTY_FIELD_DEFAULTS[key];
+        html += '<div class="field-block">'
+          + '<label>'+WARRANTY_FIELD_LABELS[key]+'<span class="ck-key" data-warranty-size-readout="'+key+'">'+(f.size||12)+'pt</span></label>'
+          + '<input type="range" data-warranty-size="'+key+'" min="7" max="28" step="1" value="'+(f.size||12)+'" style="width:100%">'
+          + '</div>';
+      });
+
+      html += '<button type="button" class="btn btn-ghost" id="warranty-pdf-test" style="margin-top:6px">სატესტო ბარათის გახსნა</button>'
+        + '<p class="field-hint" style="margin-top:6px">ტესტი ჯერ ინახავს შაბლონს, შემდეგ ხსნის ნიმუშ-ბარათს ახალ ჩანართში.</p>';
+    }
+    html += '</div>';
+    html += warrantySaveBarHtml('ბოლო შენახულის დაბრუნება');
+    host.innerHTML = html;
+
+    var fileInp = document.getElementById('warranty-pdf-upload');
+    if(fileInp) fileInp.addEventListener('change', function(){
+      var file = fileInp.files && fileInp.files[0];
+      if(!file) return;
+      if(file.type !== 'application/pdf'){ toast('მხოლოდ PDF ფაილია დაშვებული'); return; }
+      if(file.size > WARRANTY_PDF_MAX_BYTES){ toast('ფაილი ძალიან დიდია (მაქს. 8MB)'); return; }
+      var reader = new FileReader();
+      reader.onload = function(){
+        var prevFields = (state.warrantyTemplate && state.warrantyTemplate.fields) || {};
+        state.warrantyTemplate = { pdf: reader.result, fields: prevFields };
+        WARRANTY_FIELD_KEYS.forEach(function(key){
+          if(!state.warrantyTemplate.fields[key]) state.warrantyTemplate.fields[key] = Object.assign({}, WARRANTY_FIELD_DEFAULTS[key]);
+        });
+        dirty.warrantyTemplate = true;
+        renderWarrantyTemplateSubpanel(tab);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    var clearBtn = document.getElementById('warranty-pdf-clear');
+    if(clearBtn) clearBtn.addEventListener('click', function(){
+      if(!confirm('წავშალო ატვირთული შაბლონი? ბარათი დაბრუნდება ჩაშენებულ დიზაინზე.')) return;
+      state.warrantyTemplate = {};
+      dirty.warrantyTemplate = true;
+      renderWarrantyTemplateSubpanel(tab);
+    });
+
+    function clampPct(n){ return Math.max(0, Math.min(100, n)); }
+    var previewEl = document.getElementById('warranty-pdf-preview');
+    if(previewEl){
+      previewEl.querySelectorAll('[data-warranty-chip]').forEach(function(chip){
+        var key = chip.getAttribute('data-warranty-chip');
+        var dragging = false;
+        chip.addEventListener('pointerdown', function(e){
+          dragging = true;
+          try{ chip.setPointerCapture(e.pointerId); }catch(err){}
+          chip.classList.add('is-dragging');
+        });
+        chip.addEventListener('pointermove', function(e){
+          if(!dragging) return;
+          var rect = previewEl.getBoundingClientRect();
+          var xPct = Math.round(clampPct(((e.clientX - rect.left) / rect.width) * 100) * 10) / 10;
+          var yPct = Math.round(clampPct(((e.clientY - rect.top) / rect.height) * 100) * 10) / 10;
+          if(!state.warrantyTemplate.fields) state.warrantyTemplate.fields = {};
+          if(!state.warrantyTemplate.fields[key]) state.warrantyTemplate.fields[key] = Object.assign({}, WARRANTY_FIELD_DEFAULTS[key]);
+          state.warrantyTemplate.fields[key].xPct = xPct;
+          state.warrantyTemplate.fields[key].yPct = yPct;
+          chip.style.left = xPct+'%';
+          chip.style.top = yPct+'%';
+        });
+        function endDrag(){
+          if(!dragging) return;
+          dragging = false;
+          chip.classList.remove('is-dragging');
+          dirty.warrantyTemplate = true;
+        }
+        chip.addEventListener('pointerup', endDrag);
+        chip.addEventListener('pointercancel', endDrag);
+      });
+    }
+
+    host.querySelectorAll('[data-warranty-size]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var key = inp.getAttribute('data-warranty-size');
+        if(!state.warrantyTemplate.fields) state.warrantyTemplate.fields = {};
+        if(!state.warrantyTemplate.fields[key]) state.warrantyTemplate.fields[key] = Object.assign({}, WARRANTY_FIELD_DEFAULTS[key]);
+        state.warrantyTemplate.fields[key].size = Number(inp.value);
+        dirty.warrantyTemplate = true;
+        var ro = host.querySelector('[data-warranty-size-readout="'+key+'"]');
+        if(ro) ro.textContent = inp.value + 'pt';
+      });
+    });
+
+    var testBtn = document.getElementById('warranty-pdf-test');
+    if(testBtn) testBtn.addEventListener('click', function(){
+      testBtn.disabled = true; testBtn.textContent = 'ინახება და იტვირთება…';
+      apiPut('/api/site/warranty-template', state.warrantyTemplate).then(function(){
+        dirty.warrantyTemplate = false;
+        return apiPostPdf('/api/warranty-template/preview', {
+          customerName:'ტესტ მომხმარებელი', serial:'TL-TEST-0001', model:'iPhone 13 Pro',
+          purchase:'2026-01-01', warrantyEnd:'2026-07-01'
+        });
+      }).then(function(blob){
+        var url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      }).catch(function(err){
+        toast(err && err.status === 401 ? 'ავტორიზაცია ვადაგასულია — გთხოვთ თავიდან შეხვიდეთ' : 'ტესტის გაშვება ვერ მოხერხდა');
+        if(err && err.status === 401) document.getElementById('logout-btn').click();
+      }).finally(function(){
+        testBtn.disabled = false; testBtn.textContent = 'სატესტო ბარათის გახსნა';
+      });
+    });
+
+    var saveBtn = document.getElementById('btn-warranty-save');
+    var resetBtn = document.getElementById('btn-warranty-reset');
+    saveBtn.addEventListener('click', function(){
+      saveBtn.disabled = true; saveBtn.textContent = 'ინახება…';
+      apiPut('/api/site/warranty-template', state.warrantyTemplate).then(function(){
+        dirty.warrantyTemplate = false;
+        toast('ცვლილებები შენახულია');
+      }).catch(function(err){
+        toast(err && err.status === 401 ? 'ავტორიზაცია ვადაგასულია — გთხოვთ თავიდან შეხვიდეთ' : 'შენახვა ვერ მოხერხდა');
+        if(err && err.status === 401) document.getElementById('logout-btn').click();
+      }).finally(function(){
+        saveBtn.disabled = false; saveBtn.textContent = 'ცვლილებების შენახვა';
+      });
+    });
+    resetBtn.addEventListener('click', function(){
+      if(!confirm('ბოლო შენახული მდგომარეობა ხელახლა ჩამოიტვირთოს? შეუნახავი ცვლილებები დაიკარგება.')) return;
+      apiGet('/api/site/warranty-template').then(function(d){
+        state.warrantyTemplate = d || {};
+        dirty.warrantyTemplate = false;
+        renderWarrantyTemplateSubpanel(tab);
+      });
+    });
+  }
+
   function renderBookingsPanel(main, tab){
     var html = panelHeadHtml(tab, 'ბოლო ვიზიტის ჯავშნები, საიტიდან შემოსული (სატესტო/საწარმოო API-დან).');
     html += '<div class="card" id="bookings-card"><div class="empty-state"><p>იტვირთება…</p></div></div>';
@@ -1255,6 +1574,43 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     }).catch(function(){
       var card = document.getElementById('bookings-card');
       if(card) card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ჯავშნების ჩატვირთვა ვერ მოხერხდა — შეამოწმეთ სერვერთან კავშირი.</p></div>';
+    });
+  }
+
+  function fmtDate(iso){
+    if(!iso) return '—';
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('ka-GE') + ' ' + d.toLocaleTimeString('ka-GE', {hour:'2-digit', minute:'2-digit'});
+  }
+
+  function renderUsersPanel(main, tab){
+    var html = panelHeadHtml(tab, 'საიტზე SMS-ვერიფიკაციით რეგისტრირებული მომხმარებლები — რეგისტრაციის და ბოლო შესვლის თარიღით.');
+    html += '<div class="card" id="users-card"><div class="empty-state"><p>იტვირთება…</p></div></div>';
+    main.innerHTML = html;
+
+    apiGet('/api/users').then(function(list){
+      var card = document.getElementById('users-card');
+      if(!card) return;
+      if(!list.length){
+        card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ჯერ არცერთი მომხმარებელი არ დარეგისტრირებულა.</p></div>';
+        return;
+      }
+      card.innerHTML = '<table class="admin-table"><thead><tr>'
+        + '<th>სახელი</th><th>ტელეფონი</th><th>ელფოსტა</th><th>რეგისტრაცია</th><th>ბოლო შესვლა</th><th>შეკვეთები / სერვისები</th>'
+        + '</tr></thead><tbody>' + list.map(function(u){
+          return '<tr>'
+            + '<td>'+escHtml(u.name||'—')+'</td>'
+            + '<td>'+escHtml(u.phone||'—')+'</td>'
+            + '<td>'+escHtml(u.email||'—')+'</td>'
+            + '<td>'+escHtml(fmtDate(u.registeredAt))+'</td>'
+            + '<td>'+escHtml(fmtDate(u.lastLoginAt))+'</td>'
+            + '<td>—</td>'
+            + '</tr>';
+        }).join('') + '</tbody></table>';
+    }).catch(function(){
+      var card = document.getElementById('users-card');
+      if(card) card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>მომხმარებლების ჩატვირთვა ვერ მოხერხდა — შეამოწმეთ სერვერთან კავშირი.</p></div>';
     });
   }
 
