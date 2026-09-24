@@ -26,7 +26,7 @@ const path = require('path');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const { buildWarrantyCardPdf } = require('./warranty-pdf');
-const { fillWarrantyTemplate } = require('./warranty-template-pdf');
+const { fillWarrantyTemplate, extractTemplatePage } = require('./warranty-template-pdf');
 
 const PORT = process.env.PORT || 4001;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'technoline2026';
@@ -527,14 +527,81 @@ function warrantyStatus(rec) {
   };
 }
 
+// A record only requires phone verification once staff have put a phone
+// number on it from the admin panel — older/demo records with no phone on
+// file keep working exactly as before (instant lookup, no SMS step), so
+// this only changes behavior for records staff have opted into it for.
 app.get('/api/warranty/:serial', async function (req, res) {
   try {
     const serial = String(req.params.serial || '').trim().toUpperCase();
     const db = await readDb();
     const rec = (db['content/warranty'] || {})[serial];
     if (!rec) return res.status(404).json({ error: 'not_found' });
+    if (rec.phone) return res.status(401).json({ error: 'phone_verification_required' });
     res.json(Object.assign({ serial: serial }, rec, warrantyStatus(rec)));
   } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// --- Phone-verified warranty check (public warranty-check page) --------
+// A record with a phone on file (added from the admin panel's warranty
+// records table) can only be looked up by someone who can prove they
+// control that same phone number, via the existing SMS-OTP mechanism.
+// Both steps answer identically whether the serial is unknown or the phone
+// doesn't match, so a wrong guess can't be used to probe which is off.
+app.post('/api/warranty/:serial/otp/send', async function (req, res) {
+  try {
+    const serial = String(req.params.serial || '').trim().toUpperCase();
+    const phone = normalizePhone(req.body && req.body.phone);
+    if (!/^\+?\d{9,15}$/.test(phone)) return res.status(400).json({ error: 'invalid_phone' });
+    if (!SMS_CONFIGURED) return res.status(503).json({ error: 'not_configured' });
+
+    const db = await readDb();
+    const rec = (db['content/warranty'] || {})[serial];
+    if (!rec || !rec.phone || normalizePhone(rec.phone) !== phone) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+
+    const key = 'warranty:' + phone;
+    const existing = otpStore.get(key);
+    if (existing && Date.now() - existing.lastSentAt < OTP_RESEND_COOLDOWN_MS) {
+      return res.status(429).json({ error: 'too_soon' });
+    }
+    const code = genOtpCode();
+    otpStore.set(key, { code: code, expiresAt: Date.now() + OTP_TTL_MS, attempts: 0, lastSentAt: Date.now() });
+    await sendWifisherSms(phone, 'თქვენი გარანტიის შემოწმების კოდია: ' + code);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('warranty otp send failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.post('/api/warranty/:serial/otp/verify', async function (req, res) {
+  try {
+    const serial = String(req.params.serial || '').trim().toUpperCase();
+    const phone = normalizePhone(req.body && req.body.phone);
+    const code = String((req.body && req.body.code) || '').trim();
+    const key = 'warranty:' + phone;
+    const entry = otpStore.get(key);
+    if (!entry) return res.status(400).json({ error: 'no_pending_code' });
+    if (Date.now() > entry.expiresAt) { otpStore.delete(key); return res.status(400).json({ error: 'expired' }); }
+    if (entry.attempts >= OTP_MAX_ATTEMPTS) { otpStore.delete(key); return res.status(429).json({ error: 'too_many_attempts' }); }
+    if (code !== entry.code) {
+      entry.attempts++;
+      return res.status(400).json({ error: 'invalid_code' });
+    }
+    otpStore.delete(key);
+
+    const db = await readDb();
+    const rec = (db['content/warranty'] || {})[serial];
+    if (!rec || !rec.phone || normalizePhone(rec.phone) !== phone) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+    res.json(Object.assign({ serial: serial }, rec, warrantyStatus(rec)));
+  } catch (e) {
+    console.error('warranty otp verify failed:', e.message);
     res.status(500).json({ error: 'server_error' });
   }
 });
@@ -600,6 +667,22 @@ app.post('/api/warranty-template/preview', requireAuth, async function (req, res
     res.send(pdf);
   } catch (e) {
     console.error('warranty template preview failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// Admin-only: single-page extract of the uploaded template, used by the
+// field-position editor's page picker (see extractTemplatePage's own
+// comment for why — avoids the multi-page-scroll/percent-ambiguity problem
+// entirely by only ever showing the editor one real page at a time).
+app.post('/api/warranty-template/page', requireAuth, async function (req, res) {
+  try {
+    const b = req.body || {};
+    if (!b.pdf) return res.status(400).json({ error: 'no_pdf' });
+    const result = await extractTemplatePage(b.pdf, b.page);
+    res.json(result);
+  } catch (e) {
+    console.error('warranty template page extract failed:', e.message);
     res.status(500).json({ error: 'server_error' });
   }
 });

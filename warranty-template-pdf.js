@@ -50,14 +50,17 @@ function splitRuns(text) {
 const FIELD_KEYS = ['customerName', 'serial', 'model', 'purchase', 'warrantyEnd'];
 
 /**
- * template: { pdf: 'data:application/pdf;base64,AAAA...', fields: {
+ * template: { pdf: 'data:application/pdf;base64,AAAA...', page: 2, fields: {
  *   customerName: {xPct, yPct, size}, serial: {...}, model: {...},
  *   purchase: {...}, warrantyEnd: {...}
  * } }
+ * `page` is the 1-based page number the fields are positioned on (chosen in
+ * the admin panel's page-navigation preview); defaults to 1 for older saved
+ * templates that predate multi-page support.
  * data: { customerName, serial, model, purchase, warrantyEnd } — plain
  * strings, already formatted for display.
- * Returns Promise<Buffer> with the filled PDF (first page only is used —
- * a multi-page template's later pages are kept as-is, unfilled).
+ * Returns Promise<Buffer> with the filled PDF (only the chosen page is
+ * filled — the template's other pages are kept as-is, unfilled).
  */
 async function fillWarrantyTemplate(template, data) {
   const base64 = String((template && template.pdf) || '').split(',').pop();
@@ -66,7 +69,9 @@ async function fillWarrantyTemplate(template, data) {
   pdfDoc.registerFontkit(fontkit);
   const geoFont = await pdfDoc.embedFont(fs.readFileSync(FONT_PATHS.geo), { subset: true });
   const latFont = await pdfDoc.embedFont(fs.readFileSync(FONT_PATHS.lat), { subset: true });
-  const page = pdfDoc.getPages()[0];
+  const pages = pdfDoc.getPages();
+  const pageIndex = Math.min(Math.max((Number(template && template.page) || 1) - 1, 0), pages.length - 1);
+  const page = pages[pageIndex];
   const { width, height } = page.getSize();
 
   function drawMixed(text, xPct, yPct, size) {
@@ -93,4 +98,33 @@ async function fillWarrantyTemplate(template, data) {
   return Buffer.from(await pdfDoc.save());
 }
 
-module.exports = { fillWarrantyTemplate, FIELD_KEYS };
+/**
+ * Used by the admin panel's field-position editor: returns page count plus
+ * a standalone single-page PDF (as a data URL) for just the requested page,
+ * so the editor can show exactly one page — at its real dimensions — with
+ * no other pages to scroll into, and place field chips against it with an
+ * unambiguous percent-of-THIS-page meaning (matching how fillWarrantyTemplate
+ * above reads xPct/yPct once a template is saved).
+ * pdfDataUrl: 'data:application/pdf;base64,...'; pageNum: 1-based.
+ */
+async function extractTemplatePage(pdfDataUrl, pageNum) {
+  const base64 = String(pdfDataUrl || '').split(',').pop();
+  const bytes = Buffer.from(base64, 'base64');
+  const srcDoc = await PDFDocument.load(bytes);
+  const pageCount = srcDoc.getPageCount();
+  const index = Math.min(Math.max((Number(pageNum) || 1) - 1, 0), pageCount - 1);
+  const outDoc = await PDFDocument.create();
+  const [copied] = await outDoc.copyPages(srcDoc, [index]);
+  outDoc.addPage(copied);
+  const { width, height } = copied.getSize();
+  const outBytes = await outDoc.save();
+  return {
+    pageCount: pageCount,
+    page: index + 1,
+    width: width,
+    height: height,
+    pdf: 'data:application/pdf;base64,' + Buffer.from(outBytes).toString('base64')
+  };
+}
+
+module.exports = { fillWarrantyTemplate, FIELD_KEYS, extractTemplatePage };
