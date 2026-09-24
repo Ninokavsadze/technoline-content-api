@@ -184,6 +184,13 @@ app.get('/api/site/:doc', async function (req, res) {
 // One call to fetch all four documents at once (what the storefront
 // needs on page load).
 app.get('/api/site', async function (req, res) {
+  // Always fetch the current saved content fresh — never let a browser,
+  // Render's edge network, or any proxy in between reuse an older answer
+  // (this is what caused visitors/admins to briefly see stale text after
+  // an edit was saved).
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   try {
     const db = await readDb();
     res.json({
