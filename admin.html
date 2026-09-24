@@ -1,4 +1,3 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!DOCTYPE html>
 <html lang="ka">
 <head>
@@ -139,6 +138,25 @@
   table.admin-table tr:last-child td{border-bottom:none}
   table.admin-table input{width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-soft);color:var(--ink);font-size:.86rem}
   table.admin-table input:focus{border-color:var(--blue);background:var(--paper)}
+  .part-photo-cell{display:flex;align-items:center;gap:10px}
+  .part-thumb{width:52px;height:52px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper-soft);object-fit:cover;flex:none}
+  .part-thumb-empty{width:52px;height:52px;border-radius:10px;border:1.5px dashed var(--line);background:var(--paper-soft);flex:none;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-size:1.3rem}
+  .part-photo-actions{display:flex;flex-direction:column;gap:4px}
+  .part-photo-actions label{font-size:.76rem;font-weight:700;color:var(--blue);cursor:pointer;background:none;border:none;padding:0;text-align:left}
+  .part-photo-actions button{font-size:.76rem;font-weight:700;color:var(--ink-faint);cursor:pointer;background:none;border:none;padding:0;text-align:left}
+  .part-photo-actions input[type=file]{display:none}
+  .field-hint{font-size:.8rem;color:var(--ink-faint);line-height:1.5}
+
+  .bg-type-row{display:flex;gap:10px;margin-bottom:16px}
+  .bg-type-btn{flex:1;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink-soft);font-size:.86rem;font-weight:700;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+  .bg-type-btn.is-active{border-color:var(--blue);color:var(--blue-deep);background:var(--blue-soft)}
+  .drag-preview{-webkit-user-select:none;user-select:none;touch-action:none}
+  .drag-chip{background:rgba(8,18,30,.62);backdrop-filter:blur(2px);border:1.5px solid rgba(255,255,255,.5);border-radius:9px;padding:7px 10px;display:flex;align-items:center;gap:8px;cursor:grab;touch-action:none;transition:opacity .15s}
+  .drag-chip.is-dragging{cursor:grabbing;border-color:var(--gold)}
+  .drag-chip.is-hidden{opacity:.42}
+  .drag-chip-label{color:#fff;font-size:.78rem;font-weight:700;white-space:nowrap}
+  .drag-eye{background:none;border:none;padding:0;cursor:pointer;font-size:.9rem;line-height:1;opacity:.9}
+  .drag-eye:hover{opacity:1}
 
   .branch-card{border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
   .branch-card:last-child{margin-bottom:0}
@@ -198,6 +216,7 @@
   <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
   <symbol id="ic-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="ic-inbox" viewBox="0 0 24 24"><path d="M3 12h5l1.6 3h4.8L16 12h5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 12v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6L18 5a2 2 0 0 0-1.8-1H7.8A2 2 0 0 0 6 5L3 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.3-3.8 4.3-5.8 7.5-5.8s6.2 2 7.5 5.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
 </svg>
 
 <!-- ============ LOGIN ============ -->
@@ -261,10 +280,10 @@
 
   /* Swap this one line when Q-Logic's production endpoints are ready —
      see qlogic-content-api/README.md for the migration contract. */
-  var API_BASE = '';
+  var API_BASE = 'https://technoline-content-api.onrender.com';
   var SITE_URL = 'https://claude.ai/artifact/9DgADmJr7vngx4u3beCKHc';
 
-var CONTENT_ORDER = ["common.brandName","common.tagline","common.bookCta","common.catalogCta","home.hero.eyebrow","home.hero.title","home.hero.lede","common.warrantyCheckCta","home.hero.badge1","home.hero.badge2Num","home.hero.badge2Label","home.hero.badge3Num","home.hero.badge3Label","home.stat1Num","home.stat1Label","home.stat2Num","home.stat2Label","home.stat3Num","home.stat3Label","home.stat4Num","home.stat4Label","home.services.eyebrow","home.services.title","home.services.lede","home.services.lead.title","home.services.lead.desc","home.services.card2.title","home.services.card2.desc","home.services.card3.title","home.services.card3.desc","home.services.card4.title","home.services.card4.desc","home.services.card5.title","home.services.card5.desc","home.steps.eyebrow","home.steps.title","home.steps.step1.title","home.steps.step1.desc","home.steps.step2.title","home.steps.step2.desc","home.steps.step3.title","home.steps.step3.desc","home.steps.step4.title","home.steps.step4.desc","home.craft.eyebrow","home.craft.title","home.craft.lede","home.band.title","home.band.desc","home.reviews.eyebrow","home.reviews.title","home.reviews.quote1","home.reviews.quote2","home.reviews.quote3","about.head.title","about.head.lede","about.history.eyebrow","about.history.title","about.history.p1","about.history.p2","about.stat1Num","about.stat1Label","about.stat2Num","about.stat2Label","about.stat3Num","about.stat3Label","about.stat4Num","about.stat4Label","about.principles.eyebrow","about.principles.title","about.p1.title","about.p1.desc","about.p2.title","about.p2.desc","about.p3.title","about.p3.desc","about.p4.title","about.p4.desc","about.p5.title","about.p5.desc","about.p6.title","about.p6.desc","about.band.title","about.band.desc","services.head.title","services.head.lede","services.row1.title","services.row1.desc","services.row1.price","services.row2.title","services.row2.desc","services.row2.price","services.row3.title","services.row3.desc","services.row3.price","services.row4.title","services.row4.desc","services.row4.price","services.row5.title","services.row5.desc","services.row5.price","services.row6.title","services.row6.desc","services.row6.price","catalog.head.title","catalog.head.lede","warranty-check.head.title","warranty-check.head.lede","warranty-check.side.title","warranty-check.side.desc","warranty-check.side.item1","warranty-check.side.item2","warranty-check.side.item3","booking.head.title","booking.head.lede","wservice.head.title","wservice.head.lede","wservice.s1.title","wservice.s1.desc","wservice.s1.list","wservice.s2.title","wservice.s2.desc","wservice.s2.list","wservice.s3.title","wservice.s3.desc","wservice.s4.title","wservice.s4.desc","wservice.s5.title","wservice.s5.desc","wservice.band.title","wservice.band.desc","profile.head.title","profile.head.lede","orders.head.title","orders.head.lede","terms.head.title","terms.head.date","terms.s1.title","terms.s1.body","terms.s2.title","terms.s2.body","terms.s2.list","terms.s3.title","terms.s3.body","terms.s4.title","terms.s4.body","terms.s5.title","terms.s5.body","terms.s6.title","terms.s6.body","terms.s7.title","contact.head.title","contact.head.lede","contact.center.title","contact.center.phone","contact.center.email","contact.corp.title","contact.corp.phone","contact.corp.email","contact.branches.eyebrow","contact.branches.title","footer.blurb","common.phone","common.email","footer.address","footer.copyright"];
+var CONTENT_ORDER = ["common.brandName","common.tagline","common.bookCta","common.catalogCta","common.navServices","common.navCatalog","common.navWarrantyService","common.navWarrantyCheck","common.navAbout","common.navContact","home.hero.eyebrow","home.hero.title","home.hero.lede","common.warrantyCheckCta","home.hero.badge1","home.hero.badge2Num","home.hero.badge2Label","home.hero.badge3Num","home.hero.badge3Label","home.stat1Num","home.stat1Label","home.stat2Num","home.stat2Label","home.stat3Num","home.stat3Label","home.stat4Num","home.stat4Label","home.services.eyebrow","home.services.title","home.services.lede","home.services.lead.title","home.services.lead.desc","home.services.card2.title","home.services.card2.desc","home.services.card3.title","home.services.card3.desc","home.services.card4.title","home.services.card4.desc","home.services.card5.title","home.services.card5.desc","home.steps.eyebrow","home.steps.title","home.steps.step1.title","home.steps.step1.desc","home.steps.step2.title","home.steps.step2.desc","home.steps.step3.title","home.steps.step3.desc","home.steps.step4.title","home.steps.step4.desc","home.craft.eyebrow","home.craft.title","home.craft.lede","home.band.title","home.band.desc","home.reviews.eyebrow","home.reviews.title","home.reviews.quote1","home.reviews.quote2","home.reviews.quote3","about.head.title","about.head.lede","about.history.eyebrow","about.history.title","about.history.p1","about.history.p2","about.stat1Num","about.stat1Label","about.stat2Num","about.stat2Label","about.stat3Num","about.stat3Label","about.stat4Num","about.stat4Label","about.principles.eyebrow","about.principles.title","about.p1.title","about.p1.desc","about.p2.title","about.p2.desc","about.p3.title","about.p3.desc","about.p4.title","about.p4.desc","about.p5.title","about.p5.desc","about.p6.title","about.p6.desc","about.band.title","about.band.desc","services.head.title","services.head.lede","services.row1.title","services.row1.desc","services.row1.price","services.row2.title","services.row2.desc","services.row2.price","services.row3.title","services.row3.desc","services.row3.price","services.row4.title","services.row4.desc","services.row4.price","services.row5.title","services.row5.desc","services.row5.price","services.row6.title","services.row6.desc","services.row6.price","catalog.head.title","catalog.head.lede","warranty-check.head.title","warranty-check.head.lede","warranty-check.side.title","warranty-check.side.desc","warranty-check.side.item1","warranty-check.side.item2","warranty-check.side.item3","booking.head.title","booking.head.lede","wservice.head.title","wservice.head.lede","wservice.s1.title","wservice.s1.desc","wservice.s1.list","wservice.s2.title","wservice.s2.desc","wservice.s2.list","wservice.s3.title","wservice.s3.desc","wservice.s4.title","wservice.s4.desc","wservice.s5.title","wservice.s5.desc","wservice.band.title","wservice.band.desc","profile.head.title","profile.head.lede","orders.head.title","orders.head.lede","terms.head.title","terms.head.date","terms.s1.title","terms.s1.body","terms.s2.title","terms.s2.body","terms.s2.list","terms.s3.title","terms.s3.body","terms.s4.title","terms.s4.body","terms.s5.title","terms.s5.body","terms.s6.title","terms.s6.body","terms.s7.title","contact.head.title","contact.head.lede","contact.center.title","contact.center.phone","contact.center.email","contact.corp.title","contact.corp.phone","contact.corp.email","contact.branches.eyebrow","contact.branches.title","footer.blurb","common.phone","common.email","footer.address","footer.copyright"];
 var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","common.tagline":"TECHNOLINE SERVICE","common.bookCta":"ვიზიტის დაჯავშნა","common.catalogCta":"კატალოგის ნახვა","home.hero.eyebrow":"<span class=\"dot\"></span>თბილისში, ბათუმსა და ქუთაისში — 9 ფილიალი","home.hero.title":"თქვენი ტექნიკა, <em>სანდო</em> ხელებში","home.hero.lede":"ტექნოლაინი აღადგენს სმარტფონებს, ლეპტოპებს, პლანშეტებსა და სხვა ციფრულ მოწყობილობებს — ორიგინალი ნაწილებით, გამჭვირვალე ფასად და საშუალოდ 48 საათში.","common.warrantyCheckCta":"საგარანტიოს შემოწმება","home.hero.badge1":"ორიგინალი<br>ნაწილები","home.hero.badge2Num":"48სთ","home.hero.badge2Label":"საშუალო<br>შეკეთების ვადა","home.hero.badge3Num":"12","home.hero.badge3Label":"წელი<br>გამოცდილება","home.stat1Num":"45,000+","home.stat1Label":"შეკეთებული მოწყობილობა","home.stat2Num":"9","home.stat2Label":"სერვის-ცენტრი საქართველოში","home.stat3Num":"4.8/5","home.stat3Label":"მომხმარებლის შეფასება","home.stat4Num":"6 თვე","home.stat4Label":"გარანტია ყველა შეკეთებაზე","home.services.eyebrow":"სერვისები","home.services.title":"ერთი ცენტრი, ყველა მოწყობილობისთვის","home.services.lede":"დიაგნოსტიკიდან შეკეთებამდე — ჩვენი ინჟინრები მუშაობენ ყველა ძირითად ბრენდთან და მოწყობილობის ტიპთან.","home.services.lead.title":"სმარტფონების შეკეთება","home.services.lead.desc":"ეკრანი, ბატარეა, კამერა, წყლის დაზიანება — ორიგინალი ნაწილებით, უმეტესად იმავე დღეს.","home.services.card2.title":"ლეპტოპები და კომპიუტერები","home.services.card2.desc":"დედაპლატის დიაგნოსტიკა, კლავიატურის და ეკრანის შეცვლა, სისტემის აღდგენა.","home.services.card3.title":"პლანშეტები","home.services.card3.desc":"iPad და Android პლანშეტების ეკრანის, ბატარეისა და პორტების შეკეთება.","home.services.card4.title":"სმარტ-საათები","home.services.card4.desc":"ეკრანის, ღილაკებისა და დატენვის მოდულის შეკეთება ყველა ძირითადი ბრენდისთვის.","home.services.card5.title":"სათამაშო კონსოლები","home.services.card5.desc":"PlayStation, Xbox და Nintendo კონსოლების გაწმენდა, გაცხელების და HDMI პრობლემები.","home.steps.eyebrow":"როგორ მუშაობს","home.steps.title":"დიაგნოსტიკიდან გატანამდე — 4 ნაბიჯი","home.steps.step1.title":"დაჯავშნა","home.steps.step1.desc":"აირჩიეთ ფილიალი და დრო ონლაინ, ან მიუტანეთ მოწყობილობა უშუალოდ სერვის-ცენტრში.","home.steps.step2.title":"უფასო დიაგნოსტიკა","home.steps.step2.desc":"ინჟინერი ადგენს პრობლემას და გიგზავნით ფასის ზუსტ შეთავაზებას 30 წუთში.","home.steps.step3.title":"შეკეთება","home.steps.step3.desc":"დამტკიცების შემდეგ ვიწყებთ სამუშაოს ორიგინალი ან სერტიფიცირებული ნაწილებით.","home.steps.step4.title":"გატანა და გარანტია","home.steps.step4.desc":"იღებთ მზა მოწყობილობას 6-თვიანი გარანტიით და SMS შეტყობინებით.","home.craft.eyebrow":"ჩვენი ინჟინრები საქმეში","home.craft.title":"სიზუსტე, რომელიც წლების გამოცდილებით შენდება","home.craft.lede":"დედაპლატის მიკრო-შედუღებიდან ბატარეის უსაფრთხო შეცვლამდე — ყოველი შეკეთება გადის იმავე ხარისხის კონტროლს, დამოუკიდებლად მოწყობილობის ბრენდისგან.","home.band.title":"შეამოწმეთ თქვენი მოწყობილობის საგარანტიო სტატუსი 10 წამში","home.band.desc":"შეიყვანეთ სერიული ნომერი ან IMEI და გაიგეთ, ფარავს თუ არა გარანტია მიმდინარე პრობლემას.","home.reviews.eyebrow":"მომხმარებელთა გამოხმაურება","home.reviews.title":"რას ამბობენ ჩვენი კლიენტები","home.reviews.quote1":"„ეკრანი ერთ საათში შემიცვალეს iPhone-ზე, ხარისხი — თითქოს ახალი მოწყობილობა მაქვს.“","home.reviews.quote2":"„ლეპტოპს წყალი დაესხა, ფიქრობდი ჩამორეცხილი იყო — 3 დღეში სრულად აღადგინეს მონაცემებთან ერთად.“","home.reviews.quote3":"„ონლაინ დავჯავშნე ვიზიტი, რიგში არ დამიდგამს და ფასიც წინასწარ ვიცოდი — მაქსიმალურად კომფორტული სერვისი.“","about.head.title":"ტექნოლაინის შესახებ","about.head.lede":"2013 წლიდან ვაწვდით საქართველოს ბაზარს ციფრული ტექნიკის სერვისს — გამჭვირვალედ, სწრაფად და ორიგინალი ნაწილებით.","about.history.eyebrow":"ჩვენი ისტორია","about.history.title":"დაიწყო ერთი სახელოსნოთი, გაგრძელდა ქვეყნის მასშტაბით","about.history.p1":"ტექნოლაინი დაარსდა თბილისში, როგორც პატარა სახელოსნო სმარტფონების შეკეთებისთვის. დღეს ჩვენ ვართ ერთ-ერთი უმსხვილესი დამოუკიდებელი სერვის-ცენტრების ქსელი საქართველოში — 9 ფილიალით სამ ქალაქში, 60-ზე მეტი სერტიფიცირებული ინჟინრით და საკუთარი ნაწილების ლაბორატორიით.","about.history.p2":"ჩვენი მიზანია, ტექნიკის შეკეთება იყოს ისეთივე მარტივი და გასაგები, როგორც მისი შეძენა — გამჭვირვალე ფასებით, რეალურ დროში სტატუსის თვალყურის დევნებით და გარანტიით ყველა სამუშაოზე.","about.stat1Num":"2013","about.stat1Label":"დაარსების წელი","about.stat2Num":"9","about.stat2Label":"ფილიალი","about.stat3Num":"60+","about.stat3Label":"სერტიფიცირებული ინჟინერი","about.stat4Num":"45,000+","about.stat4Label":"შეკეთებული მოწყობილობა","about.principles.eyebrow":"ჩვენი პრინციპები","about.principles.title":"რატომ გვირჩევენ","about.p1.title":"ორიგინალი ნაწილები","about.p1.desc":"ვმუშაობთ მხოლოდ სერტიფიცირებულ მომწოდებლებთან და გავცემთ 6-თვიან გარანტიას ყველა ნაწილზე.","about.p2.title":"სწრაფი შესრულება","about.p2.desc":"სტანდარტული შეკეთებების 80% სრულდება იმავე ან მომდევნო სამუშაო დღეს.","about.p3.title":"მონაცემთა უსაფრთხოება","about.p3.desc":"თქვენი პირადი მონაცემები დაცულია — მუშაობის დაწყებამდე ვაფორმებთ კონფიდენციალურობის ხელშეკრულებას.","about.p4.title":"გამოცდილი ინჟინრები","about.p4.desc":"გუნდი გადის რეგულარულ ტრენინგებს მწარმოებელთა უახლეს სტანდარტებზე.","about.p5.title":"გამჭვირვალე ფასები","about.p5.desc":"ფასს ადასტურებთ დიაგნოსტიკის შემდეგ — დამალული საფასურების გარეშე.","about.p6.title":"9 ფილიალი","about.p6.desc":"თბილისში, ბათუმსა და ქუთაისში — მოწყობილობა ყოველთვის ახლოსაა.","about.band.title":"გუნდი, რომელსაც შეგიძლიათ ენდოთ","about.band.desc":"60-ზე მეტი სერტიფიცირებული ინჟინერი, საკუთარი ხარისხის კონტროლის ლაბორატორია და 12 წლიანი გამოცდილება ციფრული ტექნიკის ბაზარზე.","services.head.title":"სერვისები და ტარიფები","services.head.lede":"საორიენტაციო ფასები — საბოლოო ღირებულებას ადასტურებთ უფასო დიაგნოსტიკის შემდეგ.","services.row1.title":"სმარტფონის შეკეთება","services.row1.desc":"ეკრანი, ბატარეა, კამერა, დამტენი პორტი, წყლის დაზიანება","services.row1.price":"85 ₾ – დან","services.row2.title":"ლეპტოპისა და კომპიუტერის შეკეთება","services.row2.desc":"დედაპლატის დიაგნოსტიკა, კლავიატურა, გაცხელება, SSD/RAM განახლება","services.row2.price":"120 ₾ – დან","services.row3.title":"პლანშეტის შეკეთება","services.row3.desc":"ეკრანი, ბატარეა, დამტენი პორტი — iPad და Android","services.row3.price":"95 ₾ – დან","services.row4.title":"სმარტ-საათის შეკეთება","services.row4.desc":"ეკრანი, ღილაკები, დატენვის მოდული","services.row4.price":"70 ₾ – დან","services.row5.title":"სათამაშო კონსოლის შეკეთება","services.row5.desc":"გაწმენდა, გაცხელება, HDMI/კონტროლერის პრობლემები","services.row5.price":"90 ₾ – დან","services.row6.title":"საყოფაცხოვრებო ტექნიკა","services.row6.desc":"დიაგნოსტიკა და შეკეთება მცირე საყოფაცხოვრებო ტექნიკისთვის","services.row6.price":"60 ₾ – დან","catalog.head.title":"ნაწილების კატალოგი","catalog.head.lede":"ორიგინალი და სერტიფიცირებული სათადარიგო ნაწილები — 6-თვიანი გარანტიით.","warranty-check.head.title":"საგარანტიო პერიოდის შემოწმება","warranty-check.head.lede":"შეიყვანეთ მოწყობილობის სერიული ნომერი ან IMEI და გაიგეთ გარანტიის სტატუსი მყისიერად.","warranty-check.side.title":"როგორ მუშაობს გარანტია","warranty-check.side.desc":"ყველა შეკეთებულ მოწყობილობასა და გაყიდულ ნაწილს ახლავს 6-თვიანი გარანტია დეფექტებზე.","warranty-check.side.item1":"გარანტია ვრცელდება შეცვლილ ნაწილსა და შესრულებულ სამუშაოზე","warranty-check.side.item2":"სერიული ნომერი იძებნება მოწყობილობის პარამეტრებში ან ყუთზე","warranty-check.side.item3":"საგარანტიო შეკეთება უფასოა, თუ დაზიანება არ არის მექანიკური","booking.head.title":"ვიზიტის დაჯავშნა სერვის ცენტრში","booking.head.lede":"აირჩიეთ ფილიალი, მომსახურება და თქვენთვის მოსახერხებელი დრო — 4 მარტივი ნაბიჯი.","wservice.head.title":"საგარანტიო მომსახურება","wservice.head.lede":"რას ფარავს გარანტია, როგორ გამოვიყენოთ და რა ვადებში ხდება საგარანტიო შეკეთება.","wservice.s1.title":"რას მოიცავს გარანტია","wservice.s1.desc":"ტექნოლაინში შესრულებულ ყველა სამუშაოსა და გაყიდულ სათადარიგო ნაწილს ახლავს სტანდარტული 6-თვიანი გარანტია. გარანტია მოქმედებს შემდეგზე:","wservice.s1.list":"\n            <li>შეცვლილი ნაწილის ქარხნული დეფექტი (ეკრანი, ბატარეა, კამერა, დამტენი პორტი და სხვ.)</li>\n            <li>შესრულებული სამუშაოს ხარისხი — თუ იგივე პრობლემა განმეორდა შეკეთების შემდეგ</li>\n            <li>მონტაჟის დროს წარმოქმნილი დაზიანება</li>\n          ","wservice.s2.title":"რას არ მოიცავს გარანტია","wservice.s2.desc":"გარანტია არ ვრცელდება შემდეგ შემთხვევებზე:","wservice.s2.list":"\n            <li>ახალი მექანიკური დაზიანება გარანტიის პერიოდში (ჩავარდნა, დარტყმა, ცემა)</li>\n            <li>წყლის ან სითხის ახალი ზემოქმედება, თუ თავდაპირველი პრობლემა სხვა იყო</li>\n            <li>სხვა სერვის-ცენტრის მიერ განხორციელებული ჩარევა შეკეთების შემდეგ</li>\n            <li>პროგრამული პრობლემები, რომლებიც არ უკავშირდება შესრულებულ სამუშაოს</li>\n          ","wservice.s3.title":"როგორ გამოვიყენოთ გარანტია","wservice.s3.desc":"საგარანტიო შემთხვევის დაფიქსირებისთვის:","wservice.s4.title":"შესრულების ვადები","wservice.s4.desc":"საგარანტიო შემთხვევების უმეტესობა მოგვარდება <strong>1–3 სამუშაო დღეში</strong>. თუ საჭიროა ნაწილის დამატებითი შეკვეთა, ვადა შესაძლოა გაიზარდოს 5–7 დღემდე — ამის შესახებ წინასწარ გეცნობებათ.","wservice.s5.title":"გაფართოებული გარანტია","wservice.s5.desc":"შეკეთების დასრულებისას შეგიძლიათ შეიძინოთ გაფართოებული, 12-თვიანი გარანტიის პაკეტი, რომელიც დამატებით მოიცავს ერთჯერად უფასო დიაგნოსტიკას მომდევნო წელს.","wservice.band.title":"გინდათ გაარკვიოთ, ფარავს თუ არა გარანტია თქვენს შემთხვევას?","wservice.band.desc":"შეამოწმეთ სერიული ნომერი ონლაინ ან დაჯავშნეთ ვიზიტი უფასო დიაგნოსტიკისთვის.","profile.head.title":"ჩემი პროფილი","profile.head.lede":"მართეთ თქვენი პირადი მონაცემები და დამატებული მოწყობილობები.","orders.head.title":"ჩემი შეკვეთები","orders.head.lede":"თვალი ადევნეთ თქვენი მიმდინარე და დასრულებული შეკეთებების სტატუსს.","terms.head.title":"წესები და პირობები","terms.head.date":"ბოლო განახლება: 1 სექტემბერი, 2026","terms.s1.title":"1. ზოგადი დებულებები","terms.s1.body":"წინამდებარე დოკუმენტი არეგულირებს ურთიერთობას შპს „ტექნოლაინსა\" (შემდგომში — კომპანია) და მომხმარებელს შორის, რომელიც სარგებლობს კომპანიის ვებგვერდით ან სერვის-ცენტრების მომსახურებით. ვებგვერდით სარგებლობით მომხმარებელი ეთანხმება ქვემოთ მოცემულ პირობებს.","terms.s2.title":"2. მომსახურების პირობები","terms.s2.body":"დიაგნოსტიკა უფასოა ყველა მოწყობილობისთვის. შეკეთების საბოლოო ღირებულება მომხმარებელს დასტურდება წერილობით (SMS ან ელფოსტა) დიაგნოსტიკის დასრულების შემდეგ, სამუშაოს დაწყებამდე.","terms.s2.list":"\n            <li>მოწყობილობის მიღებისას გაიცემა მიღება-ჩაბარების ქვითარი უნიკალური ნომრით</li>\n            <li>სტანდარტული შეკეთების ვადა შეადგენს 1–3 სამუშაო დღეს, გართულებული შემთხვევებისთვის — 5–7 დღეს</li>\n            <li>თუ დიაგნოსტიკის შემდეგ მომხმარებელი უარს იტყვის შეკეთებაზე, დიაგნოსტიკის საფასური არ ჩამოიჭრება</li>\n          ","terms.s3.title":"3. ანგარიშსწორება","terms.s3.body":"ანგარიშსწორება ხდება ნაღდი ან უნაღდო ფორმით, მოწყობილობის გატანისას. კორპორატიული კლიენტებისთვის შესაძლებელია განვადებით ანგარიშსწორება ხელშეკრულების საფუძველზე.","terms.s4.title":"4. მონაცემთა დაცვა","terms.s4.body":"კომპანია იცავს მომხმარებლის პირად მონაცემებსა და მოწყობილობაზე დაცულ ინფორმაციას საქართველოს კანონმდებლობის შესაბამისად. მოწყობილობის მონაცემებზე წვდომა ეზღუდება მხოლოდ დიაგნოსტიკისა და შეკეთებისთვის საჭირო პერსონალს. მომხმარებელს რეკომენდირებულია მოწყობილობის მონაცემთა სარეზერვო ასლის შექმნა შეკეთებამდე.","terms.s5.title":"5. პასუხისმგებლობა","terms.s5.body":"კომპანია პასუხისმგებელია შესრულებული სამუშაოს ხარისხზე გარანტიის ვადის განმავლობაში. კომპანია არ არის პასუხისმგებელი მონაცემთა დაკარგვაზე, თუ მომხმარებელს არ შეუქმნია სარეზერვო ასლი და დაზიანება არ იყო გამოწვეული შესრულებული სამუშაოთი.","terms.s6.title":"6. გაუქმება და დაბრუნება","terms.s6.body":"დაჯავშნილი ვიზიტის გაუქმება ან გადატანა შესაძლებელია ვიზიტამდე მინიმუმ 2 საათით ადრე, უფასოდ. შეძენილი ნაწილის დაბრუნება შესაძლებელია შეძენიდან 14 დღის განმავლობაში, თუ ნაწილი არ არის დამონტაჟებული და შენარჩუნებულია სასაქონლო სახე.","terms.s7.title":"7. კონტაქტი","contact.head.title":"საკონტაქტო ინფორმაცია","contact.head.lede":"დაგვიკავშირდით ნებისმიერი შეკითხვით ან მოგვინახულეთ უახლოეს ფილიალში.","contact.center.title":"საკონტაქტო ცენტრი","contact.center.phone":"+995 322 12 34 56 (ყოველდღე, 09:00–21:00)","contact.center.email":"info@technoline.ge","contact.corp.title":"კორპორატიული კლიენტები","contact.corp.phone":"+995 322 12 34 57","contact.corp.email":"business@technoline.ge","contact.branches.eyebrow":"ფილიალები","contact.branches.title":"9 ფილიალი, 3 ქალაქი","footer.blurb":"ციფრული ტექნიკის სერვის ცენტრების ქსელი საქართველოში — 2013 წლიდან, ორიგინალი ნაწილებითა და გამჭვირვალე მომსახურებით.","common.phone":"+995 322 12 34 56","common.email":"info@technoline.ge","footer.address":"ვაჟა-ფშაველას გამზ. 71,<br>თბილისი","footer.copyright":"© 2026 შპს „ტექნოლაინი\". ყველა უფლება დაცულია."};
 
   var THEME_TOKENS = [
@@ -275,6 +294,57 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     {key:'blueDeep', varName:'--blue-deep', label:'ლურჯი — მუქი ტონი', def:'#0A3A69'},
     {key:'blueMid', varName:'--blue-mid', label:'ლურჯი — საშუალო ტონი', def:'#5C86AE'}
   ];
+
+  /* Banner typography — text color/size on the hero, the home-services
+     rail tiles, and the dark CTA bands. Stored in the same theme doc as
+     THEME_TOKENS (zero backend changes); size fields hold a bare rem
+     number, color fields a hex string. */
+  var TYPOGRAPHY_GROUPS = [
+    { key:'hero', label:'მთავარი ბანერი (Hero)', fields:[
+      {key:'heroTitleColor', type:'color', label:'სათაურის ფერი', def:'#FFFFFF'},
+      {key:'heroTitleSize', type:'size', label:'სათაურის ზომა', def:3.0, min:1.6, max:4.5, step:0.1},
+      {key:'heroLedeColor', type:'color', label:'აღწერის ფერი', def:'#C6D7E9'},
+      {key:'heroLedeSize', type:'size', label:'აღწერის ზომა', def:1.16, min:0.85, max:1.6, step:0.05}
+    ]},
+    { key:'tile', label:'მთავარი გვერდის სერვის-ბარათები', fields:[
+      {key:'tileTitleColor', type:'color', label:'სათაურის ფერი', def:'#FFFFFF'},
+      {key:'tileTitleSize', type:'size', label:'სათაურის ზომა', def:1.22, min:0.9, max:2.0, step:0.05},
+      {key:'tileDescColor', type:'color', label:'აღწერის ფერი', def:'#C7D6E8'},
+      {key:'tileDescSize', type:'size', label:'აღწერის ზომა', def:0.87, min:0.7, max:1.3, step:0.05}
+    ]},
+    { key:'band', label:'ქვედა CTA ბანერები', fields:[
+      {key:'bandTitleColor', type:'color', label:'სათაურის ფერი', def:'#FFFFFF'},
+      {key:'bandTitleSize', type:'size', label:'სათაურის ზომა', def:1.75, min:1.2, max:2.6, step:0.05},
+      {key:'bandDescColor', type:'color', label:'აღწერის ფერი', def:'#C6D7E9'},
+      {key:'bandDescSize', type:'size', label:'აღწერის ზომა', def:1.0, min:0.8, max:1.5, step:0.05}
+    ]}
+  ];
+
+  /* Banner layout — per-group free position (px offset from the default
+     spot, dragged in a small preview) + show/hide, plus the hero's own
+     background type (video/photo) and banner height. Same theme doc. */
+  var LAYOUT_GROUPS = {
+    hero: { bg:'linear-gradient(155deg,#0A3A69,#04121F)', fields:[
+      {posX:'heroTitleX', posY:'heroTitleY', hidden:'heroTitleHidden', label:'სათაური', left:20, top:26},
+      {posX:'heroLedeX', posY:'heroLedeY', hidden:'heroLedeHidden', label:'აღწერა', left:20, top:80}
+    ]},
+    tile: { bg:'linear-gradient(155deg,#0A3A69,#050D18)', fields:[
+      {posX:'tileTitleX', posY:'tileTitleY', hidden:'tileTitleHidden', label:'სათაური', left:18, top:74},
+      {posX:'tileDescX', posY:'tileDescY', hidden:'tileDescHidden', label:'აღწერა', left:18, top:110}
+    ]},
+    band: { bg:'linear-gradient(120deg,#0A3A69,#0E4F8E)', fields:[
+      {posX:'bandTitleX', posY:'bandTitleY', hidden:'bandTitleHidden', label:'სათაური', left:22, top:26},
+      {posX:'bandDescX', posY:'bandDescY', hidden:'bandDescHidden', label:'აღწერა', left:22, top:70}
+    ]}
+  };
+  var DRAG_CLAMP_X = 90, DRAG_CLAMP_Y = 40;
+  var HERO_BG_PHOTO_KEY = 'home.hero.bgPhoto';
+  var HERO_BG_PHOTO_MAX_W = 1600;
+  var HERO_BG_PHOTO_QUALITY = 0.85;
+  var CRAFT_BG_PHOTO_KEY = 'home.craft.bgPhoto';
+  var HERO_BG_VIDEO_KEY = 'home.hero.bgVideo';
+  var CRAFT_BG_VIDEO_KEY = 'home.craft.bgVideo';
+  var BG_VIDEO_MAX_BYTES = 8 * 1024 * 1024;
 
   var BRANCHES_FIELDS = [
     {key:'name', label:'დასახელება'}, {key:'addr', label:'მისამართი'},
@@ -325,7 +395,10 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     address:'მისამართი', phone:'ტელეფონი', email:'ელფოსტა', tagline:'სლოგანი',
     brandName:'ბრენდის სახელი', bookCta:'ღილაკი „ვიზიტის დაჯავშნა"', catalogCta:'ღილაკი „კატალოგი"',
     warrantyCheckCta:'ღილაკი „საგარანტიოს შემოწმება"', price:'ფასი', Num:'რიცხვი', Label:'წარწერა',
-    badge1:'ბეჯის ტექსტი'
+    badge1:'ბეჯის ტექსტი',
+    navServices:'ჰედერის ბმული: სერვისები', navCatalog:'ჰედერის ბმული: ნაწილების კატალოგი',
+    navWarrantyService:'ჰედერის ბმული: საგარანტიო მომსახურება', navWarrantyCheck:'ჰედერის ბმული: საგარანტიო ვადის გადამოწმება',
+    navAbout:'ჰედერის ბმული: ჩვენს შესახებ', navContact:'ჰედერის ბმული: კონტაქტი'
   };
 
   function parseCk(key){
@@ -445,13 +518,16 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     PAGE_ORDER.forEach(function(page){
       if(seenPages[page]) TABS.push({id:'content:'+page, label:PAGE_LABELS[page] || page, kind:'content', page:page, group:'content'});
     });
+    TABS.push({id:'pages', label:'გვერდები', kind:'pages', group:'other'});
     TABS.push({id:'colors', label:'ბრენდის ფერები', kind:'colors', group:'other'});
+    TABS.push({id:'typography', label:'ბანერები', kind:'typography', group:'other'});
     TABS.push({id:'parts', label:'ნაწილების კატალოგი', kind:'parts', group:'other'});
     TABS.push({id:'branches', label:'ფილიალები', kind:'branches', group:'other'});
     TABS.push({id:'bookings', label:'ვიზიტების ჯავშნები', kind:'bookings', group:'other'});
+    TABS.push({id:'users', label:'მომხმარებლები', kind:'users', group:'other'});
   }
 
-  var TAB_ICONS = { content:'ic-inbox', colors:'ic-palette', parts:'ic-box', branches:'ic-pin', bookings:'ic-calendar' };
+  var TAB_ICONS = { content:'ic-inbox', pages:'ic-menu', colors:'ic-palette', typography:'ic-palette', parts:'ic-box', branches:'ic-pin', bookings:'ic-calendar', users:'ic-user' };
 
   function renderNav(){
     var nav = document.getElementById('side-nav');
@@ -519,14 +595,46 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(!tab){ main.innerHTML=''; return; }
 
     if(tab.kind === 'content') return renderContentPanel(main, tab);
+    if(tab.kind === 'pages') return renderPagesPanel(main, tab);
     if(tab.kind === 'colors') return renderColorsPanel(main, tab);
+    if(tab.kind === 'typography') return renderTypographyPanel(main, tab);
     if(tab.kind === 'parts') return renderPartsPanel(main, tab);
     if(tab.kind === 'branches') return renderBranchesPanel(main, tab);
     if(tab.kind === 'bookings') return renderBookingsPanel(main, tab);
+    if(tab.kind === 'users') return renderUsersPanel(main, tab);
   }
 
   function panelHeadHtml(tab, desc){
     return '<div class="panel-head"><div><h2>'+tab.label+'</h2><p>'+desc+'</p></div>' + statusChipHtml(tab) + '</div>';
+  }
+
+  // home services rail tiles: each card can carry an optional photo,
+  // stored under its own key in the same generic content map (rendered
+  // as a photo-upload widget instead of a textarea, right after that
+  // card's description field).
+  var SVC_TILE_IMAGE_MAP = {
+    'home.services.lead.desc': 'home.services.lead.image',
+    'home.services.card2.desc': 'home.services.card2.image',
+    'home.services.card3.desc': 'home.services.card3.image',
+    'home.services.card4.desc': 'home.services.card4.image',
+    'home.services.card5.desc': 'home.services.card5.image'
+  };
+  var SVC_PHOTO_MAX_W = 640;
+  var SVC_PHOTO_QUALITY = 0.82;
+
+  function renderSvcPhotoField(imgKey){
+    var val = state.content[imgKey];
+    return '<div class="field-block">'
+      + '<label>ბარათის ფოტო (არასავალდებულო)<span class="ck-key">' + imgKey + '</span></label>'
+      + '<div class="part-photo-cell" data-svc-photo-cell="'+escAttr(imgKey)+'">'
+        + (val ? '<img class="part-thumb" src="'+val+'" alt="">' : '<div class="part-thumb-empty">—</div>')
+        + '<div class="part-photo-actions">'
+          + '<label>ატვირთვა<input type="file" accept="image/*" data-svc-photo></label>'
+          + (val ? '<button type="button" data-svc-photo-clear>წაშლა</button>' : '')
+        + '</div>'
+      + '</div>'
+      + '<p class="field-hint" style="margin-top:6px">თუ ფოტო არ ატვირთავთ, ბარათზე ფერადი ფონი და ხატულა დარჩება.</p>'
+      + '</div>';
   }
 
   function renderContentPanel(main, tab){
@@ -545,6 +653,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         + '<label>' + labelForCk(k) + '<span class="ck-key">' + k + '</span></label>'
         + '<textarea data-ck-edit="'+escAttr(k)+'">' + escHtml(val) + '</textarea>'
         + '</div>';
+      if(SVC_TILE_IMAGE_MAP[k]) html += renderSvcPhotoField(SVC_TILE_IMAGE_MAP[k]);
     });
     html += '</div>';
     html += saveBarHtml();
@@ -557,7 +666,92 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         updateStatusChip(tab);
       });
     });
+
+    function refreshSvcPhotoCell(imgKey){
+      var cell = main.querySelector('[data-svc-photo-cell="'+imgKey+'"]');
+      if(!cell) return;
+      var val = state.content[imgKey];
+      cell.innerHTML = (val ? '<img class="part-thumb" src="'+val+'" alt="">' : '<div class="part-thumb-empty">—</div>')
+        + '<div class="part-photo-actions">'
+          + '<label>ატვირთვა<input type="file" accept="image/*" data-svc-photo></label>'
+          + (val ? '<button type="button" data-svc-photo-clear>წაშლა</button>' : '')
+        + '</div>';
+      wireSvcPhotoCell(imgKey);
+    }
+    function wireSvcPhotoCell(imgKey){
+      var cell = main.querySelector('[data-svc-photo-cell="'+imgKey+'"]');
+      if(!cell) return;
+      var fileInp = cell.querySelector('[data-svc-photo]');
+      if(fileInp){
+        fileInp.addEventListener('change', function(){
+          var file = fileInp.files && fileInp.files[0];
+          if(!file) return;
+          var reader = new FileReader();
+          reader.onload = function(){
+            var img = new Image();
+            img.onload = function(){
+              var scale = Math.min(1, SVC_PHOTO_MAX_W / img.width);
+              var w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+              var canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              state.content[imgKey] = canvas.toDataURL('image/jpeg', SVC_PHOTO_QUALITY);
+              setDirty(tab, true);
+              updateStatusChip(tab);
+              refreshSvcPhotoCell(imgKey);
+            };
+            img.src = reader.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+      var clearBtn = cell.querySelector('[data-svc-photo-clear]');
+      if(clearBtn){
+        clearBtn.addEventListener('click', function(){
+          delete state.content[imgKey];
+          setDirty(tab, true);
+          updateStatusChip(tab);
+          refreshSvcPhotoCell(imgKey);
+        });
+      }
+    }
+    Object.keys(SVC_TILE_IMAGE_MAP).forEach(function(descKey){ wireSvcPhotoCell(SVC_TILE_IMAGE_MAP[descKey]); });
+
     wireSaveBar(tab, function(){ return {path:'content-site', body: state.content}; });
+  }
+
+  var NAV_ITEMS = [
+    {navitem:'services', hideKey:'navHideServices', label:'სერვისები'},
+    {navitem:'catalog', hideKey:'navHideCatalog', label:'ნაწილების კატალოგი'},
+    {navitem:'warranty-service', hideKey:'navHideWarrantyService', label:'საგარანტიო მომსახურება'},
+    {navitem:'warranty-check', hideKey:'navHideWarrantyCheck', label:'საგარანტიო ვადის გადამოწმება'},
+    {navitem:'about', hideKey:'navHideAbout', label:'ჩვენს შესახებ (ყოფილი „კომპანია")'},
+    {navitem:'contact', hideKey:'navHideContact', label:'კონტაქტი'}
+  ];
+  function renderPagesPanel(main, tab){
+    var html = panelHeadHtml(tab, 'ჩართეთ/გამორთეთ ჰედერის მენიუს პუნქტები — გამორთვისას გვერდი ერთი დაწკაპუნებით ისევ დაბრუნდება. სახელების გადარქმევა შესაძლებელია „საერთო ელემენტები" ტაბში.');
+    html += '<div class="card">';
+    NAV_ITEMS.forEach(function(it){
+      var hidden = !!state.theme[it.hideKey];
+      html += '<div class="branch-card" style="display:flex;align-items:center;justify-content:space-between;gap:14px">'
+        + '<h3 style="margin:0">'+it.label+(hidden ? ' <span style="color:var(--ink-soft);font-weight:600">— დამალულია</span>' : '')+'</h3>'
+        + '<button type="button" class="drag-eye" style="font-size:1.3rem" data-nav-hide-key="'+it.hideKey+'" title="ჩვენება/დამალვა">'+(hidden?'🚫':'👁')+'</button>'
+        + '</div>';
+    });
+    html += '</div>';
+    html += saveBarHtml();
+    main.innerHTML = html;
+
+    main.querySelectorAll('[data-nav-hide-key]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var key = btn.getAttribute('data-nav-hide-key');
+        state.theme[key] = !state.theme[key];
+        setDirty(tab, true);
+        updateStatusChip(tab);
+        renderMain();
+      });
+    });
+    wireSaveBar(tab, function(){ return {path:'theme-site', body: state.theme}; });
   }
 
   function renderColorsPanel(main, tab){
@@ -586,12 +780,354 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     wireSaveBar(tab, function(){ return {path:'theme-site', body: state.theme}; });
   }
 
+  function formatVideoInfo(val){
+    if(!val) return 'ნაგულისხმევი ვიდეო (ჩაშენებული)';
+    var mb = (val.length * 0.75 / (1024*1024));
+    return 'ატვირთულია — ' + mb.toFixed(1) + ' MB';
+  }
+  function renderBgTypeSection(title, prefix, photoCkKey, photoVal, type, extraHtml, videoCkKey, videoVal){
+    var html = '<div class="card"><div class="seg-label" style="margin-top:0">'+title+'</div>';
+    html += '<div class="bg-type-row">'
+      + '<button type="button" class="bg-type-btn'+(type==='video'?' is-active':'')+'" data-'+prefix+'-type="video">მოძრავი ვიდეო</button>'
+      + '<button type="button" class="bg-type-btn'+(type==='photo'?' is-active':'')+'" data-'+prefix+'-type="photo">ფოტო</button>'
+      + '</div>';
+    if(videoCkKey){
+      html += '<div class="field-block">'
+        + '<label>ფონის ვიდეო (თუ „მოძრავი ვიდეო" გაქვთ არჩეული)<span class="ck-key">'+videoCkKey+'</span></label>'
+        + '<div class="part-photo-cell" data-'+prefix+'-video-cell>'
+          + '<div class="part-thumb-empty" style="font-size:.72rem;text-align:center;padding:6px;line-height:1.4">'+formatVideoInfo(videoVal)+'</div>'
+          + '<div class="part-photo-actions">'
+            + '<label>ატვირთვა<input type="file" accept="video/*" data-'+prefix+'-video-upload></label>'
+            + (videoVal ? '<button type="button" data-'+prefix+'-video-clear>ნაგულისხმევზე დაბრუნება</button>' : '')
+          + '</div>'
+        + '</div>'
+        + '<p class="field-hint" style="margin-top:6px">მაქსიმუმ 8MB ვიდეო ფაილი. დიდი ვიდეო საიტს დაამძიმებს — გირჩევთ მოკლე (5-10 წმ), შეკუმშულ ვიდეოს.</p>'
+        + '</div>';
+    }
+    html += '<div class="field-block">'
+      + '<label>ფონის ფოტო (თუ „ფოტო" გაქვთ არჩეული)<span class="ck-key">'+photoCkKey+'</span></label>'
+      + '<div class="part-photo-cell" data-'+prefix+'-photo-cell>'
+        + (photoVal ? '<img class="part-thumb" src="'+photoVal+'" alt="">' : '<div class="part-thumb-empty">—</div>')
+        + '<div class="part-photo-actions">'
+          + '<label>ატვირთვა<input type="file" accept="image/*" data-'+prefix+'-photo-upload></label>'
+          + (photoVal ? '<button type="button" data-'+prefix+'-photo-clear>წაშლა</button>' : '')
+        + '</div>'
+      + '</div>'
+      + '</div>';
+    html += (extraHtml || '');
+    html += '</div>';
+    return html;
+  }
+  function renderHeroBgSection(){
+    var type = state.theme.heroBgType === 'photo' ? 'photo' : 'video';
+    var photoVal = state.theme.heroBgPhoto || '';
+    var videoVal = state.theme.heroBgVideo || '';
+    var h = Number(state.theme.heroMinHeight) || 0;
+    var extra = '<div class="field-block">'
+      + '<label>ბანერის სიმაღლე<span class="ck-key" data-herobg-height-readout>'+(h ? h+'vh' : 'ავტომატური')+'</span></label>'
+      + '<input type="range" data-herobg-height min="0" max="95" step="5" value="'+h+'" style="width:100%">'
+      + '<p class="field-hint" style="margin-top:6px">0 = ავტომატური სიმაღლე (ნაგულისხმევი). მარჯვნივ გადაწევით ბანერი გაიწელება ეკრანის სიმაღლის მიხედვით.</p>'
+      + '</div>';
+    return renderBgTypeSection('Hero ბანერის ფონი და ზომა', 'herobg', HERO_BG_PHOTO_KEY, photoVal, type, extra, HERO_BG_VIDEO_KEY, videoVal);
+  }
+  var CRAFT_ALIGN_OPTIONS = [
+    {v:'flex-start', h:'0 auto', label:'ზედა მარცხნივ'},
+    {v:'flex-start', h:'auto', label:'ზედა შუაში'},
+    {v:'flex-start', h:'auto 0', label:'ზედა მარჯვნივ'},
+    {v:'flex-end', h:'0 auto', label:'ქვედა მარცხნივ'},
+    {v:'flex-end', h:'auto', label:'ქვედა შუაში (ნაგულისხმევი)'},
+    {v:'flex-end', h:'auto 0', label:'ქვედა მარჯვნივ'}
+  ];
+  function renderCraftBgSection(){
+    var type = state.theme.craftBgType === 'photo' ? 'photo' : 'video';
+    var photoVal = state.theme.craftBgPhoto || '';
+    var videoVal = state.theme.craftBgVideo || '';
+    var curV = state.theme.craftAlignV || 'flex-end';
+    var curH = state.theme.craftAlignH || 'auto';
+    var alignHtml = '<div class="field-block">'
+      + '<label>ტექსტის მდებარეობა ბანერზე</label>'
+      + '<div class="bg-type-row" style="flex-wrap:wrap">'
+      + CRAFT_ALIGN_OPTIONS.map(function(o){
+          var active = (o.v === curV && o.h === curH);
+          return '<button type="button" class="bg-type-btn'+(active?' is-active':'')+'" data-craft-align-v="'+o.v+'" data-craft-align-h="'+o.h+'" style="flex:1 1 30%">'+o.label+'</button>';
+        }).join('')
+      + '</div>'
+      + '</div>';
+    return renderBgTypeSection('„ჩვენი ინჟინრები საქმეში" ბანერის ფონი', 'craftbg', CRAFT_BG_PHOTO_KEY, photoVal, type, alignHtml, CRAFT_BG_VIDEO_KEY, videoVal);
+  }
+
+  function renderDragPreview(groupKey){
+    var group = LAYOUT_GROUPS[groupKey];
+    if(!group) return '';
+    var html = '<div class="seg-label">მდებარეობა და ხილვადობა ბანერზე</div>';
+    html += '<div class="drag-preview" data-drag-preview style="position:relative;height:170px;border-radius:10px;overflow:hidden;background:'+group.bg+';margin:10px 0 14px;border:1px solid var(--line)">';
+    group.fields.forEach(function(f){
+      var x = Number(state.theme[f.posX]) || 0;
+      var y = Number(state.theme[f.posY]) || 0;
+      var hidden = !!state.theme[f.hidden];
+      html += '<div class="drag-chip'+(hidden?' is-hidden':'')+'" data-drag-chip data-pos-x="'+f.posX+'" data-pos-y="'+f.posY+'" data-base-left="'+f.left+'" data-base-top="'+f.top+'" '
+        + 'style="left:'+(f.left+x)+'px;top:'+(f.top+y)+'px">'
+        + '<span class="drag-chip-label">'+f.label+'</span>'
+        + '<button type="button" class="drag-eye" data-drag-hidden-key="'+f.hidden+'" title="ჩვენება/დამალვა">'+(hidden?'🚫':'👁')+'</button>'
+        + '</div>';
+    });
+    html += '</div>';
+    html += '<p class="field-hint">გადაათრიეთ ტექსტის ბლოკი — ცვლილება მაშინვე აისახება საიტზეც. თვალის ხატულა მალავს/აჩვენებს ამ ტექსტს.</p>';
+    return html;
+  }
+
+  function renderTypographyPanel(main, tab){
+    var html = panelHeadHtml(tab, 'მართეთ საიტის ბანერები — მთავარი ბანერი, მთავარი გვერდის სერვის-ბარათები და ქვედა CTA ბლოკები: ტექსტის ფერი, ზომა, მდებარეობა და ხილვადობა, ასევე Hero ბანერის ფონი და სიმაღლე. თუ არაფერს შეცვლით, საიტის ნაგულისხმევი დიზაინი დარჩება.');
+    html += renderHeroBgSection();
+    html += renderCraftBgSection();
+    TYPOGRAPHY_GROUPS.forEach(function(g){
+      html += '<div class="card"><div class="seg-label" style="margin-top:0">'+g.label+'</div>';
+      g.fields.forEach(function(f){
+        if(f.type === 'color'){
+          var v = state.theme[f.key] || f.def;
+          html += '<div class="color-row">'
+            + '<input type="color" data-typo-color="'+f.key+'" value="'+v+'">'
+            + '<span class="cr-label">'+f.label+'</span>'
+            + '<span class="cr-hex">'+v.toUpperCase()+'</span>'
+            + '</div>';
+        } else {
+          var sv = (state.theme[f.key] != null && state.theme[f.key] !== '') ? Number(state.theme[f.key]) : f.def;
+          html += '<div class="field-block">'
+            + '<label>'+f.label+'<span class="ck-key" data-typo-readout="'+f.key+'">'+sv.toFixed(2)+'rem</span></label>'
+            + '<input type="range" data-typo-size="'+f.key+'" min="'+f.min+'" max="'+f.max+'" step="'+f.step+'" value="'+sv+'" style="width:100%">'
+            + '</div>';
+        }
+      });
+      html += renderDragPreview(g.key);
+      html += '</div>';
+    });
+    html += saveBarHtml();
+    main.innerHTML = html;
+
+    main.querySelectorAll('[data-typo-color]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        state.theme[inp.getAttribute('data-typo-color')] = inp.value;
+        setDirty(tab, true);
+        inp.parentElement.querySelector('.cr-hex').textContent = inp.value.toUpperCase();
+        updateStatusChip(tab);
+      });
+    });
+    main.querySelectorAll('[data-typo-size]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var key = inp.getAttribute('data-typo-size');
+        state.theme[key] = inp.value;
+        setDirty(tab, true);
+        var ro = main.querySelector('[data-typo-readout="'+key+'"]');
+        if(ro) ro.textContent = Number(inp.value).toFixed(2)+'rem';
+        updateStatusChip(tab);
+      });
+    });
+
+    /* ---- background sections: type toggle + photo upload (hero, craft video) ---- */
+    function wireBgTypePhoto(prefix, typeKey, photoKey){
+      main.querySelectorAll('[data-'+prefix+'-type]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          state.theme[typeKey] = btn.getAttribute('data-'+prefix+'-type');
+          setDirty(tab, true);
+          updateStatusChip(tab);
+          main.querySelectorAll('[data-'+prefix+'-type]').forEach(function(b){ b.classList.toggle('is-active', b===btn); });
+        });
+      });
+      function refreshCell(){
+        var cell = main.querySelector('[data-'+prefix+'-photo-cell]');
+        if(!cell) return;
+        var val = state.theme[photoKey] || '';
+        cell.innerHTML = (val ? '<img class="part-thumb" src="'+val+'" alt="">' : '<div class="part-thumb-empty">—</div>')
+          + '<div class="part-photo-actions">'
+            + '<label>ატვირთვა<input type="file" accept="image/*" data-'+prefix+'-photo-upload></label>'
+            + (val ? '<button type="button" data-'+prefix+'-photo-clear>წაშლა</button>' : '')
+          + '</div>';
+        wireCell();
+      }
+      function wireCell(){
+        var cell = main.querySelector('[data-'+prefix+'-photo-cell]');
+        if(!cell) return;
+        var fileInp = cell.querySelector('[data-'+prefix+'-photo-upload]');
+        if(fileInp){
+          fileInp.addEventListener('change', function(){
+            var file = fileInp.files && fileInp.files[0];
+            if(!file) return;
+            var reader = new FileReader();
+            reader.onload = function(){
+              var img = new Image();
+              img.onload = function(){
+                var scale = Math.min(1, HERO_BG_PHOTO_MAX_W / img.width);
+                var w = Math.round(img.width * scale), h2 = Math.round(img.height * scale);
+                var canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h2;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h2);
+                state.theme[photoKey] = canvas.toDataURL('image/jpeg', HERO_BG_PHOTO_QUALITY);
+                setDirty(tab, true);
+                updateStatusChip(tab);
+                refreshCell();
+              };
+              img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+          });
+        }
+        var clearBtn = cell.querySelector('[data-'+prefix+'-photo-clear]');
+        if(clearBtn){
+          clearBtn.addEventListener('click', function(){
+            delete state.theme[photoKey];
+            setDirty(tab, true);
+            updateStatusChip(tab);
+            refreshCell();
+          });
+        }
+      }
+      wireCell();
+    }
+    function wireBgTypeVideo(prefix, videoKey){
+      function refreshCell(){
+        var cell = main.querySelector('[data-'+prefix+'-video-cell]');
+        if(!cell) return;
+        var val = state.theme[videoKey] || '';
+        cell.innerHTML = '<div class="part-thumb-empty" style="font-size:.72rem;text-align:center;padding:6px;line-height:1.4">'+formatVideoInfo(val)+'</div>'
+          + '<div class="part-photo-actions">'
+            + '<label>ატვირთვა<input type="file" accept="video/*" data-'+prefix+'-video-upload></label>'
+            + (val ? '<button type="button" data-'+prefix+'-video-clear>ნაგულისხმევზე დაბრუნება</button>' : '')
+          + '</div>';
+        wireCell();
+      }
+      function wireCell(){
+        var cell = main.querySelector('[data-'+prefix+'-video-cell]');
+        if(!cell) return;
+        var fileInp = cell.querySelector('[data-'+prefix+'-video-upload]');
+        if(fileInp){
+          fileInp.addEventListener('change', function(){
+            var file = fileInp.files && fileInp.files[0];
+            if(!file) return;
+            if(file.size > BG_VIDEO_MAX_BYTES){
+              alert('ვიდეო ძალიან დიდია (' + (file.size/1024/1024).toFixed(1) + ' MB). მაქსიმუმ დასაშვები ზომაა 8MB — გთხოვთ ატვირთოთ უფრო მცირე ან შეკუმშული ვიდეო.');
+              fileInp.value = '';
+              return;
+            }
+            var reader = new FileReader();
+            reader.onload = function(){
+              state.theme[videoKey] = reader.result;
+              setDirty(tab, true);
+              updateStatusChip(tab);
+              refreshCell();
+            };
+            reader.readAsDataURL(file);
+          });
+        }
+        var clearBtn = cell.querySelector('[data-'+prefix+'-video-clear]');
+        if(clearBtn){
+          clearBtn.addEventListener('click', function(){
+            delete state.theme[videoKey];
+            setDirty(tab, true);
+            updateStatusChip(tab);
+            refreshCell();
+          });
+        }
+      }
+      wireCell();
+    }
+    wireBgTypePhoto('herobg', 'heroBgType', 'heroBgPhoto');
+    wireBgTypeVideo('herobg', 'heroBgVideo');
+    wireBgTypePhoto('craftbg', 'craftBgType', 'craftBgPhoto');
+    wireBgTypeVideo('craftbg', 'craftBgVideo');
+
+    main.querySelectorAll('[data-craft-align-v]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        state.theme.craftAlignV = btn.getAttribute('data-craft-align-v');
+        state.theme.craftAlignH = btn.getAttribute('data-craft-align-h');
+        setDirty(tab, true);
+        updateStatusChip(tab);
+        main.querySelectorAll('[data-craft-align-v]').forEach(function(b){ b.classList.toggle('is-active', b===btn); });
+      });
+    });
+
+    var heightInp = main.querySelector('[data-herobg-height]');
+    if(heightInp){
+      heightInp.addEventListener('input', function(){
+        var v = Number(heightInp.value) || 0;
+        state.theme.heroMinHeight = v;
+        setDirty(tab, true);
+        var ro = main.querySelector('[data-herobg-height-readout]');
+        if(ro) ro.textContent = v ? v+'vh' : 'ავტომატური';
+        updateStatusChip(tab);
+      });
+    }
+
+    /* ---- drag position + visibility ---- */
+    function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+    main.querySelectorAll('[data-drag-chip]').forEach(function(chip){
+      var xKey = chip.getAttribute('data-pos-x'), yKey = chip.getAttribute('data-pos-y');
+      var baseLeft = Number(chip.getAttribute('data-base-left'));
+      var baseTop = Number(chip.getAttribute('data-base-top'));
+      var dragging = false, startPX = 0, startPY = 0, startX = 0, startY = 0;
+      chip.addEventListener('pointerdown', function(e){
+        if(e.target.closest('.drag-eye')) return;
+        dragging = true;
+        try{ chip.setPointerCapture(e.pointerId); }catch(err){}
+        startPX = e.clientX; startPY = e.clientY;
+        startX = Number(state.theme[xKey]) || 0;
+        startY = Number(state.theme[yKey]) || 0;
+        chip.classList.add('is-dragging');
+      });
+      chip.addEventListener('pointermove', function(e){
+        if(!dragging) return;
+        var dx = clamp(startX + (e.clientX - startPX), -DRAG_CLAMP_X, DRAG_CLAMP_X);
+        var dy = clamp(startY + (e.clientY - startPY), -DRAG_CLAMP_Y, DRAG_CLAMP_Y);
+        state.theme[xKey] = dx; state.theme[yKey] = dy;
+        chip.style.left = (baseLeft + dx) + 'px';
+        chip.style.top = (baseTop + dy) + 'px';
+      });
+      function endDrag(){
+        if(!dragging) return;
+        dragging = false;
+        chip.classList.remove('is-dragging');
+        setDirty(tab, true);
+        updateStatusChip(tab);
+      }
+      chip.addEventListener('pointerup', endDrag);
+      chip.addEventListener('pointercancel', endDrag);
+    });
+    main.querySelectorAll('[data-drag-hidden-key]').forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        var key = btn.getAttribute('data-drag-hidden-key');
+        state.theme[key] = !state.theme[key];
+        setDirty(tab, true);
+        updateStatusChip(tab);
+        renderMain();
+      });
+    });
+
+    wireSaveBar(tab, function(){ return {path:'theme-site', body: state.theme}; });
+  }
+
+  var PART_PHOTO_MAX_W = 640;
+  var PART_PHOTO_QUALITY = 0.82;
+
+  function renderPartsThumb(id){
+    var o = state.parts[id] || {};
+    return o.image
+      ? '<img class="part-thumb" src="'+o.image+'" alt="">'
+      : '<div class="part-thumb-empty">—</div>';
+  }
+
   function renderPartsPanel(main, tab){
-    var html = panelHeadHtml(tab, 'შეცვალეთ ნაწილის დასახელება, ფასი ან მარაგის სტატუსი (in — მარაგშია, low — მცირდება).');
-    html += '<div class="card"><table class="admin-table"><thead><tr><th>ნაწილი</th><th style="width:110px">ფასი ₾</th><th style="width:100px">მარაგი</th></tr></thead><tbody>';
+    var html = panelHeadHtml(tab, 'შეცვალეთ ნაწილის დასახელება, ფასი, მარაგის სტატუსი (in — მარაგშია, low — მცირდება) ან ატვირთეთ საკუთარი ფოტო — თუ ფოტო არ ატვირთეთ, საიტზე საერთო ტიპის ილუსტრაცია გამოჩნდება.');
+    html += '<div class="card"><table class="admin-table"><thead><tr><th style="width:150px">ფოტო</th><th>ნაწილი</th><th style="width:110px">ფასი ₾</th><th style="width:100px">მარაგი</th></tr></thead><tbody>';
     PARTS_DEFAULTS.forEach(function(def){
       var o = state.parts[def.id] || {};
       html += '<tr>'
+        + '<td><div class="part-photo-cell" data-part-photo-cell="'+def.id+'">'
+          + renderPartsThumb(def.id)
+          + '<div class="part-photo-actions">'
+            + '<label>ატვირთვა<input type="file" accept="image/*" data-parts-photo="'+def.id+'"></label>'
+            + (o.image ? '<button type="button" data-parts-photo-clear="'+def.id+'">წაშლა</button>' : '')
+          + '</div>'
+        + '</div></td>'
         + '<td><input type="text" data-parts-edit="'+def.id+'" data-parts-field="name" value="'+escAttr(o.name!=null?o.name:def.name)+'"></td>'
         + '<td><input type="text" data-parts-edit="'+def.id+'" data-parts-field="price" value="'+escAttr(o.price!=null?o.price:def.price)+'"></td>'
         + '<td><input type="text" data-parts-edit="'+def.id+'" data-parts-field="stock" value="'+escAttr(o.stock!=null?o.stock:def.stock)+'"></td>'
@@ -610,6 +1146,61 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         updateStatusChip(tab);
       });
     });
+
+    function refreshPhotoCell(id){
+      var cell = main.querySelector('[data-part-photo-cell="'+id+'"]');
+      if(!cell) return;
+      var o = state.parts[id] || {};
+      cell.innerHTML = renderPartsThumb(id)
+        + '<div class="part-photo-actions">'
+          + '<label>ატვირთვა<input type="file" accept="image/*" data-parts-photo="'+id+'"></label>'
+          + (o.image ? '<button type="button" data-parts-photo-clear="'+id+'">წაშლა</button>' : '')
+        + '</div>';
+      wirePhotoCell(id);
+    }
+
+    function wirePhotoCell(id){
+      var cell = main.querySelector('[data-part-photo-cell="'+id+'"]');
+      if(!cell) return;
+      var fileInp = cell.querySelector('[data-parts-photo="'+id+'"]');
+      if(fileInp){
+        fileInp.addEventListener('change', function(){
+          var file = fileInp.files && fileInp.files[0];
+          if(!file) return;
+          var reader = new FileReader();
+          reader.onload = function(){
+            var img = new Image();
+            img.onload = function(){
+              var scale = Math.min(1, PART_PHOTO_MAX_W / img.width);
+              var w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+              var canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              var dataUrl = canvas.toDataURL('image/jpeg', PART_PHOTO_QUALITY);
+              if(!state.parts[id]) state.parts[id] = {};
+              state.parts[id].image = dataUrl;
+              setDirty(tab, true);
+              updateStatusChip(tab);
+              refreshPhotoCell(id);
+            };
+            img.src = reader.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+      var clearBtn = cell.querySelector('[data-parts-photo-clear="'+id+'"]');
+      if(clearBtn){
+        clearBtn.addEventListener('click', function(){
+          if(state.parts[id]) delete state.parts[id].image;
+          setDirty(tab, true);
+          updateStatusChip(tab);
+          refreshPhotoCell(id);
+        });
+      }
+    }
+
+    PARTS_DEFAULTS.forEach(function(def){ wirePhotoCell(def.id); });
+
     wireSaveBar(tab, function(){ return {path:'content-parts', body: state.parts}; });
   }
 
@@ -670,6 +1261,43 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     });
   }
 
+  function fmtDate(iso){
+    if(!iso) return '—';
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('ka-GE') + ' ' + d.toLocaleTimeString('ka-GE', {hour:'2-digit', minute:'2-digit'});
+  }
+
+  function renderUsersPanel(main, tab){
+    var html = panelHeadHtml(tab, 'საიტზე SMS-ვერიფიკაციით რეგისტრირებული მომხმარებლები — რეგისტრაციის და ბოლო შესვლის თარიღით.');
+    html += '<div class="card" id="users-card"><div class="empty-state"><p>იტვირთება…</p></div></div>';
+    main.innerHTML = html;
+
+    apiGet('/api/users').then(function(list){
+      var card = document.getElementById('users-card');
+      if(!card) return;
+      if(!list.length){
+        card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ჯერ არცერთი მომხმარებელი არ დარეგისტრირებულა.</p></div>';
+        return;
+      }
+      card.innerHTML = '<table class="admin-table"><thead><tr>'
+        + '<th>სახელი</th><th>ტელეფონი</th><th>ელფოსტა</th><th>რეგისტრაცია</th><th>ბოლო შესვლა</th><th>შეკვეთები / სერვისები</th>'
+        + '</tr></thead><tbody>' + list.map(function(u){
+          return '<tr>'
+            + '<td>'+escHtml(u.name||'—')+'</td>'
+            + '<td>'+escHtml(u.phone||'—')+'</td>'
+            + '<td>'+escHtml(u.email||'—')+'</td>'
+            + '<td>'+escHtml(fmtDate(u.registeredAt))+'</td>'
+            + '<td>'+escHtml(fmtDate(u.lastLoginAt))+'</td>'
+            + '<td>—</td>'
+            + '</tr>';
+        }).join('') + '</tbody></table>';
+    }).catch(function(){
+      var card = document.getElementById('users-card');
+      if(card) card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>მომხმარებლების ჩატვირთვა ვერ მოხერხდა — შეამოწმეთ სერვერთან კავშირი.</p></div>';
+    });
+  }
+
   function saveBarHtml(){
     return '<div class="save-bar"><button class="btn btn-ghost" id="btn-reset">ნაგულისხმევზე დაბრუნება</button><button class="btn btn-gold" id="btn-save">ცვლილებების შენახვა</button></div>';
   }
@@ -679,13 +1307,21 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     var resetBtn = document.getElementById('btn-reset');
     if(saveBtn) saveBtn.addEventListener('click', function(){
       var payload = getPayload();
+      var approxBytes = 0;
+      try{ approxBytes = JSON.stringify(payload.body).length; }catch(e){}
+      if(approxBytes > 24 * 1024 * 1024){
+        toast('შენახვა ვერ მოხერხდა — მონაცემები ძალიან დიდია (ვიდეო/ფოტო). შეამცირეთ ატვირთული ფაილის ზომა.');
+        return;
+      }
       saveBtn.disabled = true; saveBtn.textContent = 'ინახება…';
       apiPut('/api/site/' + payload.path, payload.body).then(function(){
         setDirty(tab, false);
         updateStatusChip(tab);
         toast('ცვლილებები შენახულია');
       }).catch(function(err){
-        var msg = (err && err.status === 401) ? 'ავტორიზაცია ვადაგასულია — გთხოვთ თავიდან შეხვიდეთ' : 'შენახვა ვერ მოხერხდა — სცადეთ თავიდან';
+        var msg = (err && err.status === 401) ? 'ავტორიზაცია ვადაგასულია — გთხოვთ თავიდან შეხვიდეთ'
+          : (err && err.status === 413) ? 'შენახვა ვერ მოხერხდა — მონაცემები ძალიან დიდია. შეამცირეთ ატვირთული ვიდეოს/ფოტოს ზომა.'
+          : 'შენახვა ვერ მოხერხდა — სცადეთ თავიდან';
         toast(msg);
         if(err && err.status === 401) document.getElementById('logout-btn').click();
       }).finally(function(){
@@ -696,9 +1332,19 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       if(!confirm('დარწმუნებული ხართ, რომ გსურთ ამ ჩანართის ნაგულისხმევ მდგომარეობაში დაბრუნება?')) return;
       if(tab.kind === 'content'){
         CONTENT_ORDER.filter(function(k){ return parseCk(k).page === tab.page; }).forEach(function(k){ delete state.content[k]; });
-      } else if(tab.kind === 'colors'){ state.theme = {}; }
+      } else if(tab.kind === 'colors'){ THEME_TOKENS.forEach(function(t){ delete state.theme[t.key]; }); }
+      else if(tab.kind === 'typography'){
+        TYPOGRAPHY_GROUPS.forEach(function(g){ g.fields.forEach(function(f){ delete state.theme[f.key]; }); });
+        Object.keys(LAYOUT_GROUPS).forEach(function(gk){
+          LAYOUT_GROUPS[gk].fields.forEach(function(f){ delete state.theme[f.posX]; delete state.theme[f.posY]; delete state.theme[f.hidden]; });
+        });
+        delete state.theme.heroBgType; delete state.theme.heroBgPhoto; delete state.theme.heroMinHeight; delete state.theme.heroBgVideo;
+        delete state.theme.craftBgType; delete state.theme.craftBgPhoto; delete state.theme.craftBgVideo;
+        delete state.theme.craftAlignV; delete state.theme.craftAlignH;
+      }
       else if(tab.kind === 'parts'){ state.parts = {}; }
       else if(tab.kind === 'branches'){ state.branches = {}; }
+      else if(tab.kind === 'pages'){ NAV_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); }
       setDirty(tab, true);
       renderMain();
     });
@@ -752,5 +1398,3 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
 </script>
 </body>
 </html>
-
-</body></html>
