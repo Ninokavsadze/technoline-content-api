@@ -1529,7 +1529,19 @@
             <label for="login-phone">ტელეფონის ნომერი</label>
             <input type="tel" id="login-phone" placeholder="+995 5__ __ __ __" required>
           </div>
-          <button type="submit" class="btn btn-blue btn-block">შესვლა</button>
+          <button type="submit" class="btn btn-blue btn-block">კოდის გაგზავნა</button>
+        </form>
+        <form id="otp-form" hidden>
+          <p class="field-hint" style="margin-bottom:14px">ვერიფიკაციის კოდი გამოგზავნილია ნომერზე <strong id="otp-phone-label"></strong></p>
+          <div class="field">
+            <label for="otp-code">SMS კოდი</label>
+            <input type="text" inputmode="numeric" autocomplete="one-time-code" id="otp-code" placeholder="______" required maxlength="6">
+          </div>
+          <button type="submit" class="btn btn-blue btn-block">დადასტურება</button>
+          <div style="display:flex;justify-content:space-between;margin-top:12px">
+            <a href="#" id="otp-back" class="field-hint">‹ უკან</a>
+            <a href="#" id="otp-resend" class="field-hint">კოდის ხელახლა გაგზავნა</a>
+          </div>
         </form>
       </div>
     </div>
@@ -2498,17 +2510,74 @@
   ===================================================== */
   var user = store.get('tl_user', null);
   var loginForm = document.getElementById('login-form');
+  var otpForm = document.getElementById('otp-form');
+  var pendingLoginUser = null;
+  var otpPhone = null;
+  function resetLoginForms(){
+    loginForm.hidden = false;
+    otpForm.hidden = true;
+    otpForm.reset();
+  }
   loginForm.addEventListener('submit', function(e){
     e.preventDefault();
-    user = {
+    pendingLoginUser = {
       name: document.getElementById('login-name').value.trim(),
       email: document.getElementById('login-email').value.trim(),
       phone: document.getElementById('login-phone').value.trim(),
       city: 'თბილისი'
     };
-    store.set('tl_user', user);
-    renderProfileView();
-    toast('კეთილი იყოს თქვენი მობრძანება, ' + user.name.split(' ')[0]);
+    otpPhone = pendingLoginUser.phone;
+    var submitBtn = loginForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    fetch(API_BASE + '/api/otp/send', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ phone: otpPhone })
+    }).then(function(res){ return res.json().then(function(data){ return {ok:res.ok, data:data}; }); })
+    .then(function(r){
+      submitBtn.disabled = false;
+      if(!r.ok){
+        toast(r.data && r.data.error === 'not_configured' ? 'SMS ვერიფიკაცია დროებით მიუწვდომელია' : 'კოდის გაგზავნა ვერ მოხერხდა');
+        return;
+      }
+      document.getElementById('otp-phone-label').textContent = otpPhone;
+      loginForm.hidden = true;
+      otpForm.hidden = false;
+      document.getElementById('otp-code').focus();
+    }).catch(function(){ submitBtn.disabled = false; toast('კავშირის შეცდომა'); });
+  });
+  otpForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    var code = document.getElementById('otp-code').value.trim();
+    var btn = otpForm.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    fetch(API_BASE + '/api/otp/verify', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ phone: otpPhone, code: code, name: pendingLoginUser.name, email: pendingLoginUser.email })
+    }).then(function(res){ return res.json().then(function(data){ return {ok:res.ok, data:data}; }); })
+    .then(function(r){
+      btn.disabled = false;
+      if(!r.ok){
+        var msg = { invalid_code:'არასწორი კოდი', expired:'კოდს ვადა გაუვიდა, სცადეთ თავიდან', too_many_attempts:'ცდების ლიმიტი ამოიწურა, სცადეთ თავიდან' }[r.data && r.data.error] || 'ვერიფიკაცია ვერ მოხერხდა';
+        toast(msg);
+        return;
+      }
+      user = pendingLoginUser;
+      store.set('tl_user', user);
+      loginForm.reset();
+      resetLoginForms();
+      renderProfileView();
+      toast('კეთილი იყოს თქვენი მობრძანება, ' + user.name.split(' ')[0]);
+    }).catch(function(){ btn.disabled = false; toast('კავშირის შეცდომა'); });
+  });
+  document.getElementById('otp-back').addEventListener('click', function(e){
+    e.preventDefault();
+    resetLoginForms();
+  });
+  document.getElementById('otp-resend').addEventListener('click', function(e){
+    e.preventDefault();
+    fetch(API_BASE + '/api/otp/send', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({phone: otpPhone}) })
+      .then(function(res){ return res.json().then(function(data){ return {ok:res.ok, data:data}; }); })
+      .then(function(r){ toast(r.ok ? 'კოდი ხელახლა გაიგზავნა' : 'კოდის გაგზავნა ვერ მოხერხდა'); });
   });
   /* querySelectorAll (not the old getElementById singular) because the
      orders page now has its own copy of this account sidebar, with its
@@ -2517,6 +2586,7 @@
     btn.addEventListener('click', function(){
       user = null;
       store.set('tl_user', null);
+      resetLoginForms();
       renderProfileView();
       location.hash = 'profile';
     });
