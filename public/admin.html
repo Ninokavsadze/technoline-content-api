@@ -341,6 +341,9 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   var HERO_BG_PHOTO_MAX_W = 1600;
   var HERO_BG_PHOTO_QUALITY = 0.85;
   var CRAFT_BG_PHOTO_KEY = 'home.craft.bgPhoto';
+  var HERO_BG_VIDEO_KEY = 'home.hero.bgVideo';
+  var CRAFT_BG_VIDEO_KEY = 'home.craft.bgVideo';
+  var BG_VIDEO_MAX_BYTES = 8 * 1024 * 1024;
 
   var BRANCHES_FIELDS = [
     {key:'name', label:'დასახელება'}, {key:'addr', label:'მისამართი'},
@@ -735,12 +738,30 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     wireSaveBar(tab, function(){ return {path:'theme-site', body: state.theme}; });
   }
 
-  function renderBgTypeSection(title, prefix, photoCkKey, photoVal, type, extraHtml){
+  function formatVideoInfo(val){
+    if(!val) return 'ნაგულისხმევი ვიდეო (ჩაშენებული)';
+    var mb = (val.length * 0.75 / (1024*1024));
+    return 'ატვირთულია — ' + mb.toFixed(1) + ' MB';
+  }
+  function renderBgTypeSection(title, prefix, photoCkKey, photoVal, type, extraHtml, videoCkKey, videoVal){
     var html = '<div class="card"><div class="seg-label" style="margin-top:0">'+title+'</div>';
     html += '<div class="bg-type-row">'
       + '<button type="button" class="bg-type-btn'+(type==='video'?' is-active':'')+'" data-'+prefix+'-type="video">მოძრავი ვიდეო</button>'
       + '<button type="button" class="bg-type-btn'+(type==='photo'?' is-active':'')+'" data-'+prefix+'-type="photo">ფოტო</button>'
       + '</div>';
+    if(videoCkKey){
+      html += '<div class="field-block">'
+        + '<label>ფონის ვიდეო (თუ „მოძრავი ვიდეო" გაქვთ არჩეული)<span class="ck-key">'+videoCkKey+'</span></label>'
+        + '<div class="part-photo-cell" data-'+prefix+'-video-cell>'
+          + '<div class="part-thumb-empty" style="font-size:.72rem;text-align:center;padding:6px;line-height:1.4">'+formatVideoInfo(videoVal)+'</div>'
+          + '<div class="part-photo-actions">'
+            + '<label>ატვირთვა<input type="file" accept="video/*" data-'+prefix+'-video-upload></label>'
+            + (videoVal ? '<button type="button" data-'+prefix+'-video-clear>ნაგულისხმევზე დაბრუნება</button>' : '')
+          + '</div>'
+        + '</div>'
+        + '<p class="field-hint" style="margin-top:6px">მაქსიმუმ 8MB ვიდეო ფაილი. დიდი ვიდეო საიტს დაამძიმებს — გირჩევთ მოკლე (5-10 წმ), შეკუმშულ ვიდეოს.</p>'
+        + '</div>';
+    }
     html += '<div class="field-block">'
       + '<label>ფონის ფოტო (თუ „ფოტო" გაქვთ არჩეული)<span class="ck-key">'+photoCkKey+'</span></label>'
       + '<div class="part-photo-cell" data-'+prefix+'-photo-cell>'
@@ -758,18 +779,20 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   function renderHeroBgSection(){
     var type = state.theme.heroBgType === 'photo' ? 'photo' : 'video';
     var photoVal = state.theme.heroBgPhoto || '';
+    var videoVal = state.theme.heroBgVideo || '';
     var h = Number(state.theme.heroMinHeight) || 0;
     var extra = '<div class="field-block">'
       + '<label>ბანერის სიმაღლე<span class="ck-key" data-herobg-height-readout>'+(h ? h+'vh' : 'ავტომატური')+'</span></label>'
       + '<input type="range" data-herobg-height min="0" max="95" step="5" value="'+h+'" style="width:100%">'
       + '<p class="field-hint" style="margin-top:6px">0 = ავტომატური სიმაღლე (ნაგულისხმევი). მარჯვნივ გადაწევით ბანერი გაიწელება ეკრანის სიმაღლის მიხედვით.</p>'
       + '</div>';
-    return renderBgTypeSection('Hero ბანერის ფონი და ზომა', 'herobg', HERO_BG_PHOTO_KEY, photoVal, type, extra);
+    return renderBgTypeSection('Hero ბანერის ფონი და ზომა', 'herobg', HERO_BG_PHOTO_KEY, photoVal, type, extra, HERO_BG_VIDEO_KEY, videoVal);
   }
   function renderCraftBgSection(){
     var type = state.theme.craftBgType === 'photo' ? 'photo' : 'video';
     var photoVal = state.theme.craftBgPhoto || '';
-    return renderBgTypeSection('„ჩვენი ინჟინრები საქმეში" ბანერის ფონი', 'craftbg', CRAFT_BG_PHOTO_KEY, photoVal, type, '');
+    var videoVal = state.theme.craftBgVideo || '';
+    return renderBgTypeSection('„ჩვენი ინჟინრები საქმეში" ბანერის ფონი', 'craftbg', CRAFT_BG_PHOTO_KEY, photoVal, type, '', CRAFT_BG_VIDEO_KEY, videoVal);
   }
 
   function renderDragPreview(groupKey){
@@ -899,8 +922,57 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       }
       wireCell();
     }
+    function wireBgTypeVideo(prefix, videoKey){
+      function refreshCell(){
+        var cell = main.querySelector('[data-'+prefix+'-video-cell]');
+        if(!cell) return;
+        var val = state.theme[videoKey] || '';
+        cell.innerHTML = '<div class="part-thumb-empty" style="font-size:.72rem;text-align:center;padding:6px;line-height:1.4">'+formatVideoInfo(val)+'</div>'
+          + '<div class="part-photo-actions">'
+            + '<label>ატვირთვა<input type="file" accept="video/*" data-'+prefix+'-video-upload></label>'
+            + (val ? '<button type="button" data-'+prefix+'-video-clear>ნაგულისხმევზე დაბრუნება</button>' : '')
+          + '</div>';
+        wireCell();
+      }
+      function wireCell(){
+        var cell = main.querySelector('[data-'+prefix+'-video-cell]');
+        if(!cell) return;
+        var fileInp = cell.querySelector('[data-'+prefix+'-video-upload]');
+        if(fileInp){
+          fileInp.addEventListener('change', function(){
+            var file = fileInp.files && fileInp.files[0];
+            if(!file) return;
+            if(file.size > BG_VIDEO_MAX_BYTES){
+              alert('ვიდეო ძალიან დიდია (' + (file.size/1024/1024).toFixed(1) + ' MB). მაქსიმუმ დასაშვები ზომაა 8MB — გთხოვთ ატვირთოთ უფრო მცირე ან შეკუმშული ვიდეო.');
+              fileInp.value = '';
+              return;
+            }
+            var reader = new FileReader();
+            reader.onload = function(){
+              state.theme[videoKey] = reader.result;
+              setDirty(tab, true);
+              updateStatusChip(tab);
+              refreshCell();
+            };
+            reader.readAsDataURL(file);
+          });
+        }
+        var clearBtn = cell.querySelector('[data-'+prefix+'-video-clear]');
+        if(clearBtn){
+          clearBtn.addEventListener('click', function(){
+            delete state.theme[videoKey];
+            setDirty(tab, true);
+            updateStatusChip(tab);
+            refreshCell();
+          });
+        }
+      }
+      wireCell();
+    }
     wireBgTypePhoto('herobg', 'heroBgType', 'heroBgPhoto');
+    wireBgTypeVideo('herobg', 'heroBgVideo');
     wireBgTypePhoto('craftbg', 'craftBgType', 'craftBgPhoto');
+    wireBgTypeVideo('craftbg', 'craftBgVideo');
 
     var heightInp = main.querySelector('[data-herobg-height]');
     if(heightInp){
@@ -1127,13 +1199,21 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     var resetBtn = document.getElementById('btn-reset');
     if(saveBtn) saveBtn.addEventListener('click', function(){
       var payload = getPayload();
+      var approxBytes = 0;
+      try{ approxBytes = JSON.stringify(payload.body).length; }catch(e){}
+      if(approxBytes > 24 * 1024 * 1024){
+        toast('შენახვა ვერ მოხერხდა — მონაცემები ძალიან დიდია (ვიდეო/ფოტო). შეამცირეთ ატვირთული ფაილის ზომა.');
+        return;
+      }
       saveBtn.disabled = true; saveBtn.textContent = 'ინახება…';
       apiPut('/api/site/' + payload.path, payload.body).then(function(){
         setDirty(tab, false);
         updateStatusChip(tab);
         toast('ცვლილებები შენახულია');
       }).catch(function(err){
-        var msg = (err && err.status === 401) ? 'ავტორიზაცია ვადაგასულია — გთხოვთ თავიდან შეხვიდეთ' : 'შენახვა ვერ მოხერხდა — სცადეთ თავიდან';
+        var msg = (err && err.status === 401) ? 'ავტორიზაცია ვადაგასულია — გთხოვთ თავიდან შეხვიდეთ'
+          : (err && err.status === 413) ? 'შენახვა ვერ მოხერხდა — მონაცემები ძალიან დიდია. შეამცირეთ ატვირთული ვიდეოს/ფოტოს ზომა.'
+          : 'შენახვა ვერ მოხერხდა — სცადეთ თავიდან';
         toast(msg);
         if(err && err.status === 401) document.getElementById('logout-btn').click();
       }).finally(function(){
@@ -1150,8 +1230,8 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         Object.keys(LAYOUT_GROUPS).forEach(function(gk){
           LAYOUT_GROUPS[gk].fields.forEach(function(f){ delete state.theme[f.posX]; delete state.theme[f.posY]; delete state.theme[f.hidden]; });
         });
-        delete state.theme.heroBgType; delete state.theme.heroBgPhoto; delete state.theme.heroMinHeight;
-        delete state.theme.craftBgType; delete state.theme.craftBgPhoto;
+        delete state.theme.heroBgType; delete state.theme.heroBgPhoto; delete state.theme.heroMinHeight; delete state.theme.heroBgVideo;
+        delete state.theme.craftBgType; delete state.theme.craftBgPhoto; delete state.theme.craftBgVideo;
       }
       else if(tab.kind === 'parts'){ state.parts = {}; }
       else if(tab.kind === 'branches'){ state.branches = {}; }

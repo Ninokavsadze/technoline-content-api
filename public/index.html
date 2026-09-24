@@ -2560,17 +2560,29 @@
       if(v) document.documentElement.style.setProperty(t.varName, 'none');
       else document.documentElement.style.removeProperty(t.varName);
     });
-    applyVideoBg('.hero-video-wrap video', '.hero-bg-photo', 'heroBgType', 'heroBgPhoto');
-    applyVideoBg('.video-feature-media video', '.craft-bg-photo', 'craftBgType', 'craftBgPhoto');
+    applyVideoBg('.hero-video-wrap video', '.hero-bg-photo', 'heroBgType', 'heroBgPhoto', 'heroBgVideo');
+    applyVideoBg('.video-feature-media video', '.craft-bg-photo', 'craftBgType', 'craftBgPhoto', 'craftBgVideo');
   }
-  function applyVideoBg(videoSel, photoSel, typeKey, photoKey){
+  function applyVideoBg(videoSel, photoSel, typeKey, photoKey, videoKey){
     var video = document.querySelector(videoSel);
     var photo = document.querySelector(photoSel);
     if(!video && !photo) return;
     var photoUrl = siteContent.theme[photoKey] || '';
     if(photo){ if(photo.getAttribute('src') !== photoUrl) photo.src = photoUrl; }
     var wantPhoto = siteContent.theme[typeKey] === 'photo' && photoUrl;
-    if(video) video.style.display = wantPhoto ? 'none' : '';
+    if(video){
+      var source = video.querySelector('source');
+      if(source){
+        if(!source.hasAttribute('data-default-src')) source.setAttribute('data-default-src', source.getAttribute('src') || '');
+        var customVideo = videoKey ? (siteContent.theme[videoKey] || '') : '';
+        var wantSrc = customVideo || source.getAttribute('data-default-src');
+        if(source.getAttribute('src') !== wantSrc){
+          source.setAttribute('src', wantSrc);
+          video.load();
+        }
+      }
+      video.style.display = wantPhoto ? 'none' : '';
+    }
     if(photo) photo.style.display = wantPhoto ? 'block' : 'none';
   }
   function applyPartsOverrides(){
