@@ -1,3 +1,10 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
 <title>Technoline სერვისი</title>
 <style>
   /* ============ TOKENS ============ */
@@ -347,6 +354,16 @@
   .page-head .crumbs{display:none}
   .page-head h1{font-size:clamp(1.3rem,2.2vw,1.7rem)}
   .page-head p{margin-top:6px;font-size:.85rem}
+  /* the clamp above bottoms out at its min (1.3rem/.85rem) on every phone
+     width, since 2.2vw is tiny well before 600px — that read as a
+     miniature, hard-to-read header on an actual phone. Give mobile its
+     own slightly larger floor instead of inheriting the same minimum as
+     narrow desktop windows. */
+  @media (max-width:600px){
+    .page-head{padding-block:20px}
+    .page-head h1{font-size:1.5rem}
+    .page-head p{font-size:.92rem}
+  }
   .page-head .head-tag{display:inline-flex;align-items:center;gap:8px;background:color-mix(in srgb, var(--surface) 78%, transparent);border:1px solid var(--blue-soft-2);padding:6px 14px 6px 10px;border-radius:999px;font-size:.78rem;font-weight:700;color:var(--blue-deep);margin-bottom:12px}
   .page-head .head-tag .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px rgba(252,187,45,.25);animation:cat-dot-pulse 2.4s ease-in-out infinite}
   @keyframes cat-dot-pulse{0%,100%{box-shadow:0 0 0 3px rgba(252,187,45,.25)}50%{box-shadow:0 0 0 6px rgba(252,187,45,.1)}}
@@ -2690,6 +2707,15 @@
     window.addEventListener('resize', function(){ update(); positionNav(); });
     update();
     positionNav();
+    /* positionNav() measures the heading block's height to place the arrows
+       level with the card row — but web fonts and the tile photos above
+       finish loading/rendering AFTER this first call, which can reflow that
+       heading and leave the arrows using a now-stale offset, drifting them
+       away from the cards. Re-run once everything has actually settled. */
+    if(document.fonts && document.fonts.ready) document.fonts.ready.then(positionNav);
+    window.addEventListener('load', positionNav);
+    setTimeout(positionNav, 600);
+    setTimeout(positionNav, 1500);
   }
   function applyThemeOverrides(){
     THEME_TOKENS.forEach(function(t){
@@ -2852,3 +2878,6 @@
   loadSiteContent();
 })();
 </script>
+
+</body>
+</html>
