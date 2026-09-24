@@ -1,10 +1,3 @@
-<!doctype html>
-<html lang="ka">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-</head>
-<body>
 <title>Technoline სერვისი</title>
 <style>
   /* ============ TOKENS ============ */
@@ -2771,6 +2764,13 @@
       }
     });
   }
+  // Exposed so content loaded later (admin-panel text/photos arriving from
+  // the API, which can take a few seconds — Render's free tier cold-starts)
+  // can re-run these once the rail's real size is known. Without this, the
+  // arrows were only ever measured against the page's very first layout;
+  // once a tile's photo swapped in after that, the buttons stayed sized for
+  // stale content and drifted out of view or stayed wrongly disabled.
+  var refreshSvcRailNav = function(){};
   function wireSvcRail(){
     var section = document.querySelector('.svc-rail-section');
     var rail = document.querySelector('.svc-rail');
@@ -2798,6 +2798,7 @@
     if(nextBtn) nextBtn.addEventListener('click', function(){ step(1); });
     rail.addEventListener('scroll', update);
     window.addEventListener('resize', function(){ update(); positionNav(); });
+    refreshSvcRailNav = function(){ update(); positionNav(); };
     update();
     positionNav();
     /* positionNav() measures the heading block's height to place the arrows
@@ -2922,6 +2923,10 @@
       applyThemeOverrides();
       applyPartsOverrides();
       applyBranchesOverrides();
+      // tile photos / text just swapped in above and can resize the rail —
+      // re-measure the prev/next arrows now that the real content is in.
+      refreshSvcRailNav();
+      setTimeout(refreshSvcRailNav, 300);
     }
 
     // A returning visitor's browser already holds the content saved on the
@@ -2971,6 +2976,3 @@
   loadSiteContent();
 })();
 </script>
-
-</body>
-</html>
