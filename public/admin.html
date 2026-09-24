@@ -451,6 +451,16 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       return res.json();
     });
   }
+  function apiPost(path, body){
+    return fetch(API_BASE + path, {
+      method:'POST',
+      headers: Object.assign({'Content-Type':'application/json'}, authHeaders()),
+      body: JSON.stringify(body || {})
+    }).then(function(res){
+      if(!res.ok) return res.json().catch(function(){ return {}; }).then(function(b){ throw Object.assign(new Error('http_'+res.status), {body:b, status:res.status}); });
+      return res.json();
+    });
+  }
   // like apiPut/apiGet but for endpoints that return a PDF binary (the
   // warranty-template test-preview) rather than JSON.
   function apiPostPdf(path, body){
@@ -1303,6 +1313,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     return '<tr data-warranty-row="'+escAttr(serial)+'">'
       + '<td><input type="text" data-warranty-field="serial" value="'+escAttr(serial)+'"></td>'
       + '<td><input type="text" data-warranty-field="customerName" value="'+escAttr(rec.customerName||'')+'"></td>'
+      + '<td><input type="tel" data-warranty-field="phone" placeholder="+995 5__ __ __ __" value="'+escAttr(rec.phone||'')+'"></td>'
       + '<td><input type="text" data-warranty-field="device" value="'+escAttr(rec.device||'')+'"></td>'
       + '<td><input type="text" data-warranty-field="cat" value="'+escAttr(rec.cat||'')+'"></td>'
       + '<td><input type="text" data-warranty-field="purchase" placeholder="YYYY-MM-DD" value="'+escAttr(rec.purchase||'')+'"></td>'
@@ -1315,8 +1326,9 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     var host = document.getElementById('warranty-subpanel');
     if(!host) return;
     var serials = Object.keys(state.warranty).sort();
-    var html = '<div class="card"><table class="admin-table"><thead><tr>'
-      + '<th style="width:150px">სერიული №</th><th>მომხმარებელი</th><th>მოწყობილობა</th><th>კატეგორია</th><th style="width:120px">შეძენა</th><th style="width:120px">ვადა</th><th style="width:34px"></th>'
+    var html = '<p class="field-hint" style="margin-bottom:10px">თუ ტელეფონს შეავსებთ, საიტზე ამ ჩანაწერის გადამოწმებისას მომხმარებელს მოეთხოვება იმავე ნომრის დადასტურება SMS-კოდით — ცარიელი ტელეფონის შემთხვევაში ჩანაწერი კვლავ დაუყოვნებლივ გამოჩნდება, ისე როგორც აქამდე.</p>';
+    html += '<div class="card"><table class="admin-table"><thead><tr>'
+      + '<th style="width:150px">სერიული №</th><th>მომხმარებელი</th><th style="width:150px">ტელეფონი</th><th>მოწყობილობა</th><th>კატეგორია</th><th style="width:120px">შეძენა</th><th style="width:120px">ვადა</th><th style="width:34px"></th>'
       + '</tr></thead><tbody id="warranty-records-tbody">'
       + serials.map(function(s){ return warrantyRecordRowHtml(s, state.warranty[s]); }).join('')
       + '</tbody></table>'
@@ -1360,7 +1372,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       serial = serial.trim().toUpperCase();
       if(!serial) return;
       if(state.warranty[serial]){ toast('ეს სერიული ნომერი უკვე არსებობს'); return; }
-      state.warranty[serial] = {customerName:'', device:'', cat:'', purchase:'', end:''};
+      state.warranty[serial] = {customerName:'', phone:'', device:'', cat:'', purchase:'', end:''};
       dirty.warrantyRecords = true;
       renderWarrantyRecordsSubpanel(tab);
     });
@@ -1389,12 +1401,34 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     });
   }
 
+  // Cache of the single extracted page currently shown in the field editor
+  // (see extractTemplatePage on the backend for why one page at a time):
+  // {pdf, page, pageCount, width, height}. Cleared whenever a new file is
+  // uploaded or the shown page changes, and refetched from the server.
+  var warrantyPagePreview = null;
+  function loadWarrantyPagePreview(tab, page){
+    var t = state.warrantyTemplate || {};
+    if(!t.pdf) return;
+    var host = document.getElementById('warranty-subpanel');
+    apiPost('/api/warranty-template/page', {pdf: t.pdf, page: page}).then(function(r){
+      warrantyPagePreview = r;
+      if(!state.warrantyTemplate.page || state.warrantyTemplate.page !== r.page){
+        state.warrantyTemplate.page = r.page;
+      }
+      renderWarrantyTemplateSubpanel(tab);
+    }).catch(function(){
+      if(host) host.querySelector('#warranty-pdf-preview-wrap').innerHTML =
+        '<div class="empty-state"><p>გვერდის ჩვენება ვერ მოხერხდა — ფაილი შეიძლება დაზიანებულია.</p></div>';
+    });
+  }
+
   function renderWarrantyTemplateSubpanel(tab){
     var host = document.getElementById('warranty-subpanel');
     if(!host) return;
     var t = state.warrantyTemplate || {};
     var hasPdf = !!t.pdf;
     var fields = t.fields || {};
+    var wantedPage = t.page || 1;
 
     var html = '<div class="card">';
     html += '<div class="field-block">'
@@ -1406,15 +1440,29 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       + '</div>';
 
     if(hasPdf){
-      html += '<p class="field-hint" style="margin-bottom:10px">გადაათრიეთ ველები შაბლონზე სასურველ ადგილას — პოზიცია პროცენტულად გამოითვლება, ამიტომ PDF-ის ნებისმიერ ზომასთან იმუშავებს.</p>';
-      html += '<div id="warranty-pdf-preview" style="position:relative;width:100%;aspect-ratio:1/1.414;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper-soft)">'
-        + '<iframe src="'+escAttr(t.pdf)+'#toolbar=0&navpanes=0" style="width:100%;height:100%;border:none;pointer-events:none" title="შაბლონის გადახედვა"></iframe>';
-      WARRANTY_FIELD_KEYS.forEach(function(key){
-        var f = fields[key] || WARRANTY_FIELD_DEFAULTS[key];
-        html += '<div class="drag-chip" data-warranty-chip="'+key+'" style="position:absolute;left:'+f.xPct+'%;top:'+f.yPct+'%">'
-          + '<span class="drag-chip-label">'+WARRANTY_FIELD_LABELS[key]+'</span>'
-          + '</div>';
-      });
+      html += '<p class="field-hint" style="margin-bottom:10px">გადაათრიეთ ველები შაბლონზე სასურველ ადგილას იმ გვერდზე, სადაც მომხმარებლის მონაცემები უნდა დაიბეჭდოს — პოზიცია პროცენტულად გამოითვლება, ამიტომ PDF-ის ნებისმიერ ზომასთან იმუშავებს.</p>';
+      html += '<div id="warranty-pdf-preview-wrap">';
+      if(!warrantyPagePreview || warrantyPagePreview.page !== wantedPage){
+        html += '<div class="empty-state" style="aspect-ratio:1/1.414"><p>გვერდი იტვირთება…</p></div>';
+      } else {
+        var pv = warrantyPagePreview;
+        if(pv.pageCount > 1){
+          html += '<div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:10px">'
+            + '<button type="button" class="btn btn-ghost" id="warranty-page-prev"'+(pv.page<=1?' disabled':'')+' style="padding:6px 12px">‹</button>'
+            + '<span class="field-hint">გვერდი '+pv.page+' / '+pv.pageCount+'</span>'
+            + '<button type="button" class="btn btn-ghost" id="warranty-page-next"'+(pv.page>=pv.pageCount?' disabled':'')+' style="padding:6px 12px">›</button>'
+            + '</div>';
+        }
+        html += '<div id="warranty-pdf-preview" style="position:relative;width:100%;max-width:420px;margin:0 auto;aspect-ratio:'+pv.width+'/'+pv.height+';border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper-soft)">'
+          + '<iframe src="'+escAttr(pv.pdf)+'#toolbar=0&navpanes=0" style="width:100%;height:100%;border:none;pointer-events:none" title="შაბლონის გადახედვა"></iframe>';
+        WARRANTY_FIELD_KEYS.forEach(function(key){
+          var f = fields[key] || WARRANTY_FIELD_DEFAULTS[key];
+          html += '<div class="drag-chip" data-warranty-chip="'+key+'" style="position:absolute;left:'+f.xPct+'%;top:'+f.yPct+'%">'
+            + '<span class="drag-chip-label">'+WARRANTY_FIELD_LABELS[key]+'</span>'
+            + '</div>';
+        });
+        html += '</div>';
+      }
       html += '</div>';
 
       html += '<div class="seg-label">ველების ზომა (pt)</div>';
@@ -1433,6 +1481,28 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     html += warrantySaveBarHtml('ბოლო შენახულის დაბრუნება');
     host.innerHTML = html;
 
+    if(hasPdf && (!warrantyPagePreview || warrantyPagePreview.page !== wantedPage)){
+      loadWarrantyPagePreview(tab, wantedPage);
+    }
+
+    var prevPageBtn = document.getElementById('warranty-page-prev');
+    if(prevPageBtn) prevPageBtn.addEventListener('click', function(){
+      var target = (state.warrantyTemplate.page || 1) - 1;
+      if(target < 1) return;
+      state.warrantyTemplate.page = target;
+      dirty.warrantyTemplate = true;
+      renderWarrantyTemplateSubpanel(tab);
+    });
+    var nextPageBtn = document.getElementById('warranty-page-next');
+    if(nextPageBtn) nextPageBtn.addEventListener('click', function(){
+      var max = warrantyPagePreview ? warrantyPagePreview.pageCount : 1;
+      var target = (state.warrantyTemplate.page || 1) + 1;
+      if(target > max) return;
+      state.warrantyTemplate.page = target;
+      dirty.warrantyTemplate = true;
+      renderWarrantyTemplateSubpanel(tab);
+    });
+
     var fileInp = document.getElementById('warranty-pdf-upload');
     if(fileInp) fileInp.addEventListener('change', function(){
       var file = fileInp.files && fileInp.files[0];
@@ -1442,10 +1512,11 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       var reader = new FileReader();
       reader.onload = function(){
         var prevFields = (state.warrantyTemplate && state.warrantyTemplate.fields) || {};
-        state.warrantyTemplate = { pdf: reader.result, fields: prevFields };
+        state.warrantyTemplate = { pdf: reader.result, page: 1, fields: prevFields };
         WARRANTY_FIELD_KEYS.forEach(function(key){
           if(!state.warrantyTemplate.fields[key]) state.warrantyTemplate.fields[key] = Object.assign({}, WARRANTY_FIELD_DEFAULTS[key]);
         });
+        warrantyPagePreview = null;
         dirty.warrantyTemplate = true;
         renderWarrantyTemplateSubpanel(tab);
       };
@@ -1456,6 +1527,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(clearBtn) clearBtn.addEventListener('click', function(){
       if(!confirm('წავშალო ატვირთული შაბლონი? ბარათი დაბრუნდება ჩაშენებულ დიზაინზე.')) return;
       state.warrantyTemplate = {};
+      warrantyPagePreview = null;
       dirty.warrantyTemplate = true;
       renderWarrantyTemplateSubpanel(tab);
     });
@@ -1544,6 +1616,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       if(!confirm('ბოლო შენახული მდგომარეობა ხელახლა ჩამოიტვირთოს? შეუნახავი ცვლილებები დაიკარგება.')) return;
       apiGet('/api/site/warranty-template').then(function(d){
         state.warrantyTemplate = d || {};
+        warrantyPagePreview = null;
         dirty.warrantyTemplate = false;
         renderWarrantyTemplateSubpanel(tab);
       });
