@@ -325,8 +325,11 @@
     .step-node{flex:none}
   }
 
-  .band-dark{background:linear-gradient(120deg,var(--blue-deeper),var(--blue-deep));color:#fff;border-radius:var(--radius-l);padding:56px;display:grid;grid-template-columns:1.3fr auto;gap:32px;align-items:center}
-  .band-dark h3{font-size:var(--band-title-size, clamp(1.5rem,2.6vw,2rem));color:var(--band-title-color, #fff);max-width:20ch;transform:translate(var(--band-title-x, 0px),var(--band-title-y, 0px));display:var(--band-title-display, block)}
+  .band-dark{background:linear-gradient(120deg,var(--blue-deeper),var(--blue-deep));color:#fff;border-radius:var(--radius-l);padding:40px 56px;display:grid;grid-template-columns:1.3fr auto;gap:32px;align-items:center}
+  /* max-width was 20ch, which on these longer titles ("გინდათ გაარკვიოთ,
+     ფარავს თუ არა გარანტია თქვენს შემთხვევას?") forced an extra, unwanted
+     third line — 34ch lets the same text settle into two. */
+  .band-dark h3{font-size:var(--band-title-size, clamp(1.5rem,2.6vw,2rem));color:var(--band-title-color, #fff);max-width:34ch;transform:translate(var(--band-title-x, 0px),var(--band-title-y, 0px));display:var(--band-title-display, block)}
   .band-dark p{color:var(--band-desc-color, #C6D7E9);margin-top:10px;max-width:46ch;font-size:var(--band-desc-size, 1rem);transform:translate(var(--band-desc-x, 0px),var(--band-desc-y, 0px));display:var(--band-desc-display, block)}
 
   .review-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
