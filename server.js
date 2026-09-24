@@ -94,7 +94,8 @@ const DEFAULT_DB = {
     'TL-550012-GE': { customerName: 'დავით ლომიძე', device: 'Redmi Note 12', cat: 'სმარტფონი — ბატარეის შეცვლა', purchase: '2026-03-25', end: '2026-09-25' }
   },
   'content/warranty-template': {},
-  bookings: []
+  bookings: [],
+  users: {}
 };
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
@@ -390,10 +391,12 @@ app.put('/api/bookings/:id/qlogic', requireAuth, async function (req, res) {
 // Email uses SMTP (nodemailer) — set SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS
 // (and optionally SMTP_SECURE=true, SMTP_FROM) as Render env vars to turn it
 // on; until then the endpoint replies 503 { error:'not_configured' }.
-// SMS is meant to go through Wifisher, but its API details aren't known
-// yet — WIFISHER_API_URL/WIFISHER_API_KEY are unset for now, so /send with
-// method:'sms' also replies 503 until those are filled in and
-// sendWifisherSms() below is adjusted to Wifisher's real request format.
+// SMS goes through Wifisher (sms-api.wifisher.com) — set WIFISHER_API_KEY
+// (your account's API key) and WIFISHER_SENDER (your approved sender
+// name, e.g. "TECHNOLINE" — must be pre-approved on your Wifisher
+// account, otherwise sends fail with an "invalid sender" error) as Render
+// env vars to turn it on; until both are set /send with method:'sms' and
+// /api/otp/send both reply 503 { error:'not_configured' }.
 const SMTP_HOST = process.env.SMTP_HOST || '';
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
 const SMTP_SECURE = process.env.SMTP_SECURE === 'true';
@@ -415,20 +418,103 @@ function getMailTransport() {
   return mailTransport;
 }
 
-const WIFISHER_API_URL = process.env.WIFISHER_API_URL || '';
+const WIFISHER_API_URL = process.env.WIFISHER_API_URL || 'https://sms-api.wifisher.com/api/v2/send';
 const WIFISHER_API_KEY = process.env.WIFISHER_API_KEY || '';
-const SMS_CONFIGURED = !!(WIFISHER_API_URL && WIFISHER_API_KEY);
+const WIFISHER_SENDER = process.env.WIFISHER_SENDER || '';
+const SMS_CONFIGURED = !!(WIFISHER_API_KEY && WIFISHER_SENDER);
 async function sendWifisherSms(destination, text) {
-  // TODO: placeholder request shape — adjust to Wifisher's real API once
-  // its documentation/endpoint is available (same as the Smart Q-Logic
-  // integration earlier: build against the real contract once we have it).
+  const form = new FormData();
+  form.set('from', WIFISHER_SENDER);
+  form.set('to', destination);
+  form.set('content', text);
   const res = await fetch(WIFISHER_API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + WIFISHER_API_KEY },
-    body: JSON.stringify({ to: destination, text: text })
+    headers: { 'api-key': WIFISHER_API_KEY },
+    body: form
   });
-  if (!res.ok) throw new Error('wifisher_failed_' + res.status);
+  const data = await res.json().catch(function () { return null; });
+  if (!res.ok) throw new Error('wifisher_failed_' + res.status + (data ? ' ' + JSON.stringify(data) : ''));
+  return data;
 }
+
+// --- SMS OTP login verification (personal-cabinet sign-in) --------------
+// In-memory only (fine for a single Render instance — codes are short-lived
+// and this mirrors the existing `tokens` admin-session pattern above).
+const otpStore = new Map(); // normalized phone -> { code, expiresAt, attempts, lastSentAt }
+const OTP_TTL_MS = 5 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
+const OTP_MAX_ATTEMPTS = 5;
+function normalizePhone(raw) {
+  return String(raw || '').replace(/[^\d+]/g, '');
+}
+function genOtpCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+app.post('/api/otp/send', async function (req, res) {
+  try {
+    const phone = normalizePhone(req.body && req.body.phone);
+    if (!/^\+?\d{9,15}$/.test(phone)) return res.status(400).json({ error: 'invalid_phone' });
+    if (!SMS_CONFIGURED) return res.status(503).json({ error: 'not_configured' });
+    const existing = otpStore.get(phone);
+    if (existing && Date.now() - existing.lastSentAt < OTP_RESEND_COOLDOWN_MS) {
+      return res.status(429).json({ error: 'too_soon' });
+    }
+    const code = genOtpCode();
+    otpStore.set(phone, { code: code, expiresAt: Date.now() + OTP_TTL_MS, attempts: 0, lastSentAt: Date.now() });
+    await sendWifisherSms(phone, 'თქვენი ტექნოლაინის ვერიფიკაციის კოდია: ' + code);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('otp send failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.post('/api/otp/verify', async function (req, res) {
+  try {
+    const phone = normalizePhone(req.body && req.body.phone);
+    const code = String((req.body && req.body.code) || '').trim();
+    const entry = otpStore.get(phone);
+    if (!entry) return res.status(400).json({ error: 'no_pending_code' });
+    if (Date.now() > entry.expiresAt) { otpStore.delete(phone); return res.status(400).json({ error: 'expired' }); }
+    if (entry.attempts >= OTP_MAX_ATTEMPTS) { otpStore.delete(phone); return res.status(429).json({ error: 'too_many_attempts' }); }
+    if (code !== entry.code) {
+      entry.attempts++;
+      return res.status(400).json({ error: 'invalid_code' });
+    }
+    otpStore.delete(phone);
+
+    const db = await readDb();
+    db.users = db.users || {};
+    const now = new Date().toISOString();
+    const name = (req.body && req.body.name) || '';
+    const email = (req.body && req.body.email) || '';
+    const record = db.users[phone] || { phone: phone, registeredAt: now };
+    record.lastLoginAt = now;
+    if (name) record.name = name;
+    if (email) record.email = email;
+    db.users[phone] = record;
+    await writeDb(db);
+
+    res.json({ ok: true, user: record });
+  } catch (e) {
+    console.error('otp verify failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// staff-only CRM listing: registered users, registration + last-login dates
+app.get('/api/users', requireAuth, async function (req, res) {
+  try {
+    const db = await readDb();
+    const users = Object.values(db.users || {}).sort(function (a, b) {
+      return (b.lastLoginAt || '').localeCompare(a.lastLoginAt || '');
+    });
+    res.json(users);
+  } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
+});
 
 function warrantyStatus(rec) {
   const today = new Date();
