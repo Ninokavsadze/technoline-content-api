@@ -26,6 +26,7 @@ const path = require('path');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const { buildWarrantyCardPdf } = require('./warranty-pdf');
+const { fillWarrantyTemplate } = require('./warranty-template-pdf');
 
 const PORT = process.env.PORT || 4001;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'technoline2026';
@@ -40,8 +41,22 @@ app.use(express.json({ limit: '25mb' }));
 // Served from this same server (not a claude.ai Artifact) so the pages
 // can call the /api/* routes below with a plain relative fetch — no CSP
 // or cross-origin restriction, since it's all one origin now.
-app.use(express.static(path.join(__dirname, 'public')));
+// index.html / admin.html change on every content/feature update, so they
+// must never be cached by the browser or by any proxy in between (Render's
+// default express.static Cache-Control was "public, max-age=0" with no
+// no-store/must-revalidate — some browsers, and especially mobile ones on
+// a plain reload, can still reuse a stored copy of that response instead
+// of revalidating, which is why a fresh upload could still show old
+// content/markup on reload). Force a real no-store on the HTML shell.
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: function (res, filePath) {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    }
+  }
+}));
 app.get('/admin', function (req, res) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
@@ -73,11 +88,12 @@ const DEFAULT_DB = {
   'content/parts': {},
   'content/branches': {},
   'content/warranty': {
-    'TL-227719-GE': { device: 'iPhone 13 Pro', cat: 'სმარტფონი — ეკრანის შეცვლა', purchase: '2026-04-15', end: '2026-10-15' },
-    'TL-118820-GE': { device: 'MacBook Air M1', cat: 'ლეპტოპი — ბატარეის შეცვლა', purchase: '2023-11-04', end: '2024-05-04' },
-    'TL-330045-GE': { device: 'Samsung Galaxy S23', cat: 'სმარტფონი — ეკრანის შეცვლა (გაფართოებული)', purchase: '2026-08-01', end: '2027-02-01' },
-    'TL-550012-GE': { device: 'Redmi Note 12', cat: 'სმარტფონი — ბატარეის შეცვლა', purchase: '2026-03-25', end: '2026-09-25' }
+    'TL-227719-GE': { customerName: 'ნინო კავსაძე', device: 'iPhone 13 Pro', cat: 'სმარტფონი — ეკრანის შეცვლა', purchase: '2026-04-15', end: '2026-10-15' },
+    'TL-118820-GE': { customerName: 'გიორგი მელაძე', device: 'MacBook Air M1', cat: 'ლეპტოპი — ბატარეის შეცვლა', purchase: '2023-11-04', end: '2024-05-04' },
+    'TL-330045-GE': { customerName: 'თამარ ბერიძე', device: 'Samsung Galaxy S23', cat: 'სმარტფონი — ეკრანის შეცვლა (გაფართოებული)', purchase: '2026-08-01', end: '2027-02-01' },
+    'TL-550012-GE': { customerName: 'დავით ლომიძე', device: 'Redmi Note 12', cat: 'სმარტფონი — ბატარეის შეცვლა', purchase: '2026-03-25', end: '2026-09-25' }
   },
+  'content/warranty-template': {},
   bookings: []
 };
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -167,7 +183,9 @@ const SITE_DOC_KEYS = {
   'content-site': 'content/site',
   'theme-site': 'theme/site',
   'content-parts': 'content/parts',
-  'content-branches': 'content/branches'
+  'content-branches': 'content/branches',
+  'warranty': 'content/warranty',
+  'warranty-template': 'content/warranty-template'
 };
 
 app.get('/api/site/:doc', async function (req, res) {
@@ -435,6 +453,29 @@ app.get('/api/warranty/:serial', async function (req, res) {
   }
 });
 
+// Uses the staff-uploaded template (content/warranty-template) + its field
+// positions when one has been saved from the admin panel's drag editor;
+// otherwise falls back to the built-in generic card design (warranty-pdf.js)
+// so the feature keeps working exactly as before for anyone who hasn't
+// uploaded a template yet.
+async function generateWarrantyCardPdf(db, serial, rec, status) {
+  const template = db['content/warranty-template'] || {};
+  if (template.pdf) {
+    return fillWarrantyTemplate(template, {
+      customerName: rec.customerName || '',
+      serial: serial,
+      model: rec.device || '',
+      purchase: rec.purchase || '',
+      warrantyEnd: rec.end || ''
+    });
+  }
+  return buildWarrantyCardPdf({
+    device: rec.device, cat: rec.cat, serial: serial, purchase: rec.purchase, end: rec.end,
+    active: status.active, remainingLabel: status.remainingLabel,
+    generatedAt: new Date().toISOString().slice(0, 10)
+  });
+}
+
 app.get('/api/warranty/:serial/card', async function (req, res) {
   try {
     const serial = String(req.params.serial || '').trim().toUpperCase();
@@ -442,16 +483,37 @@ app.get('/api/warranty/:serial/card', async function (req, res) {
     const rec = (db['content/warranty'] || {})[serial];
     if (!rec) return res.status(404).json({ error: 'not_found' });
     const status = warrantyStatus(rec);
-    const pdf = await buildWarrantyCardPdf({
-      device: rec.device, cat: rec.cat, serial: serial, purchase: rec.purchase, end: rec.end,
-      active: status.active, remainingLabel: status.remainingLabel,
-      generatedAt: new Date().toISOString().slice(0, 10)
-    });
+    const pdf = await generateWarrantyCardPdf(db, serial, rec, status);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="warranty-' + serial + '.pdf"');
     res.send(pdf);
   } catch (e) {
     console.error('warranty card generation failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// Admin-only: generate a filled preview from the currently-saved template +
+// sample data, without needing a real warranty record — used by the "test"
+// button in the admin panel's drag-position editor.
+app.post('/api/warranty-template/preview', requireAuth, async function (req, res) {
+  try {
+    const db = await readDb();
+    const template = db['content/warranty-template'] || {};
+    if (!template.pdf) return res.status(400).json({ error: 'no_template' });
+    const b = req.body || {};
+    const pdf = await fillWarrantyTemplate(template, {
+      customerName: b.customerName || 'ტესტ მომხმარებელი',
+      serial: b.serial || 'TL-TEST-0001',
+      model: b.model || 'iPhone 13 Pro',
+      purchase: b.purchase || '2026-01-01',
+      warrantyEnd: b.warrantyEnd || '2026-07-01'
+    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="warranty-template-preview.pdf"');
+    res.send(pdf);
+  } catch (e) {
+    console.error('warranty template preview failed:', e.message);
     res.status(500).json({ error: 'server_error' });
   }
 });
@@ -473,11 +535,7 @@ app.post('/api/warranty/:serial/send', async function (req, res) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destination)) return res.status(400).json({ error: 'invalid_email' });
       const transport = getMailTransport();
       if (!transport) return res.status(503).json({ error: 'not_configured', channel: 'email' });
-      const pdf = await buildWarrantyCardPdf({
-        device: rec.device, cat: rec.cat, serial: serial, purchase: rec.purchase, end: rec.end,
-        active: status.active, remainingLabel: status.remainingLabel,
-        generatedAt: new Date().toISOString().slice(0, 10)
-      });
+      const pdf = await generateWarrantyCardPdf(db, serial, rec, status);
       await transport.sendMail({
         from: SMTP_FROM,
         to: destination,
