@@ -271,12 +271,28 @@
   .svc-tile:hover .tile-more{background:rgba(255,255,255,.28);transform:scale(1.08)}
   @media (max-width:600px){ .svc-tile{width:78vw;min-height:370px} }
 
-  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;counter-reset:step}
-  .step{position:relative;padding-top:8px}
-  .step .step-num{font-family:var(--font-display);font-size:2.6rem;font-weight:700;color:var(--blue-soft-2);line-height:1}
-  .step h4{margin-top:14px;font-size:1.02rem;font-weight:800}
-  .step p{margin-top:8px;font-size:.88rem;color:var(--ink-soft);line-height:1.55}
-  .step:not(:last-child)::after{content:"";position:absolute;top:22px;left:calc(100% - 4px);width:calc(100% - 34px);height:1.5px;background:repeating-linear-gradient(90deg,var(--line) 0 6px,transparent 6px 12px)}
+  .steps-path{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:28px}
+  .steps-path::before{content:"";position:absolute;top:27px;left:12.5%;right:12.5%;height:2px;background:var(--gold);opacity:.5}
+  .step-path{position:relative}
+  .step-node{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:50%;background:var(--blue-deep);color:#fff;box-shadow:0 0 0 6px var(--surface-alt)}
+  .step-node svg{width:22px;height:22px}
+  .step-node em{position:absolute;top:-5px;right:-5px;width:21px;height:21px;border-radius:50%;background:var(--gold);color:var(--blue-deeper);font-style:normal;font-family:var(--font-display);font-size:.66rem;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px var(--surface-alt)}
+  .step-node.is-final{background:var(--gold-deep)}
+  .step-path h4{margin-top:16px;font-size:1.02rem;font-weight:800;color:var(--ink)}
+  .step-path p{margin-top:8px;font-size:.88rem;color:var(--ink-soft);line-height:1.55;max-width:26ch}
+  .step-text{min-width:0}
+  @media (max-width:980px){
+    .steps-path{grid-template-columns:1fr 1fr;row-gap:34px}
+    .steps-path::before{display:none}
+  }
+  @media (max-width:600px){
+    .steps-path{grid-template-columns:1fr;gap:26px}
+    .step-path{display:flex;align-items:flex-start;gap:16px}
+    .step-text{flex:1}
+    .step-text h4{margin-top:0}
+    .step-text p{max-width:none}
+    .step-node{flex:none}
+  }
 
   .band-dark{background:linear-gradient(120deg,var(--blue-deeper),var(--blue-deep));color:#fff;border-radius:var(--radius-l);padding:56px;display:grid;grid-template-columns:1.3fr auto;gap:32px;align-items:center}
   .band-dark h3{font-size:var(--band-title-size, clamp(1.5rem,2.6vw,2rem));color:var(--band-title-color, #fff);max-width:20ch;transform:translate(var(--band-title-x, 0px),var(--band-title-y, 0px));display:var(--band-title-display, block)}
@@ -553,8 +569,6 @@
     .split{grid-template-columns:1fr;gap:32px}
     .svc-grid{grid-template-columns:1fr 1fr}
     .svc-card.lead{grid-column:span 2;grid-row:auto}
-    .steps{grid-template-columns:1fr 1fr}
-    .step:not(:last-child)::after{display:none}
     .review-strip{grid-template-columns:1fr}
     .band-dark{grid-template-columns:1fr;text-align:left}
     .cat-layout{grid-template-columns:1fr}
@@ -575,7 +589,6 @@
     .stat-row{grid-template-columns:1fr 1fr}
     .svc-grid{grid-template-columns:1fr}
     .svc-card.lead{grid-column:auto}
-    .steps{grid-template-columns:1fr}
     .product-grid{grid-template-columns:1fr 1fr}
     .slot-grid{grid-template-columns:repeat(2,1fr)}
     .result-grid{grid-template-columns:1fr}
@@ -900,11 +913,11 @@
         <span class="eyebrow" data-ck="home.steps.eyebrow">როგორ მუშაობს</span>
         <h2 class="h-display" style="font-size:clamp(1.7rem,3vw,2.3rem)" data-ck="home.steps.title">დიაგნოსტიკიდან გატანამდე — 4 ნაბიჯი</h2>
       </div>
-      <div class="steps">
-        <div class="step"><span class="step-num">01</span><h4 data-ck="home.steps.step1.title">დაჯავშნა</h4><p data-ck="home.steps.step1.desc">აირჩიეთ ფილიალი და დრო ონლაინ, ან მიუტანეთ მოწყობილობა უშუალოდ სერვის-ცენტრში.</p></div>
-        <div class="step"><span class="step-num">02</span><h4 data-ck="home.steps.step2.title">უფასო დიაგნოსტიკა</h4><p data-ck="home.steps.step2.desc">ინჟინერი ადგენს პრობლემას და გიგზავნით ფასის ზუსტ შეთავაზებას 30 წუთში.</p></div>
-        <div class="step"><span class="step-num">03</span><h4 data-ck="home.steps.step3.title">შეკეთება</h4><p data-ck="home.steps.step3.desc">დამტკიცების შემდეგ ვიწყებთ სამუშაოს ორიგინალი ან სერტიფიცირებული ნაწილებით.</p></div>
-        <div class="step"><span class="step-num">04</span><h4 data-ck="home.steps.step4.title">გატანა და გარანტია</h4><p data-ck="home.steps.step4.desc">იღებთ მზა მოწყობილობას 6-თვიანი გარანტიით და SMS შეტყობინებით.</p></div>
+      <div class="steps-path">
+        <div class="step-path"><span class="step-node"><svg aria-hidden="true"><use href="#ic-calendar"/></svg><em>01</em></span><div class="step-text"><h4 data-ck="home.steps.step1.title">დაჯავშნა</h4><p data-ck="home.steps.step1.desc">აირჩიეთ ფილიალი და დრო ონლაინ, ან მიუტანეთ მოწყობილობა უშუალოდ სერვის-ცენტრში.</p></div></div>
+        <div class="step-path"><span class="step-node"><svg aria-hidden="true"><use href="#ic-search"/></svg><em>02</em></span><div class="step-text"><h4 data-ck="home.steps.step2.title">უფასო დიაგნოსტიკა</h4><p data-ck="home.steps.step2.desc">ინჟინერი ადგენს პრობლემას და გიგზავნით ფასის ზუსტ შეთავაზებას 30 წუთში.</p></div></div>
+        <div class="step-path"><span class="step-node"><svg aria-hidden="true"><use href="#ic-tools"/></svg><em>03</em></span><div class="step-text"><h4 data-ck="home.steps.step3.title">შეკეთება</h4><p data-ck="home.steps.step3.desc">დამტკიცების შემდეგ ვიწყებთ სამუშაოს ორიგინალი ან სერტიფიცირებული ნაწილებით.</p></div></div>
+        <div class="step-path"><span class="step-node is-final"><svg aria-hidden="true"><use href="#ic-shield"/></svg><em>04</em></span><div class="step-text"><h4 data-ck="home.steps.step4.title">გატანა და გარანტია</h4><p data-ck="home.steps.step4.desc">იღებთ მზა მოწყობილობას 6-თვიანი გარანტიით და SMS შეტყობინებით.</p></div></div>
       </div>
     </div>
   </section>
