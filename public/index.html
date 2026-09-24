@@ -1542,7 +1542,7 @@
           <a class="is-active" data-acct-tab="info"><svg><use href="#ic-user"/></svg>პირადი მონაცემები</a>
           <a data-acct-tab="devices"><svg><use href="#ic-phone"/></svg>ჩემი მოწყობილობები</a>
           <a data-route="orders" href="#orders"><svg><use href="#ic-truck"/></svg>ჩემი შეკვეთები</a>
-          <a id="logout-btn" style="color:var(--danger)"><svg><use href="#ic-close"/></svg>გასვლა</a>
+          <a id="logout-btn" class="js-logout" style="color:var(--danger)"><svg><use href="#ic-close"/></svg>გასვლა</a>
         </nav>
         <div>
           <div class="acct-card" data-acct-panel="info">
@@ -1594,8 +1594,22 @@
     </div>
   </div>
   <section class="tight">
-    <div class="wrap" style="max-width:840px">
-      <div id="orders-list"></div>
+    <div class="wrap">
+      <!-- was a bare, sidebar-less wrap — navigating here from the profile
+           page (which has the account sidebar) made the menu look like it
+           had vanished. Same .acct-layout/.acct-nav as the profile view,
+           so the sidebar stays put across both pages. -->
+      <div class="acct-layout">
+        <nav class="acct-nav">
+          <a data-route="profile" href="#profile"><svg><use href="#ic-user"/></svg>პირადი მონაცემები</a>
+          <a data-route="profile" href="#profile"><svg><use href="#ic-phone"/></svg>ჩემი მოწყობილობები</a>
+          <a class="is-active" data-route="orders" href="#orders"><svg><use href="#ic-truck"/></svg>ჩემი შეკვეთები</a>
+          <a class="js-logout" style="color:var(--danger)"><svg><use href="#ic-close"/></svg>გასვლა</a>
+        </nav>
+        <div style="max-width:840px">
+          <div id="orders-list"></div>
+        </div>
+      </div>
     </div>
   </section>
 </section>
@@ -2496,10 +2510,16 @@
     renderProfileView();
     toast('კეთილი იყოს თქვენი მობრძანება, ' + user.name.split(' ')[0]);
   });
-  document.getElementById('logout-btn').addEventListener('click', function(){
-    user = null;
-    store.set('tl_user', null);
-    renderProfileView();
+  /* querySelectorAll (not the old getElementById singular) because the
+     orders page now has its own copy of this account sidebar, with its
+     own logout link, alongside the one in the profile view. */
+  document.querySelectorAll('.js-logout').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      user = null;
+      store.set('tl_user', null);
+      renderProfileView();
+      location.hash = 'profile';
+    });
   });
   function initials(name){
     return (name||'?').split(' ').filter(Boolean).slice(0,2).map(function(w){ return w[0]; }).join('').toUpperCase();
