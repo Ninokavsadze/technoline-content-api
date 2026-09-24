@@ -339,7 +339,7 @@
      logo watermark) — originally built for the catalog page only, now
      applied to every page-head so none of them read as an empty/plain
      bar next to the title text. */
-  .page-head{position:relative;overflow:hidden;background:linear-gradient(120deg,var(--surface-alt) 0%,var(--blue-soft) 145%);border-bottom:1px solid var(--line);padding-block:52px}
+  .page-head{position:relative;overflow:hidden;background:linear-gradient(120deg,color-mix(in srgb, var(--surface-alt) 88%, #000 12%) 0%,color-mix(in srgb, var(--blue-soft) 88%, #000 12%) 145%);border-bottom:1px solid var(--line);padding-block:28px}
   .page-head::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--blue) 22%, transparent) 1px, transparent 0);background-size:24px 24px;-webkit-mask-image:linear-gradient(115deg, rgba(0,0,0,.9), transparent 62%);mask-image:linear-gradient(115deg, rgba(0,0,0,.9), transparent 62%);pointer-events:none}
   .page-head .head-mark{position:absolute;top:50%;right:-36px;width:200px;height:200px;transform:translateY(-50%);color:var(--blue);opacity:.12;pointer-events:none;animation:cat-mark-spin 46s linear infinite}
   @keyframes cat-mark-spin{to{transform:translateY(-50%) rotate(360deg)}}
