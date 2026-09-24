@@ -228,6 +228,9 @@
   .badge-line{display:inline-flex;align-items:center;gap:8px;padding:6px 13px;border-radius:999px;background:var(--blue-soft);color:var(--blue-deep);font-size:.78rem;font-weight:700}
 
   .svc-grid{display:grid;grid-template-columns:2fr 1fr 1fr;grid-template-rows:auto auto;gap:18px}
+  .svc-grid-3{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:auto;gap:18px}
+  @media (max-width:980px){ .svc-grid-3{grid-template-columns:1fr 1fr} }
+  @media (max-width:600px){ .svc-grid-3{grid-template-columns:1fr} }
   .svc-card{border:1px solid var(--line);border-radius:var(--radius-m);padding:28px;background:var(--surface);transition:border-color .15s, box-shadow .15s, transform .15s}
   .svc-card:hover{border-color:var(--blue-mid);box-shadow:var(--shadow-2);transform:translateY(-3px)}
   .svc-card.lead{grid-row:span 2;background:linear-gradient(165deg,var(--blue-deep),var(--blue-deeper));color:#fff;border:0;display:flex;flex-direction:column;justify-content:space-between}
@@ -534,8 +537,13 @@
   .contact-card .city{font-size:.78rem;color:var(--blue);font-weight:700;letter-spacing:.03em;margin-bottom:10px;display:block}
   .contact-line{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;color:var(--ink-soft);margin-top:9px}
   .contact-line svg{width:16px;height:16px;color:var(--blue-mid);flex-shrink:0;margin-top:2px}
+  .tel-link{color:inherit;text-decoration:none}
+  .tel-link:hover{text-decoration:underline;color:var(--blue)}
   .map-art{position:relative;border-radius:var(--radius-l);overflow:hidden;background:linear-gradient(155deg,var(--blue-deep),var(--blue-deeper));min-height:420px}
   .map-art svg{position:absolute;inset:0;width:100%;height:100%}
+  .map-art iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .contact-card{cursor:pointer;transition:box-shadow .15s,border-color .15s}
+  .contact-card.is-active{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-soft)}
   .map-pin{position:absolute;transform:translate(-50%,-100%);text-align:center}
   .map-pin .pin-dot{width:14px;height:14px;border-radius:50% 50% 50% 0;background:var(--gold);transform:rotate(-45deg);margin-inline:auto;box-shadow:0 0 0 5px rgba(252,187,45,.22)}
   .map-pin .pin-label{margin-top:8px;font-size:.72rem;font-weight:800;color:#fff;background:rgba(5,20,36,.7);padding:4px 9px;border-radius:8px;white-space:nowrap}
@@ -657,8 +665,8 @@
     </a>
 
     <nav class="primary-nav" aria-label="ძირითადი ნავიგაცია">
-      <div class="nav-item first">
-        <button class="nav-link" data-menu="services" aria-expanded="false">სერვისები <svg class="chev"><use href="#ic-chev"/></svg></button>
+      <div class="nav-item first" data-navitem="services">
+        <button class="nav-link" data-menu="services" aria-expanded="false"><span data-ck="common.navServices">სერვისები</span> <svg class="chev"><use href="#ic-chev"/></svg></button>
         <div class="mega" role="menu">
           <div class="mega-grid">
             <div class="mega-col">
@@ -677,7 +685,7 @@
               <a href="#services" data-route="services"><svg><use href="#ic-drop"/></svg>წყლის დაზიანება</a>
               <a href="#services" data-route="services"><svg><use href="#ic-chip"/></svg>დედაპლატის დიაგნოსტიკა</a>
               <a href="#services" data-route="services"><svg><use href="#ic-data"/></svg>მონაცემთა აღდგენა</a>
-              <a href="#warranty-service" data-route="warranty-service"><svg><use href="#ic-shield"/></svg>საგარანტიო მომსახურება</a>
+              <a href="#warranty-service" data-route="warranty-service" data-navitem="warranty-service"><svg><use href="#ic-shield"/></svg><span data-ck="common.navWarrantyService">საგარანტიო მომსახურება</span></a>
             </div>
             <div class="mega-promo">
               <svg style="width:26px;height:26px;color:var(--gold)"><use href="#ic-calendar"/></svg>
@@ -689,8 +697,8 @@
         </div>
       </div>
 
-      <div class="nav-item">
-        <button class="nav-link" data-menu="catalog" aria-expanded="false">ნაწილების კატალოგი <svg class="chev"><use href="#ic-chev"/></svg></button>
+      <div class="nav-item" data-navitem="catalog">
+        <button class="nav-link" data-menu="catalog" aria-expanded="false"><span data-ck="common.navCatalog">ნაწილების კატალოგი</span> <svg class="chev"><use href="#ic-chev"/></svg></button>
         <div class="mega" role="menu">
           <div class="mega-grid">
             <div class="mega-col">
@@ -719,9 +727,10 @@
         </div>
       </div>
 
-      <a class="nav-link" href="#warranty-service" data-route="warranty-service">საგარანტიო მომსახურება</a>
-      <a class="nav-link" href="#about" data-route="about">კომპანია</a>
-      <a class="nav-link" href="#contact" data-route="contact">კონტაქტი</a>
+      <a class="nav-link" href="#warranty-service" data-route="warranty-service" data-navitem="warranty-service"><span data-ck="common.navWarrantyService">საგარანტიო მომსახურება</span></a>
+      <a class="nav-link" href="#warranty-check" data-route="warranty-check" data-navitem="warranty-check"><span data-ck="common.navWarrantyCheck">საგარანტიო ვადის გადამოწმება</span></a>
+      <a class="nav-link" href="#about" data-route="about" data-navitem="about"><span data-ck="common.navAbout">ჩვენს შესახებ</span></a>
+      <a class="nav-link" href="#contact" data-route="contact" data-navitem="contact"><span data-ck="common.navContact">კონტაქტი</span></a>
     </nav>
 
     <div class="header-actions">
@@ -749,27 +758,27 @@
       <button class="icon-btn" data-close-drawer aria-label="დახურვა"><svg><use href="#ic-close"/></svg></button>
     </div>
     <a class="mobile-top-link" href="#home" data-route="home" data-close-drawer>მთავარი</a>
-    <details class="mobile-acc">
-      <summary>სერვისები <svg><use href="#ic-chev"/></svg></summary>
+    <details class="mobile-acc" data-navitem="services">
+      <summary><span data-ck="common.navServices">სერვისები</span> <svg><use href="#ic-chev"/></svg></summary>
       <ul>
         <li><a href="#services" data-route="services" data-close-drawer>სმარტფონების შეკეთება</a></li>
         <li><a href="#services" data-route="services" data-close-drawer>ლეპტოპების შეკეთება</a></li>
         <li><a href="#services" data-route="services" data-close-drawer>პლანშეტები და საათები</a></li>
-        <li><a href="#warranty-service" data-route="warranty-service" data-close-drawer>საგარანტიო მომსახურება</a></li>
+        <li data-navitem="warranty-service"><a href="#warranty-service" data-route="warranty-service" data-close-drawer><span data-ck="common.navWarrantyService">საგარანტიო მომსახურება</span></a></li>
       </ul>
     </details>
-    <details class="mobile-acc">
-      <summary>ნაწილების კატალოგი <svg><use href="#ic-chev"/></svg></summary>
+    <details class="mobile-acc" data-navitem="catalog">
+      <summary><span data-ck="common.navCatalog">ნაწილების კატალოგი</span> <svg><use href="#ic-chev"/></svg></summary>
       <ul>
         <li><a href="#catalog" data-route="catalog" data-close-drawer>ეკრანები</a></li>
         <li><a href="#catalog" data-route="catalog" data-close-drawer>ბატარეები</a></li>
         <li><a href="#catalog" data-route="catalog" data-close-drawer>აქსესუარები</a></li>
       </ul>
     </details>
-    <a class="mobile-top-link" href="#warranty-check" data-route="warranty-check" data-close-drawer>საგარანტიოს შემოწმება</a>
+    <a class="mobile-top-link" href="#warranty-check" data-route="warranty-check" data-close-drawer data-navitem="warranty-check"><span data-ck="common.navWarrantyCheck">საგარანტიო ვადის გადამოწმება</span></a>
     <a class="mobile-top-link" href="#booking" data-route="booking" data-close-drawer data-ck="common.bookCta">ვიზიტის დაჯავშნა</a>
-    <a class="mobile-top-link" href="#about" data-route="about" data-close-drawer>კომპანია</a>
-    <a class="mobile-top-link" href="#contact" data-route="contact" data-close-drawer>კონტაქტი</a>
+    <a class="mobile-top-link" href="#about" data-route="about" data-close-drawer data-navitem="about"><span data-ck="common.navAbout">ჩვენს შესახებ</span></a>
+    <a class="mobile-top-link" href="#contact" data-route="contact" data-close-drawer data-navitem="contact"><span data-ck="common.navContact">კონტაქტი</span></a>
     <a class="mobile-top-link" href="#profile" data-route="profile" data-close-drawer>ჩემი პროფილი</a>
     <a href="#booking" data-route="booking" data-close-drawer class="btn btn-gold btn-block" style="margin-top:20px" data-ck="common.bookCta">ვიზიტის დაჯავშნა</a>
   </div>
@@ -1019,7 +1028,7 @@
         <span class="eyebrow" data-ck="about.principles.eyebrow">ჩვენი პრინციპები</span>
         <h2 class="h-display" style="font-size:clamp(1.7rem,3vw,2.1rem)" data-ck="about.principles.title">რატომ გვირჩევენ</h2>
       </div>
-      <div class="svc-grid" style="grid-template-columns:repeat(3,1fr);grid-template-rows:auto">
+      <div class="svc-grid-3">
         <div class="svc-card"><div class="svc-icon"><svg><use href="#ic-shield"/></svg></div><h3 data-ck="about.p1.title">ორიგინალი ნაწილები</h3><p data-ck="about.p1.desc">ვმუშაობთ მხოლოდ სერტიფიცირებულ მომწოდებლებთან და გავცემთ 6-თვიან გარანტიას ყველა ნაწილზე.</p></div>
         <div class="svc-card"><div class="svc-icon"><svg><use href="#ic-clock"/></svg></div><h3 data-ck="about.p2.title">სწრაფი შესრულება</h3><p data-ck="about.p2.desc">სტანდარტული შეკეთებების 80% სრულდება იმავე ან მომდევნო სამუშაო დღეს.</p></div>
         <div class="svc-card"><div class="svc-icon"><svg><use href="#ic-data"/></svg></div><h3 data-ck="about.p3.title">მონაცემთა უსაფრთხოება</h3><p data-ck="about.p3.desc">თქვენი პირადი მონაცემები დაცულია — მუშაობის დაწყებამდე ვაფორმებთ კონფიდენციალურობის ხელშეკრულებას.</p></div>
@@ -1585,13 +1594,13 @@
         <div class="contact-card">
           <div class="svc-icon" style="margin-bottom:14px"><svg><use href="#ic-phone"/></svg></div>
           <h4 data-ck="contact.center.title">საკონტაქტო ცენტრი</h4>
-          <div class="contact-line"><svg><use href="#ic-phone"/></svg><span data-ck="contact.center.phone">+995 322 12 34 56 (ყოველდღე, 09:00–21:00)</span></div>
+          <div class="contact-line"><svg><use href="#ic-phone"/></svg><a class="tel-link" data-ck="contact.center.phone" data-tel>+995 322 12 34 56 (ყოველდღე, 09:00–21:00)</a></div>
           <div class="contact-line"><svg><use href="#ic-mail"/></svg><span data-ck="contact.center.email">info@technoline.ge</span></div>
         </div>
         <div class="contact-card">
           <div class="svc-icon" style="margin-bottom:14px"><svg><use href="#ic-truck"/></svg></div>
           <h4 data-ck="contact.corp.title">კორპორატიული კლიენტები</h4>
-          <div class="contact-line"><svg><use href="#ic-phone"/></svg><span data-ck="contact.corp.phone">+995 322 12 34 57</span></div>
+          <div class="contact-line"><svg><use href="#ic-phone"/></svg><a class="tel-link" data-ck="contact.corp.phone" data-tel>+995 322 12 34 57</a></div>
           <div class="contact-line"><svg><use href="#ic-mail"/></svg><span data-ck="contact.corp.email">business@technoline.ge</span></div>
         </div>
       </div>
@@ -1602,17 +1611,8 @@
       </div>
       <div class="contact-grid">
         <div id="contact-branches"></div>
-        <div class="map-art" aria-hidden="true">
-          <svg viewBox="0 0 400 420" preserveAspectRatio="none">
-            <defs>
-              <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="1"/></pattern>
-            </defs>
-            <rect width="400" height="420" fill="url(#grid)"/>
-            <path d="M40 340 Q120 300 150 220 T260 120 T360 60" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="3"/>
-          </svg>
-          <div class="map-pin" style="top:38%;left:36%"><div class="pin-dot"></div><div class="pin-label">ვაჟა-ფშაველა</div></div>
-          <div class="map-pin" style="top:24%;left:60%"><div class="pin-dot"></div><div class="pin-label">საბურთალო</div></div>
-          <div class="map-pin" style="top:66%;left:70%"><div class="pin-dot"></div><div class="pin-label">ბათუმი</div></div>
+        <div class="map-art">
+          <iframe id="contact-map-frame" title="ფილიალის რუკა" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
         </div>
       </div>
     </div>
@@ -1645,25 +1645,25 @@
       <div class="foot-col">
         <h5>ხელსაწყოები</h5>
         <ul>
-          <li><a href="#warranty-check" data-route="warranty-check">საგარანტიო შემოწმება</a></li>
+          <li><a href="#warranty-check" data-route="warranty-check"><span data-ck="common.navWarrantyCheck">საგარანტიო ვადის გადამოწმება</span></a></li>
           <li><a href="#booking" data-route="booking" data-ck="common.bookCta">ვიზიტის დაჯავშნა</a></li>
-          <li><a href="#catalog" data-route="catalog">ნაწილების კატალოგი</a></li>
+          <li><a href="#catalog" data-route="catalog"><span data-ck="common.navCatalog">ნაწილების კატალოგი</span></a></li>
           <li><a href="#orders" data-route="orders">ჩემი შეკვეთები</a></li>
         </ul>
       </div>
       <div class="foot-col">
         <h5>კომპანია</h5>
         <ul>
-          <li><a href="#about" data-route="about">ჩვენ შესახებ</a></li>
-          <li><a href="#warranty-service" data-route="warranty-service">საგარანტიო მომსახურება</a></li>
+          <li><a href="#about" data-route="about"><span data-ck="common.navAbout">ჩვენს შესახებ</span></a></li>
+          <li><a href="#warranty-service" data-route="warranty-service"><span data-ck="common.navWarrantyService">საგარანტიო მომსახურება</span></a></li>
           <li><a href="#terms" data-route="terms">წესები და პირობები</a></li>
-          <li><a href="#contact" data-route="contact">კონტაქტი</a></li>
+          <li><a href="#contact" data-route="contact"><span data-ck="common.navContact">კონტაქტი</span></a></li>
         </ul>
       </div>
       <div class="foot-col">
         <h5>კონტაქტი</h5>
         <ul>
-          <li data-ck="common.phone">+995 322 12 34 56</li>
+          <li><a class="tel-link" data-ck="common.phone" data-tel>+995 322 12 34 56</a></li>
           <li data-ck="common.email">info@technoline.ge</li>
           <li data-ck="footer.address">ვაჟა-ფშაველას გამზ. 71,<br>თბილისი</li>
         </ul>
@@ -1765,6 +1765,11 @@
     {id:'b4', name:'ცენტრალური ფილიალი', city:'ქუთაისი', area:'', addr:'თამარ მეფის ქ. 8', hours:'ორშ–შაბ, 10:00–19:00', phone:'+995 431 22 11 04'}
   ];
 
+  // NOTE: these are placeholder hours/availability, not pulled from Q-Logic.
+  // Real-time slot availability needs a separate "free slots" endpoint from
+  // Smart Q-Logic (the one currently wired up only pushes a confirmed
+  // booking to Q-Logic — it doesn't ask it what's free). Once that endpoint
+  // exists, this list should come from GET /api/qlogic/slots?branch=&date=.
   var TIME_SLOTS = ['10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00'];
   var FULL_SLOTS = ['12:00','16:00'];
 
@@ -2209,20 +2214,41 @@
 
   /* ---------- contact page branch cards (rendered from BRANCHES, single source of truth) ---------- */
   var contactBranchesEl = document.getElementById('contact-branches');
+  var contactMapFrame = document.getElementById('contact-map-frame');
+  var activeMapBranchId = null;
+  function showBranchOnMap(id){
+    var b = BRANCHES.find(function(x){ return x.id === id; }) || BRANCHES[0];
+    if(!b || !contactMapFrame) return;
+    activeMapBranchId = b.id;
+    var q = encodeURIComponent(b.addr + ', ' + b.city);
+    contactMapFrame.src = 'https://www.google.com/maps?q=' + q + '&output=embed';
+    if(contactBranchesEl){
+      contactBranchesEl.querySelectorAll('.contact-card').forEach(function(card){
+        card.classList.toggle('is-active', card.getAttribute('data-branch-id') === b.id);
+      });
+    }
+  }
   function renderContactBranches(){
     if(!contactBranchesEl) return;
     contactBranchesEl.innerHTML = BRANCHES.map(function(b, i){
       var cityLabel = b.city + (b.area ? ' · ' + b.area : '');
-      return '<div class="contact-card" style="margin-bottom:'+(i < BRANCHES.length-1 ? '16px' : '0')+'">'
+      return '<div class="contact-card" data-branch-id="'+b.id+'" style="margin-bottom:'+(i < BRANCHES.length-1 ? '16px' : '0')+'">'
         + '<span class="city">'+cityLabel+'</span>'
         + '<h4>'+b.name+'</h4>'
         + '<div class="contact-line"><svg><use href="#ic-pin"/></svg><span>'+b.addr+'</span></div>'
         + '<div class="contact-line"><svg><use href="#ic-clock"/></svg><span>'+b.hours+'</span></div>'
-        + '<div class="contact-line"><svg><use href="#ic-phone"/></svg><span>'+b.phone+'</span></div>'
+        + '<div class="contact-line"><svg><use href="#ic-phone"/></svg><a class="tel-link" href="tel:'+phoneToTel(b.phone)+'">'+b.phone+'</a></div>'
         + '</div>';
     }).join('');
+    showBranchOnMap(activeMapBranchId || (BRANCHES[0] && BRANCHES[0].id));
   }
   renderContactBranches();
+  if(contactBranchesEl) contactBranchesEl.addEventListener('click', function(e){
+    var card = e.target.closest('.contact-card[data-branch-id]');
+    if(!card) return;
+    if(e.target.closest('a')) return; // let phone/email links behave normally
+    showBranchOnMap(card.getAttribute('data-branch-id'));
+  });
 
   var deviceSel = document.getElementById('bk-device');
   var issueSel = document.getElementById('bk-issue');
@@ -2235,7 +2261,10 @@
 
   var slotGrid = document.getElementById('slot-grid');
   var dateInput = document.getElementById('bk-date');
-  var todayStr = '2026-09-21';
+  function localDateStr(d){
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  var todayStr = localDateStr(new Date());
   dateInput.min = todayStr;
   dateInput.value = todayStr;
   function renderSlots(){
@@ -2494,11 +2523,41 @@
     {key:'tileTitleHidden', varName:'--tile-title-display'}, {key:'tileDescHidden', varName:'--tile-desc-display'},
     {key:'bandTitleHidden', varName:'--band-title-display'}, {key:'bandDescHidden', varName:'--band-desc-display'}
   ];
+  // header nav items admin can show/hide (one-click, no code changes needed
+  // to bring a page back later — e.g. the parts catalog, off for now).
+  var NAV_VISIBILITY_MAP = {
+    'services': 'navHideServices', 'catalog': 'navHideCatalog',
+    'warranty-service': 'navHideWarrantyService', 'warranty-check': 'navHideWarrantyCheck',
+    'about': 'navHideAbout', 'contact': 'navHideContact'
+  };
+  function applyNavVisibility(){
+    Object.keys(NAV_VISIBILITY_MAP).forEach(function(navKey){
+      var hidden = !!siteContent.theme[NAV_VISIBILITY_MAP[navKey]];
+      document.querySelectorAll('[data-navitem="'+navKey+'"]').forEach(function(el){
+        el.style.display = hidden ? 'none' : '';
+      });
+    });
+  }
 
   var PARTS_DEFAULTS = PARTS.map(function(p){ return {id:p.id, name:p.name, price:p.price, stock:p.stock}; });
   var BRANCHES_DEFAULTS = BRANCHES.map(function(b){ return {id:b.id, name:b.name, addr:b.addr, hours:b.hours, phone:b.phone}; });
 
   var siteContent = { content:{}, theme:{}, parts:{}, branches:{} };
+
+  // Phone numbers are shown with admin-editable extra text (opening hours,
+  // etc.), so the tel: link is derived from whatever digits are currently
+  // displayed rather than hardcoded — it stays correct after any edit.
+  function phoneToTel(text){
+    var m = String(text || '').match(/\+?\d[\d\s().-]*\d/);
+    return m ? m[0].replace(/[^\d+]/g, '') : '';
+  }
+  function refreshTelLinks(){
+    document.querySelectorAll('[data-tel]').forEach(function(el){
+      var tel = phoneToTel(el.textContent);
+      if(tel) el.setAttribute('href', 'tel:' + tel);
+      else el.removeAttribute('href');
+    });
+  }
 
   function applyContentOverrides(){
     document.querySelectorAll('[data-ck]').forEach(function(el){
@@ -2506,6 +2565,7 @@
       var v = Object.prototype.hasOwnProperty.call(siteContent.content, k) ? siteContent.content[k] : CONTENT_DEFAULTS[k];
       if(el.innerHTML !== v) el.innerHTML = v;
     });
+    refreshTelLinks();
     document.querySelectorAll('[data-ck-img]').forEach(function(el){
       var k = el.getAttribute('data-ck-img');
       var v = Object.prototype.hasOwnProperty.call(siteContent.content, k) ? siteContent.content[k] : '';
@@ -2585,6 +2645,7 @@
     var craftAlignH = siteContent.theme.craftAlignH;
     if(craftAlignH) document.documentElement.style.setProperty('--craft-align-h', craftAlignH);
     else document.documentElement.style.removeProperty('--craft-align-h');
+    applyNavVisibility();
   }
   function applyVideoBg(videoSel, photoSel, typeKey, photoKey, videoKey){
     var video = document.querySelector(videoSel);
