@@ -145,6 +145,18 @@
   .part-photo-actions label{font-size:.76rem;font-weight:700;color:var(--blue);cursor:pointer;background:none;border:none;padding:0;text-align:left}
   .part-photo-actions button{font-size:.76rem;font-weight:700;color:var(--ink-faint);cursor:pointer;background:none;border:none;padding:0;text-align:left}
   .part-photo-actions input[type=file]{display:none}
+  .field-hint{font-size:.8rem;color:var(--ink-faint);line-height:1.5}
+
+  .bg-type-row{display:flex;gap:10px;margin-bottom:16px}
+  .bg-type-btn{flex:1;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink-soft);font-size:.86rem;font-weight:700;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+  .bg-type-btn.is-active{border-color:var(--blue);color:var(--blue-deep);background:var(--blue-soft)}
+  .drag-preview{-webkit-user-select:none;user-select:none;touch-action:none}
+  .drag-chip{background:rgba(8,18,30,.62);backdrop-filter:blur(2px);border:1.5px solid rgba(255,255,255,.5);border-radius:9px;padding:7px 10px;display:flex;align-items:center;gap:8px;cursor:grab;touch-action:none;transition:opacity .15s}
+  .drag-chip.is-dragging{cursor:grabbing;border-color:var(--gold)}
+  .drag-chip.is-hidden{opacity:.42}
+  .drag-chip-label{color:#fff;font-size:.78rem;font-weight:700;white-space:nowrap}
+  .drag-eye{background:none;border:none;padding:0;cursor:pointer;font-size:.9rem;line-height:1;opacity:.9}
+  .drag-eye:hover{opacity:1}
 
   .branch-card{border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
   .branch-card:last-child{margin-bottom:0}
@@ -287,25 +299,47 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
      THEME_TOKENS (zero backend changes); size fields hold a bare rem
      number, color fields a hex string. */
   var TYPOGRAPHY_GROUPS = [
-    { label:'მთავარი ბანერი (Hero)', fields:[
+    { key:'hero', label:'მთავარი ბანერი (Hero)', fields:[
       {key:'heroTitleColor', type:'color', label:'სათაურის ფერი', def:'#FFFFFF'},
       {key:'heroTitleSize', type:'size', label:'სათაურის ზომა', def:3.0, min:1.6, max:4.5, step:0.1},
       {key:'heroLedeColor', type:'color', label:'აღწერის ფერი', def:'#C6D7E9'},
       {key:'heroLedeSize', type:'size', label:'აღწერის ზომა', def:1.16, min:0.85, max:1.6, step:0.05}
     ]},
-    { label:'მთავარი გვერდის სერვის-ბარათები', fields:[
+    { key:'tile', label:'მთავარი გვერდის სერვის-ბარათები', fields:[
       {key:'tileTitleColor', type:'color', label:'სათაურის ფერი', def:'#FFFFFF'},
       {key:'tileTitleSize', type:'size', label:'სათაურის ზომა', def:1.22, min:0.9, max:2.0, step:0.05},
       {key:'tileDescColor', type:'color', label:'აღწერის ფერი', def:'#C7D6E8'},
       {key:'tileDescSize', type:'size', label:'აღწერის ზომა', def:0.87, min:0.7, max:1.3, step:0.05}
     ]},
-    { label:'ქვედა CTA ბანერები', fields:[
+    { key:'band', label:'ქვედა CTA ბანერები', fields:[
       {key:'bandTitleColor', type:'color', label:'სათაურის ფერი', def:'#FFFFFF'},
       {key:'bandTitleSize', type:'size', label:'სათაურის ზომა', def:1.75, min:1.2, max:2.6, step:0.05},
       {key:'bandDescColor', type:'color', label:'აღწერის ფერი', def:'#C6D7E9'},
       {key:'bandDescSize', type:'size', label:'აღწერის ზომა', def:1.0, min:0.8, max:1.5, step:0.05}
     ]}
   ];
+
+  /* Banner layout — per-group free position (px offset from the default
+     spot, dragged in a small preview) + show/hide, plus the hero's own
+     background type (video/photo) and banner height. Same theme doc. */
+  var LAYOUT_GROUPS = {
+    hero: { bg:'linear-gradient(155deg,#0A3A69,#04121F)', fields:[
+      {posX:'heroTitleX', posY:'heroTitleY', hidden:'heroTitleHidden', label:'სათაური', left:20, top:26},
+      {posX:'heroLedeX', posY:'heroLedeY', hidden:'heroLedeHidden', label:'აღწერა', left:20, top:80}
+    ]},
+    tile: { bg:'linear-gradient(155deg,#0A3A69,#050D18)', fields:[
+      {posX:'tileTitleX', posY:'tileTitleY', hidden:'tileTitleHidden', label:'სათაური', left:18, top:74},
+      {posX:'tileDescX', posY:'tileDescY', hidden:'tileDescHidden', label:'აღწერა', left:18, top:110}
+    ]},
+    band: { bg:'linear-gradient(120deg,#0A3A69,#0E4F8E)', fields:[
+      {posX:'bandTitleX', posY:'bandTitleY', hidden:'bandTitleHidden', label:'სათაური', left:22, top:26},
+      {posX:'bandDescX', posY:'bandDescY', hidden:'bandDescHidden', label:'აღწერა', left:22, top:70}
+    ]}
+  };
+  var DRAG_CLAMP_X = 90, DRAG_CLAMP_Y = 40;
+  var HERO_BG_PHOTO_KEY = 'home.hero.bgPhoto';
+  var HERO_BG_PHOTO_MAX_W = 1600;
+  var HERO_BG_PHOTO_QUALITY = 0.85;
 
   var BRANCHES_FIELDS = [
     {key:'name', label:'დასახელება'}, {key:'addr', label:'მისამართი'},
@@ -477,7 +511,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       if(seenPages[page]) TABS.push({id:'content:'+page, label:PAGE_LABELS[page] || page, kind:'content', page:page, group:'content'});
     });
     TABS.push({id:'colors', label:'ბრენდის ფერები', kind:'colors', group:'other'});
-    TABS.push({id:'typography', label:'ბანერების ტექსტი', kind:'typography', group:'other'});
+    TABS.push({id:'typography', label:'ბანერები', kind:'typography', group:'other'});
     TABS.push({id:'parts', label:'ნაწილების კატალოგი', kind:'parts', group:'other'});
     TABS.push({id:'branches', label:'ფილიალები', kind:'branches', group:'other'});
     TABS.push({id:'bookings', label:'ვიზიტების ჯავშნები', kind:'bookings', group:'other'});
@@ -700,8 +734,57 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     wireSaveBar(tab, function(){ return {path:'theme-site', body: state.theme}; });
   }
 
+  function renderHeroBgSection(){
+    var type = state.theme.heroBgType === 'photo' ? 'photo' : 'video';
+    var photoVal = state.theme.heroBgPhoto || '';
+    var h = Number(state.theme.heroMinHeight) || 0;
+    var html = '<div class="card"><div class="seg-label" style="margin-top:0">Hero ბანერის ფონი და ზომა</div>';
+    html += '<div class="bg-type-row">'
+      + '<button type="button" class="bg-type-btn'+(type==='video'?' is-active':'')+'" data-herobg-type="video">მოძრავი ვიდეო</button>'
+      + '<button type="button" class="bg-type-btn'+(type==='photo'?' is-active':'')+'" data-herobg-type="photo">ფოტო</button>'
+      + '</div>';
+    html += '<div class="field-block">'
+      + '<label>ფონის ფოტო (თუ „ფოტო" გაქვთ არჩეული)<span class="ck-key">'+HERO_BG_PHOTO_KEY+'</span></label>'
+      + '<div class="part-photo-cell" data-herobg-photo-cell>'
+        + (photoVal ? '<img class="part-thumb" src="'+photoVal+'" alt="">' : '<div class="part-thumb-empty">—</div>')
+        + '<div class="part-photo-actions">'
+          + '<label>ატვირთვა<input type="file" accept="image/*" data-herobg-photo-upload></label>'
+          + (photoVal ? '<button type="button" data-herobg-photo-clear>წაშლა</button>' : '')
+        + '</div>'
+      + '</div>'
+      + '</div>';
+    html += '<div class="field-block">'
+      + '<label>ბანერის სიმაღლე<span class="ck-key" data-herobg-height-readout>'+(h ? h+'vh' : 'ავტომატური')+'</span></label>'
+      + '<input type="range" data-herobg-height min="0" max="95" step="5" value="'+h+'" style="width:100%">'
+      + '<p class="field-hint" style="margin-top:6px">0 = ავტომატური სიმაღლე (ნაგულისხმევი). მარჯვნივ გადაწევით ბანერი გაიწელება ეკრანის სიმაღლის მიხედვით.</p>'
+      + '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderDragPreview(groupKey){
+    var group = LAYOUT_GROUPS[groupKey];
+    if(!group) return '';
+    var html = '<div class="seg-label">მდებარეობა და ხილვადობა ბანერზე</div>';
+    html += '<div class="drag-preview" data-drag-preview style="position:relative;height:170px;border-radius:10px;overflow:hidden;background:'+group.bg+';margin:10px 0 14px;border:1px solid var(--line)">';
+    group.fields.forEach(function(f){
+      var x = Number(state.theme[f.posX]) || 0;
+      var y = Number(state.theme[f.posY]) || 0;
+      var hidden = !!state.theme[f.hidden];
+      html += '<div class="drag-chip'+(hidden?' is-hidden':'')+'" data-drag-chip data-pos-x="'+f.posX+'" data-pos-y="'+f.posY+'" data-base-left="'+f.left+'" data-base-top="'+f.top+'" '
+        + 'style="left:'+(f.left+x)+'px;top:'+(f.top+y)+'px">'
+        + '<span class="drag-chip-label">'+f.label+'</span>'
+        + '<button type="button" class="drag-eye" data-drag-hidden-key="'+f.hidden+'" title="ჩვენება/დამალვა">'+(hidden?'🚫':'👁')+'</button>'
+        + '</div>';
+    });
+    html += '</div>';
+    html += '<p class="field-hint">გადაათრიეთ ტექსტის ბლოკი — ცვლილება მაშინვე აისახება საიტზეც. თვალის ხატულა მალავს/აჩვენებს ამ ტექსტს.</p>';
+    return html;
+  }
+
   function renderTypographyPanel(main, tab){
-    var html = panelHeadHtml(tab, 'დაარეგულირეთ ტექსტის ფერი და ზომა საიტის ბანერებზე — მთავარი ბანერი, მთავარი გვერდის სერვის-ბარათები და ქვედა CTA ბლოკები. თუ არაფერს შეცვლით, საიტის ნაგულისხმევი დიზაინი დარჩება.');
+    var html = panelHeadHtml(tab, 'მართეთ საიტის ბანერები — მთავარი ბანერი, მთავარი გვერდის სერვის-ბარათები და ქვედა CTA ბლოკები: ტექსტის ფერი, ზომა, მდებარეობა და ხილვადობა, ასევე Hero ბანერის ფონი და სიმაღლე. თუ არაფერს შეცვლით, საიტის ნაგულისხმევი დიზაინი დარჩება.');
+    html += renderHeroBgSection();
     TYPOGRAPHY_GROUPS.forEach(function(g){
       html += '<div class="card"><div class="seg-label" style="margin-top:0">'+g.label+'</div>';
       g.fields.forEach(function(f){
@@ -720,6 +803,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
             + '</div>';
         }
       });
+      html += renderDragPreview(g.key);
       html += '</div>';
     });
     html += saveBarHtml();
@@ -743,6 +827,123 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         updateStatusChip(tab);
       });
     });
+
+    /* ---- hero background: type toggle, photo upload, height ---- */
+    main.querySelectorAll('[data-herobg-type]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        state.theme.heroBgType = btn.getAttribute('data-herobg-type');
+        setDirty(tab, true);
+        updateStatusChip(tab);
+        main.querySelectorAll('[data-herobg-type]').forEach(function(b){ b.classList.toggle('is-active', b===btn); });
+      });
+    });
+    function refreshHeroPhotoCell(){
+      var cell = main.querySelector('[data-herobg-photo-cell]');
+      if(!cell) return;
+      var val = state.theme.heroBgPhoto || '';
+      cell.innerHTML = (val ? '<img class="part-thumb" src="'+val+'" alt="">' : '<div class="part-thumb-empty">—</div>')
+        + '<div class="part-photo-actions">'
+          + '<label>ატვირთვა<input type="file" accept="image/*" data-herobg-photo-upload></label>'
+          + (val ? '<button type="button" data-herobg-photo-clear>წაშლა</button>' : '')
+        + '</div>';
+      wireHeroPhotoCell();
+    }
+    function wireHeroPhotoCell(){
+      var cell = main.querySelector('[data-herobg-photo-cell]');
+      if(!cell) return;
+      var fileInp = cell.querySelector('[data-herobg-photo-upload]');
+      if(fileInp){
+        fileInp.addEventListener('change', function(){
+          var file = fileInp.files && fileInp.files[0];
+          if(!file) return;
+          var reader = new FileReader();
+          reader.onload = function(){
+            var img = new Image();
+            img.onload = function(){
+              var scale = Math.min(1, HERO_BG_PHOTO_MAX_W / img.width);
+              var w = Math.round(img.width * scale), h2 = Math.round(img.height * scale);
+              var canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h2;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h2);
+              state.theme.heroBgPhoto = canvas.toDataURL('image/jpeg', HERO_BG_PHOTO_QUALITY);
+              setDirty(tab, true);
+              updateStatusChip(tab);
+              refreshHeroPhotoCell();
+            };
+            img.src = reader.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+      var clearBtn = cell.querySelector('[data-herobg-photo-clear]');
+      if(clearBtn){
+        clearBtn.addEventListener('click', function(){
+          delete state.theme.heroBgPhoto;
+          setDirty(tab, true);
+          updateStatusChip(tab);
+          refreshHeroPhotoCell();
+        });
+      }
+    }
+    wireHeroPhotoCell();
+
+    var heightInp = main.querySelector('[data-herobg-height]');
+    if(heightInp){
+      heightInp.addEventListener('input', function(){
+        var v = Number(heightInp.value) || 0;
+        state.theme.heroMinHeight = v;
+        setDirty(tab, true);
+        var ro = main.querySelector('[data-herobg-height-readout]');
+        if(ro) ro.textContent = v ? v+'vh' : 'ავტომატური';
+        updateStatusChip(tab);
+      });
+    }
+
+    /* ---- drag position + visibility ---- */
+    function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+    main.querySelectorAll('[data-drag-chip]').forEach(function(chip){
+      var xKey = chip.getAttribute('data-pos-x'), yKey = chip.getAttribute('data-pos-y');
+      var baseLeft = Number(chip.getAttribute('data-base-left'));
+      var baseTop = Number(chip.getAttribute('data-base-top'));
+      var dragging = false, startPX = 0, startPY = 0, startX = 0, startY = 0;
+      chip.addEventListener('pointerdown', function(e){
+        if(e.target.closest('.drag-eye')) return;
+        dragging = true;
+        try{ chip.setPointerCapture(e.pointerId); }catch(err){}
+        startPX = e.clientX; startPY = e.clientY;
+        startX = Number(state.theme[xKey]) || 0;
+        startY = Number(state.theme[yKey]) || 0;
+        chip.classList.add('is-dragging');
+      });
+      chip.addEventListener('pointermove', function(e){
+        if(!dragging) return;
+        var dx = clamp(startX + (e.clientX - startPX), -DRAG_CLAMP_X, DRAG_CLAMP_X);
+        var dy = clamp(startY + (e.clientY - startPY), -DRAG_CLAMP_Y, DRAG_CLAMP_Y);
+        state.theme[xKey] = dx; state.theme[yKey] = dy;
+        chip.style.left = (baseLeft + dx) + 'px';
+        chip.style.top = (baseTop + dy) + 'px';
+      });
+      function endDrag(){
+        if(!dragging) return;
+        dragging = false;
+        chip.classList.remove('is-dragging');
+        setDirty(tab, true);
+        updateStatusChip(tab);
+      }
+      chip.addEventListener('pointerup', endDrag);
+      chip.addEventListener('pointercancel', endDrag);
+    });
+    main.querySelectorAll('[data-drag-hidden-key]').forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        var key = btn.getAttribute('data-drag-hidden-key');
+        state.theme[key] = !state.theme[key];
+        setDirty(tab, true);
+        updateStatusChip(tab);
+        renderMain();
+      });
+    });
+
     wireSaveBar(tab, function(){ return {path:'theme-site', body: state.theme}; });
   }
 
@@ -929,7 +1130,13 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       if(tab.kind === 'content'){
         CONTENT_ORDER.filter(function(k){ return parseCk(k).page === tab.page; }).forEach(function(k){ delete state.content[k]; });
       } else if(tab.kind === 'colors'){ THEME_TOKENS.forEach(function(t){ delete state.theme[t.key]; }); }
-      else if(tab.kind === 'typography'){ TYPOGRAPHY_GROUPS.forEach(function(g){ g.fields.forEach(function(f){ delete state.theme[f.key]; }); }); }
+      else if(tab.kind === 'typography'){
+        TYPOGRAPHY_GROUPS.forEach(function(g){ g.fields.forEach(function(f){ delete state.theme[f.key]; }); });
+        Object.keys(LAYOUT_GROUPS).forEach(function(gk){
+          LAYOUT_GROUPS[gk].fields.forEach(function(f){ delete state.theme[f.posX]; delete state.theme[f.posY]; delete state.theme[f.hidden]; });
+        });
+        delete state.theme.heroBgType; delete state.theme.heroBgPhoto; delete state.theme.heroMinHeight;
+      }
       else if(tab.kind === 'parts'){ state.parts = {}; }
       else if(tab.kind === 'branches'){ state.branches = {}; }
       setDirty(tab, true);
