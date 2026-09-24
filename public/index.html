@@ -2194,7 +2194,7 @@
     branchPick.innerHTML = BRANCHES.map(function(b){
       return '<label class="branch-opt" data-branch="'+b.id+'">'
         + '<input type="radio" name="branch" value="'+b.id+'">'
-        + '<span><strong>'+b.name+' · '+b.city+'</strong><span>'+b.addr+' · '+b.hours+'</span></span></label>';
+        + '<span><strong>'+b.name+'</strong><span>'+b.addr+' · '+b.hours+'</span></span></label>';
     }).join('');
     if(prevPicked){
       var stillThere = BRANCHES.find(function(b){ return b.id === prevPicked; });
@@ -2220,7 +2220,12 @@
     var b = BRANCHES.find(function(x){ return x.id === id; }) || BRANCHES[0];
     if(!b || !contactMapFrame) return;
     activeMapBranchId = b.id;
-    var q = encodeURIComponent(b.addr + ', ' + b.city);
+    // b.addr is admin-edited and already includes the city (e.g. "ქ.თბილისის,
+    // სულხან ცინცაძის 58") — b.city/b.area below are fixed labels from the
+    // page's original 4 default branches and are NOT admin-editable, so once
+    // a branch is renamed/repointed to a different city they go stale and
+    // send the map query to the wrong place. Use the address alone.
+    var q = encodeURIComponent(b.addr);
     contactMapFrame.src = 'https://www.google.com/maps?q=' + q + '&output=embed';
     if(contactBranchesEl){
       contactBranchesEl.querySelectorAll('.contact-card').forEach(function(card){
@@ -2231,9 +2236,12 @@
   function renderContactBranches(){
     if(!contactBranchesEl) return;
     contactBranchesEl.innerHTML = BRANCHES.map(function(b, i){
-      var cityLabel = b.city + (b.area ? ' · ' + b.area : '');
+      // No separate "city" label here anymore — it used to come from a
+      // fixed, non-admin-editable field that went stale/wrong as soon as a
+      // branch's name/address was changed to a different city (see the
+      // comment in showBranchOnMap). The branch name + address below are
+      // the admin-edited source of truth.
       return '<div class="contact-card" data-branch-id="'+b.id+'" style="margin-bottom:'+(i < BRANCHES.length-1 ? '16px' : '0')+'">'
-        + '<span class="city">'+cityLabel+'</span>'
         + '<h4>'+b.name+'</h4>'
         + '<div class="contact-line"><svg><use href="#ic-pin"/></svg><span>'+b.addr+'</span></div>'
         + '<div class="contact-line"><svg><use href="#ic-clock"/></svg><span>'+b.hours+'</span></div>'
@@ -2692,26 +2700,30 @@
     renderContactBranches();
   }
 
+  var SITE_CACHE_KEY = 'tl_site_cache_v2';
+  function readSiteCache(){
+    try{
+      var raw = localStorage.getItem(SITE_CACHE_KEY);
+      if(!raw) return null;
+      var data = JSON.parse(raw);
+      return (data && typeof data === 'object') ? data : null;
+    }catch(e){ return null; }
+  }
+  function writeSiteCache(data){
+    try{ localStorage.setItem(SITE_CACHE_KEY, JSON.stringify(data)); }catch(e){}
+  }
+
   function loadSiteContent(){
     var adminLink = document.getElementById('admin-btn');
     if(adminLink && ADMIN_PANEL_URL && ADMIN_PANEL_URL.indexOf('PLACEHOLDER') === -1) adminLink.href = ADMIN_PANEL_URL;
-    // Keep the page hidden for a short grace window so saved admin content
-    // (text/theme/photos/videos) is already applied before first paint —
-    // avoids a visible "default content, then it changes" flash. If the
-    // API is slow (e.g. a cold-start backend) or unreachable, reveal with
-    // built-in defaults anyway after the grace window rather than leaving
-    // the page blank.
+
     var revealed = false;
     function reveal(){
       if(revealed) return;
       revealed = true;
       document.body.classList.add('is-ready');
     }
-    var revealTimer = setTimeout(reveal, 900);
-    fetch(API_BASE + '/api/site', {cache:'no-store'}).then(function(res){
-      if(!res.ok) throw new Error('site_fetch_failed');
-      return res.json();
-    }).then(function(data){
+    function applyData(data){
       siteContent.content = data.content || {};
       siteContent.theme = data.theme || {};
       siteContent.parts = data.parts || {};
@@ -2720,11 +2732,39 @@
       applyThemeOverrides();
       applyPartsOverrides();
       applyBranchesOverrides();
+    }
+
+    // A returning visitor's browser already holds the content saved on the
+    // previous visit — apply it and reveal immediately, so there is no wait
+    // and no "default text, then it changes" flash at all. The background
+    // fetch below still runs to refresh the cache (and, on the rare visit
+    // where an admin edit landed since, to quietly bring the page current).
+    var cached = readSiteCache();
+    var revealTimer = null;
+    if(cached){
+      applyData(cached);
+      reveal();
+    } else {
+      // First-ever visit, or a cleared cache: keep the page hidden until the
+      // real content arrives, so nothing incorrect is ever shown to a new
+      // visitor. The cap below only guards against an unreachable/very slow
+      // API — past it, reveal with the page's built-in defaults rather than
+      // staying blank forever.
+      revealTimer = setTimeout(reveal, 3500);
+    }
+
+    fetch(API_BASE + '/api/site', {cache:'no-store'}).then(function(res){
+      if(!res.ok) throw new Error('site_fetch_failed');
+      return res.json();
+    }).then(function(data){
+      applyData(data);
+      writeSiteCache(data);
     }).catch(function(){
       /* test/production API not reachable right now — the page already
-         renders correctly from its built-in defaults, so fail silently */
+         renders correctly from its built-in defaults (or the cached copy),
+         so fail silently */
     }).finally(function(){
-      clearTimeout(revealTimer);
+      if(revealTimer) clearTimeout(revealTimer);
       reveal();
     });
   }
