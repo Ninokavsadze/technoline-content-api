@@ -123,7 +123,7 @@
 
   /* ============ HEADER / NAV ============ */
   #site-header{position:sticky;top:env(safe-area-inset-top,0px);z-index:60;background:color-mix(in srgb, var(--surface) 88%, transparent);backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid var(--line)}
-  .header-inner{display:flex;align-items:center;gap:28px;height:var(--header-h);max-width:1320px;margin-inline:auto;padding-inline:20px}
+  .header-inner{display:flex;align-items:center;gap:28px;height:var(--header-h);max-width:1400px;margin-inline:auto;padding-inline:20px}
   .brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
   .brand-mark{width:50px;height:50px;flex-shrink:0}
   .brand-word{font-family:var(--font-display);font-weight:700;font-size:1.02rem;letter-spacing:.01em;line-height:1.1}
@@ -131,7 +131,22 @@
   .brand-word span{display:block;font-size:.62rem;color:var(--ink-faint);letter-spacing:.14em;font-weight:600}
   nav.primary-nav{display:flex;align-items:stretch;gap:4px;flex:1}
   .nav-item{position:relative;display:flex;align-items:stretch}
-  .nav-link{display:flex;align-items:center;gap:6px;padding:10px 14px;border-radius:10px;font-weight:600;font-size:.94rem;color:var(--ink-soft);cursor:pointer;transition:background .15s,color .15s}
+  /* align-items:flex-start (not center) so every item's label starts from
+     the same top height regardless of whether it wraps to one or two
+     lines — nav-item's align-items:stretch above already equalizes every
+     item's box to the tallest sibling's height, so without flex-start a
+     short one-line label ends up vertically centered (starting lower)
+     while a two-line label starts right at the top, and the row reads as
+     misaligned. line-height is fixed so the two-line labels below wrap
+     predictably instead of relying on the browser's default. */
+  .nav-link{display:flex;align-items:flex-start;gap:6px;padding:10px 14px;border-radius:10px;font-weight:600;font-size:.94rem;line-height:1.25;color:var(--ink-soft);cursor:pointer;transition:background .15s,color .15s}
+  .nav-link .chev{margin-top:.2em;flex-shrink:0}
+  /* the manual <br> in each label below is the only line break we want —
+     nowrap stops the browser from ALSO soft-wrapping a line at its own
+     inner space (e.g. "საგარანტიო ვადის" breaking into two more lines)
+     whenever the nav bar gets tight, which is what caused labels to spill
+     onto three lines instead of the intended two. */
+  .nav-link span[data-ck]{white-space:nowrap}
   .nav-link:hover,.nav-link[aria-expanded="true"]{color:var(--ink);background:var(--surface-alt)}
   .nav-link.is-active{color:var(--blue)}
   .nav-link .chev{width:9px;height:9px;transition:transform .2s}
@@ -317,10 +332,21 @@
   .brand-strip span{font-family:var(--font-display);font-weight:700;font-size:1.05rem;color:var(--ink-faint);opacity:.85}
 
   /* ============ PAGE HEADERS (inner pages) ============ */
-  .page-head{background:var(--surface-alt);border-bottom:1px solid var(--line);padding-block:52px}
+  /* brand mark motif (subtle dot pattern + a large faded, slowly-spinning
+     logo watermark) — originally built for the catalog page only, now
+     applied to every page-head so none of them read as an empty/plain
+     bar next to the title text. */
+  .page-head{position:relative;overflow:hidden;background:linear-gradient(120deg,var(--surface-alt) 0%,var(--blue-soft) 145%);border-bottom:1px solid var(--line);padding-block:52px}
+  .page-head::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--blue) 22%, transparent) 1px, transparent 0);background-size:24px 24px;-webkit-mask-image:linear-gradient(115deg, rgba(0,0,0,.9), transparent 62%);mask-image:linear-gradient(115deg, rgba(0,0,0,.9), transparent 62%);pointer-events:none}
+  .page-head .head-mark{position:absolute;top:50%;right:-36px;width:200px;height:200px;transform:translateY(-50%);color:var(--blue);opacity:.12;pointer-events:none;animation:cat-mark-spin 46s linear infinite}
+  @keyframes cat-mark-spin{to{transform:translateY(-50%) rotate(360deg)}}
+  .page-head .wrap{position:relative;z-index:1}
   .page-head .crumbs{font-size:.8rem;color:var(--ink-faint);font-weight:600;margin-bottom:14px;display:flex;gap:8px;align-items:center}
   .page-head h1{font-size:clamp(1.9rem,3.4vw,2.7rem)}
   .page-head p{margin-top:12px}
+  .page-head .head-tag{display:inline-flex;align-items:center;gap:8px;background:color-mix(in srgb, var(--surface) 78%, transparent);border:1px solid var(--blue-soft-2);padding:6px 14px 6px 10px;border-radius:999px;font-size:.78rem;font-weight:700;color:var(--blue-deep);margin-bottom:12px}
+  .page-head .head-tag .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px rgba(252,187,45,.25);animation:cat-dot-pulse 2.4s ease-in-out infinite}
+  @keyframes cat-dot-pulse{0%,100%{box-shadow:0 0 0 3px rgba(252,187,45,.25)}50%{box-shadow:0 0 0 6px rgba(252,187,45,.1)}}
 
   /* ============ CATALOG ============ */
   .cat-layout{display:grid;grid-template-columns:264px 1fr;gap:40px;align-items:start}
@@ -330,16 +356,6 @@
   #view-catalog .page-head{padding-block:8px 24px}
   #view-catalog .page-head .crumbs{margin-bottom:8px}
   #view-catalog>section.tight{padding-block:34px 56px}
-
-  /* ---- catalog page-head: brand mark motif + accent tag, so it reads less flat ---- */
-  #view-catalog .page-head{position:relative;overflow:hidden;background:linear-gradient(120deg,var(--surface-alt) 0%,var(--blue-soft) 145%)}
-  #view-catalog .page-head::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--blue) 22%, transparent) 1px, transparent 0);background-size:24px 24px;-webkit-mask-image:linear-gradient(115deg, rgba(0,0,0,.9), transparent 62%);mask-image:linear-gradient(115deg, rgba(0,0,0,.9), transparent 62%);pointer-events:none}
-  #view-catalog .page-head .head-mark{position:absolute;top:50%;right:-36px;width:200px;height:200px;transform:translateY(-50%);color:var(--blue);opacity:.12;pointer-events:none;animation:cat-mark-spin 46s linear infinite}
-  @keyframes cat-mark-spin{to{transform:translateY(-50%) rotate(360deg)}}
-  #view-catalog .page-head .wrap{position:relative;z-index:1}
-  #view-catalog .page-head .head-tag{display:inline-flex;align-items:center;gap:8px;background:color-mix(in srgb, var(--surface) 78%, transparent);border:1px solid var(--blue-soft-2);padding:6px 14px 6px 10px;border-radius:999px;font-size:.78rem;font-weight:700;color:var(--blue-deep);margin-bottom:12px}
-  #view-catalog .page-head .head-tag .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px rgba(252,187,45,.25);animation:cat-dot-pulse 2.4s ease-in-out infinite}
-  @keyframes cat-dot-pulse{0%,100%{box-shadow:0 0 0 3px rgba(252,187,45,.25)}50%{box-shadow:0 0 0 6px rgba(252,187,45,.1)}}
   .cat-content{display:flex;flex-direction:column;gap:22px}
   .cat-pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:36px;flex-wrap:wrap}
   .cat-pagination button{min-width:38px;height:38px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-weight:600;font-size:.88rem;color:var(--ink-soft);cursor:pointer}
@@ -698,7 +714,7 @@
       </div>
 
       <div class="nav-item" data-navitem="catalog">
-        <button class="nav-link" data-menu="catalog" aria-expanded="false"><span data-ck="common.navCatalog">ნაწილების კატალოგი</span> <svg class="chev"><use href="#ic-chev"/></svg></button>
+        <button class="nav-link" data-menu="catalog" aria-expanded="false"><span data-ck="common.navCatalog">ნაწილების<br>კატალოგი</span> <svg class="chev"><use href="#ic-chev"/></svg></button>
         <div class="mega" role="menu">
           <div class="mega-grid">
             <div class="mega-col">
@@ -727,9 +743,9 @@
         </div>
       </div>
 
-      <a class="nav-link" href="#warranty-service" data-route="warranty-service" data-navitem="warranty-service"><span data-ck="common.navWarrantyService">საგარანტიო მომსახურება</span></a>
-      <a class="nav-link" href="#warranty-check" data-route="warranty-check" data-navitem="warranty-check"><span data-ck="common.navWarrantyCheck">საგარანტიო ვადის გადამოწმება</span></a>
-      <a class="nav-link" href="#about" data-route="about" data-navitem="about"><span data-ck="common.navAbout">ჩვენს შესახებ</span></a>
+      <a class="nav-link" href="#warranty-service" data-route="warranty-service" data-navitem="warranty-service"><span data-ck="common.navWarrantyService">საგარანტიო<br>მომსახურება</span></a>
+      <a class="nav-link" href="#warranty-check" data-route="warranty-check" data-navitem="warranty-check"><span data-ck="common.navWarrantyCheck">საგარანტიო ვადის<br>გადამოწმება</span></a>
+      <a class="nav-link" href="#about" data-route="about" data-navitem="about"><span data-ck="common.navAbout">ჩვენს<br>შესახებ</span></a>
       <a class="nav-link" href="#contact" data-route="contact" data-navitem="contact"><span data-ck="common.navContact">კონტაქტი</span></a>
     </nav>
 
@@ -994,6 +1010,7 @@
 <!-- ============ ABOUT / COMPANY ============ -->
 <section class="view" data-view="about" id="view-about" hidden>
   <div class="page-head">
+    <svg class="head-mark" aria-hidden="true"><use href="#ic-logo"/></svg>
     <div class="wrap">
       <div class="crumbs"><a href="#home" data-route="home">მთავარი</a> / კომპანია</div>
       <h1 class="h-display" data-ck="about.head.title">ტექნოლაინის შესახებ</h1>
@@ -1055,6 +1072,7 @@
 <!-- ============ SERVICES (detail) ============ -->
 <section class="view" data-view="services" id="view-services" hidden>
   <div class="page-head">
+    <svg class="head-mark" aria-hidden="true"><use href="#ic-logo"/></svg>
     <div class="wrap">
       <div class="crumbs"><a href="#home" data-route="home">მთავარი</a> / სერვისები</div>
       <h1 class="h-display" data-ck="services.head.title">სერვისები და ტარიფები</h1>
@@ -1167,6 +1185,7 @@
 <!-- ============ WARRANTY CHECK ============ -->
 <section class="view" data-view="warranty-check" id="view-warranty-check" hidden>
   <div class="page-head">
+    <svg class="head-mark" aria-hidden="true"><use href="#ic-logo"/></svg>
     <div class="wrap">
       <div class="crumbs"><a href="#home" data-route="home">მთავარი</a> / საგარანტიო შემოწმება</div>
       <h1 class="h-display" data-ck="warranty-check.head.title">საგარანტიო პერიოდის შემოწმება</h1>
@@ -1244,6 +1263,7 @@
 <!-- ============ BOOKING ============ -->
 <section class="view" data-view="booking" id="view-booking" hidden>
   <div class="page-head">
+    <svg class="head-mark" aria-hidden="true"><use href="#ic-logo"/></svg>
     <div class="wrap">
       <div class="crumbs"><a href="#home" data-route="home">მთავარი</a> / ვიზიტის დაჯავშნა</div>
       <h1 class="h-display" data-ck="booking.head.title">ვიზიტის დაჯავშნა სერვის ცენტრში</h1>
@@ -1368,6 +1388,7 @@
 <!-- ============ WARRANTY SERVICE (content) ============ -->
 <section class="view" data-view="warranty-service" id="view-warranty-service" hidden>
   <div class="page-head">
+    <svg class="head-mark" aria-hidden="true"><use href="#ic-logo"/></svg>
     <div class="wrap">
       <div class="crumbs"><a href="#home" data-route="home">მთავარი</a> / საგარანტიო მომსახურება</div>
       <h1 class="h-display" data-ck="wservice.head.title">საგარანტიო მომსახურება</h1>
@@ -1436,6 +1457,7 @@
 <!-- ============ PROFILE ============ -->
 <section class="view" data-view="profile" id="view-profile" hidden>
   <div class="page-head">
+    <svg class="head-mark" aria-hidden="true"><use href="#ic-logo"/></svg>
     <div class="wrap">
       <div class="crumbs"><a href="#home" data-route="home">მთავარი</a> / პროფილი</div>
       <h1 class="h-display" data-ck="profile.head.title">ჩემი პროფილი</h1>
@@ -1519,6 +1541,7 @@
 <!-- ============ ORDERS ============ -->
 <section class="view" data-view="orders" id="view-orders" hidden>
   <div class="page-head">
+    <svg class="head-mark" aria-hidden="true"><use href="#ic-logo"/></svg>
     <div class="wrap">
       <div class="crumbs"><a href="#home" data-route="home">მთავარი</a> / ჩემი შეკვეთები</div>
       <h1 class="h-display" data-ck="orders.head.title">ჩემი შეკვეთები</h1>
@@ -1535,6 +1558,7 @@
 <!-- ============ TERMS ============ -->
 <section class="view" data-view="terms" id="view-terms" hidden>
   <div class="page-head">
+    <svg class="head-mark" aria-hidden="true"><use href="#ic-logo"/></svg>
     <div class="wrap">
       <div class="crumbs"><a href="#home" data-route="home">მთავარი</a> / წესები და პირობები</div>
       <h1 class="h-display" data-ck="terms.head.title">წესები და პირობები</h1>
@@ -1582,6 +1606,7 @@
 <!-- ============ CONTACT ============ -->
 <section class="view" data-view="contact" id="view-contact" hidden>
   <div class="page-head">
+    <svg class="head-mark" aria-hidden="true"><use href="#ic-logo"/></svg>
     <div class="wrap">
       <div class="crumbs"><a href="#home" data-route="home">მთავარი</a> / კონტაქტი</div>
       <h1 class="h-display" data-ck="contact.head.title">საკონტაქტო ინფორმაცია</h1>
