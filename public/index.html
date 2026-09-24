@@ -236,6 +236,7 @@
   .svc-more{display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-weight:700;font-size:.86rem;color:var(--gold)}
 
   /* ---- home services: themed rail, one large photo-style tile per device category ---- */
+  .svc-rail-section{position:relative}
   .svc-rail-wrap{position:relative}
   .svc-rail-wrap::after{content:"";position:absolute;top:0;right:0;bottom:8px;width:56px;background:linear-gradient(90deg, transparent, var(--surface));pointer-events:none}
   .svc-rail{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none}
@@ -243,8 +244,8 @@
   .svc-rail-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:var(--surface-alt);border:1px solid var(--line);box-shadow:var(--shadow-2);display:flex;align-items:center;justify-content:center;color:var(--ink);z-index:3;transition:opacity .15s,transform .15s,box-shadow .15s}
   .svc-rail-nav:hover{box-shadow:var(--shadow-3);transform:translateY(-50%) scale(1.06)}
   .svc-rail-nav svg{width:18px;height:18px}
-  .svc-rail-nav.svc-rail-prev{left:-8px}
-  .svc-rail-nav.svc-rail-next{right:-8px}
+  .svc-rail-nav.svc-rail-prev{left:max(8px, calc((100% - 1240px)/2 - 60px))}
+  .svc-rail-nav.svc-rail-next{right:max(8px, calc((100% - 1240px)/2 - 60px))}
   .svc-rail-nav.svc-rail-prev svg{transform:rotate(180deg)}
   .svc-rail-nav.is-disabled{opacity:0;pointer-events:none}
   @media (max-width:640px){ .svc-rail-nav{display:none} }
@@ -257,6 +258,7 @@
   .svc-tile:hover .tile-art{transform:scale(1.08) rotate(-4deg);opacity:.22}
   .svc-tile .tile-photo{position:absolute;left:16px;bottom:16px;width:calc(100% - 32px);height:50%;object-fit:contain;object-position:center bottom;z-index:0}
   .svc-tile.has-photo .tile-art{display:none}
+  .svc-tile.has-photo{border:1px solid var(--line)}
   .svc-tile.has-photo .tile-eyebrow{color:var(--blue-mid)}
   .svc-tile.has-photo h3{color:var(--blue-deep)}
   .svc-tile.has-photo p{color:var(--blue)}
@@ -825,7 +827,7 @@
     </div>
   </div>
 
-  <section>
+  <section class="svc-rail-section">
     <div class="wrap">
       <div class="section-head">
         <span class="eyebrow" data-ck="home.services.eyebrow">სერვისები</span>
@@ -885,10 +887,10 @@
             <a href="#services" data-route="services" class="tile-more" aria-label="დეტალურად"><svg><use href="#ic-arrow"/></svg></a>
           </div>
         </div>
-        <button type="button" class="svc-rail-nav svc-rail-prev is-disabled" aria-label="წინა ბარათები"><svg><use href="#ic-arrow"/></svg></button>
-        <button type="button" class="svc-rail-nav svc-rail-next" aria-label="შემდეგი ბარათები"><svg><use href="#ic-arrow"/></svg></button>
       </div>
     </div>
+    <button type="button" class="svc-rail-nav svc-rail-prev is-disabled" aria-label="წინა ბარათები"><svg><use href="#ic-arrow"/></svg></button>
+    <button type="button" class="svc-rail-nav svc-rail-next" aria-label="შემდეგი ბარათები"><svg><use href="#ic-arrow"/></svg></button>
   </section>
 
   <section class="tight" style="background:var(--surface-alt)">
@@ -2506,15 +2508,22 @@
     });
   }
   function wireSvcRail(){
+    var section = document.querySelector('.svc-rail-section');
     var rail = document.querySelector('.svc-rail');
-    var wrap = document.querySelector('.svc-rail-wrap');
-    if(!rail || !wrap) return;
-    var prevBtn = wrap.querySelector('.svc-rail-prev');
-    var nextBtn = wrap.querySelector('.svc-rail-next');
+    if(!rail || !section) return;
+    var prevBtn = section.querySelector('.svc-rail-prev');
+    var nextBtn = section.querySelector('.svc-rail-next');
     function update(){
       var max = rail.scrollWidth - rail.clientWidth;
       if(prevBtn) prevBtn.classList.toggle('is-disabled', rail.scrollLeft <= 4);
       if(nextBtn) nextBtn.classList.toggle('is-disabled', rail.scrollLeft >= max - 4);
+    }
+    function positionNav(){
+      var sectionRect = section.getBoundingClientRect();
+      var railRect = rail.getBoundingClientRect();
+      var top = (railRect.top - sectionRect.top) + railRect.height / 2;
+      if(prevBtn) prevBtn.style.top = top + 'px';
+      if(nextBtn) nextBtn.style.top = top + 'px';
     }
     function step(dir){
       var tile = rail.querySelector('.svc-tile');
@@ -2524,8 +2533,9 @@
     if(prevBtn) prevBtn.addEventListener('click', function(){ step(-1); });
     if(nextBtn) nextBtn.addEventListener('click', function(){ step(1); });
     rail.addEventListener('scroll', update);
-    window.addEventListener('resize', update);
+    window.addEventListener('resize', function(){ update(); positionNav(); });
     update();
+    positionNav();
   }
   function applyThemeOverrides(){
     THEME_TOKENS.forEach(function(t){
