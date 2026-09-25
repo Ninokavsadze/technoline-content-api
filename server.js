@@ -743,6 +743,57 @@ app.post('/api/warranty/:serial/send', async function (req, res) {
   }
 });
 
+// --- AI-assisted catalog search ------------------------------------------
+// The catalog's live item list (name/brand/category/device/price) is
+// assembled client-side in technoline.html from the static demo parts plus
+// whatever the admin panel has saved — there's no separate copy of it here.
+// So the frontend sends its current item list along with the typed query,
+// and this just asks Claude which of those items match; nothing catalog-
+// related is stored or duplicated on this server.
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
+const AI_SEARCH_CONFIGURED = !!ANTHROPIC_API_KEY;
+
+app.post('/api/catalog/search-ai', async function (req, res) {
+  if (!AI_SEARCH_CONFIGURED) return res.status(503).json({ error: 'ai_not_configured' });
+  const query = String((req.body && req.body.query) || '').trim().slice(0, 200);
+  const items = Array.isArray(req.body && req.body.items) ? req.body.items.slice(0, 300) : [];
+  if (!query || !items.length) return res.json({ ids: [] });
+
+  const catalogLines = items.map(function (it) {
+    return String(it.id || '') + ' | ' + String(it.name || '') + ' | ბრენდი: ' + String(it.brand || '')
+      + ' | ტიპი: ' + String(it.cat || '') + ' | მოწყობილობა: ' + String(it.device || '')
+      + ' | თავსებადობა: ' + String(it.compat || '');
+  }).join('\n');
+
+  const prompt = 'მომხმარებლის საძიებო მოთხოვნა ონლაინ-მაღაზიის სათადარიგო ნაწილების კატალოგში: "' + query + '"\n\n'
+    + 'კატალოგი (id | დასახელება | ბრენდი | ტიპი | მოწყობილობა | თავსებადობა):\n' + catalogLines + '\n\n'
+    + 'გაიგე მომხმარებლის განზრახვა თუნდაც პირდაპირ არ ემთხვეოდეს სიტყვები (მაგ. "დამემტვრა ეკრანი" ან "screen" უნდა დაემთხვეს "ეკრანები" ტიპის ნაწილებს), და დააბრუნე მხოლოდ JSON მასივი შესატყვისი ნაწილების id-ებით, საუკეთესო შესატყვისობით დალაგებული — მაგ: ["p1","p5"]. თუ ვერაფერი ემთხვევა, დააბრუნე []. აბსოლუტურად არაფერი სხვა არ დაწერო, მხოლოდ JSON მასივი.';
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(function () { controller.abort(); }, 8000);
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 512, messages: [{ role: 'user', content: prompt }] }),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    const data = await r.json().catch(function () { return null; });
+    if (!r.ok) { console.error('AI search upstream error:', r.status, data); return res.status(502).json({ error: 'ai_upstream_error' }); }
+    const text = (data && data.content && data.content[0] && data.content[0].text) || '[]';
+    const match = text.match(/\[[\s\S]*\]/);
+    let ids = [];
+    try { ids = JSON.parse(match ? match[0] : text); } catch (e) { ids = []; }
+    if (!Array.isArray(ids)) ids = [];
+    res.json({ ids: ids.filter(function (id) { return typeof id === 'string'; }) });
+  } catch (e) {
+    console.error('AI search failed:', e.message);
+    res.status(504).json({ error: 'ai_search_timeout' });
+  }
+});
+
 app.get('/api/health', function (req, res) {
   res.json({ ok: true, time: new Date().toISOString() });
 });
