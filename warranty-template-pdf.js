@@ -47,7 +47,7 @@ function splitRuns(text) {
 // Field keys the admin panel's drag editor positions, in the order the
 // customer table columns were requested: name+surname, serial, model,
 // purchase date, warranty end date.
-const FIELD_KEYS = ['customerName', 'serial', 'model', 'purchase', 'warrantyEnd'];
+const FIELD_KEYS = ['customerName', 'serial', 'model', 'purchase', 'warrantyEnd', 'daysLeft'];
 
 // A bare number/date placed on the template doesn't say what it is, so these
 // three fields get a short Georgian label printed right before the value.
@@ -65,7 +65,8 @@ const TABLE_ROW_LABELS = {
   serial: 'სერიული ნომერი',
   model: 'მოდელი',
   purchase: 'შეძენის თარიღი',
-  warrantyEnd: 'გარანტიის ვადა'
+  warrantyEnd: 'გარანტიის ვადა',
+  daysLeft: 'გარანტიის დასრულებამდე დარჩენილია'
 };
 
 function hexToRgb(hex) {
@@ -74,6 +75,25 @@ function hexToRgb(hex) {
   const n = parseInt(h, 16);
   if (!h || isNaN(n)) return rgb(0.043, 0.106, 0.169);
   return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
+}
+
+// Same day-count formula server.js's warrantyStatus() uses for the customer
+// site's "დარჩენილი დღეები" box, so the printed card and the site never
+// disagree on the number.
+function computeDaysLeftLabel(endStr) {
+  if (!endStr) return '';
+  const end = new Date(String(endStr) + 'T00:00:00');
+  if (isNaN(end.getTime())) return '';
+  const remaining = Math.round((end - new Date()) / 86400000);
+  return remaining >= 0 ? (remaining + ' დღე') : (Math.abs(remaining) + ' დღის წინ');
+}
+
+// Georgian month names in the dative case ("...ს"), for "ბარათი აღდგენილია
+// <date>-ს" below the table — needed as a lookup rather than a suffix rule
+// since a few months change more than just their ending (მარტი -> მარტს).
+const GEO_MONTHS_DATIVE = ['იანვარს', 'თებერვალს', 'მარტს', 'აპრილს', 'მაისს', 'ივნისს', 'ივლისს', 'აგვისტოს', 'სექტემბერს', 'ოქტომბერს', 'ნოემბერს', 'დეკემბერს'];
+function formatGeorgianDateDative(d) {
+  return d.getFullYear() + ' წლის ' + d.getDate() + ' ' + GEO_MONTHS_DATIVE[d.getMonth()];
 }
 
 /**
@@ -162,11 +182,17 @@ async function fillWarrantyTemplate(template, data) {
     page.drawRectangle({ x: x0, y: height - yTop0 - headerH, width: tw, height: headerH, color: headerColor });
     drawMixedAtPx(table.title || 'საგარანტიო ინფორმაცია', x0 + 8, yTop0 + (headerH - headerSize) / 2, headerSize, headerTextColor);
 
+    const labelAvailW = labelColW - 16;
     const valueAvailW = tw - labelColW - 16;
     rows.forEach(function (row, i) {
       const rowTop = yTop0 + headerH + i * rowH;
       if (i % 2 === 1) page.drawRectangle({ x: x0, y: height - rowTop - rowH, width: tw, height: rowH, color: zebraColor });
-      drawMixedAtPx(row[0], x0 + 8, rowTop + (rowH - fontSize) / 2, fontSize, INK);
+      // Long labels (e.g. "გარანტიის დასრულებამდე დარჩენილია") can exceed
+      // even the capped label column width — shrink to fit, same as values.
+      let labelSize = fontSize;
+      const labelW = measureMixed(row[0], labelSize);
+      if (labelW > labelAvailW && labelW > 0) labelSize = Math.max(7, fontSize * labelAvailW / labelW);
+      drawMixedAtPx(row[0], x0 + 8, rowTop + (rowH - labelSize) / 2, labelSize, INK);
       let valueSize = fontSize;
       const valueW = measureMixed(row[1], valueSize);
       if (valueW > valueAvailW && valueW > 0) valueSize = Math.max(7, fontSize * valueAvailW / valueW);
@@ -178,9 +204,17 @@ async function fillWarrantyTemplate(template, data) {
 
     page.drawLine({ start: { x: x0 + labelColW, y: height - yTop0 - headerH }, end: { x: x0 + labelColW, y: height - yTop0 - totalH }, thickness: 0.75, color: lineColor });
     page.drawRectangle({ x: x0, y: height - yTop0 - totalH, width: tw, height: totalH, borderColor: lineColor, borderWidth: 1 });
+
+    // Small caption under the table stating when this specific card was
+    // generated — helps distinguish a freshly re-issued card from an older
+    // printed one if a customer keeps both.
+    const genFontSize = Math.max(6, Math.round(fontSize * 0.6));
+    const genLabel = 'საგარანტიო ბარათი აღდგენილია ' + formatGeorgianDateDative(new Date());
+    drawMixedAtPx(genLabel, x0, yTop0 + totalH + genFontSize * 1.4, genFontSize, rgb(0.55, 0.58, 0.62));
   }
 
   if (template && template.table) {
+    if (data.daysLeft == null) data.daysLeft = computeDaysLeftLabel(data.warrantyEnd);
     drawTable(template.table);
   } else {
     const fields = (template && template.fields) || {};
