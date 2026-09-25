@@ -387,7 +387,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     services:'სერვისების სექცია', reviews:'შეფასებები', steps:'ეტაპები', principles:'პრინციპები',
     history:'ისტორია', branches:'ფილიალები', center:'საკონტაქტო ცენტრი', corp:'კორპორატიული კლიენტები',
     side:'გვერდითი პანელი', lead:'მთავარი ბარათი', card:'ბარათი', row:'სერვისი', step:'ნაბიჯი',
-    p:'აბზაცი', s:'პუნქტი', stat:'სტატისტიკა', quote:'ციტატა', item:'პუნქტი'
+    p:'აბზაცი', s:'პუნქტი', stat:'სტატისტიკა', quote:'ციტატა', item:'პუნქტი', craft:'ინჟინრების ბანერი'
   };
   var CK_FIELD_LABELS = {
     title:'სათაური', lede:'შესავალი', desc:'აღწერა', eyebrow:'ზედწერილი', body:'ტექსტი',
@@ -534,6 +534,12 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   var bookingsLoaded = false;
   var warrantyLoaded = { records:false, template:false };
   var warrantySubTab = 'records';
+  // Which segment sub-tab is active per content page (e.g. "services" ->
+  // "row3") — content pages with many repeated segments (services rows,
+  // home stat/step/card blocks, wservice/terms sections) were one long
+  // stacked list of textareas and staff had to scroll through all of them
+  // to reach one field; now only the selected segment's fields render.
+  var contentSubTab = {};
 
   function buildTabs(){
     TABS = [];
@@ -666,14 +672,33 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   function renderContentPanel(main, tab){
     var keys = CONTENT_ORDER.filter(function(k){ return parseCk(k).page === tab.page; });
     var html = panelHeadHtml(tab, 'შეცვალეთ ტექსტი და დააჭირეთ „ცვლილებების შენახვას“. მარტივი HTML ტეგები (em, strong, br) დაშვებულია და შენარჩუნდება საიტზე.');
-    html += '<div class="card">';
-    var lastSub;
+
+    // Group the page's fields by segment (row1, card2, stat1, s1…) in the
+    // order they appear — each segment becomes its own sub-tab instead of
+    // one long stacked list, so a page like "services" (7 segments) shows
+    // only the selected one's 2-3 fields at a time instead of all ~20.
+    var segOrder = [], segKeys = {};
     keys.forEach(function(k){
-      var p = parseCk(k);
-      if(p.sub !== lastSub){
-        if(p.sub) html += '<div class="seg-label">' + humanizeSegment(p.sub) + '</div>';
-        lastSub = p.sub;
-      }
+      var sub = parseCk(k).sub || '__general__';
+      if(!segKeys[sub]){ segKeys[sub] = []; segOrder.push(sub); }
+      segKeys[sub].push(k);
+    });
+    var useSubTabs = segOrder.length > 1;
+    if(useSubTabs && (!contentSubTab[tab.page] || !segKeys[contentSubTab[tab.page]])){
+      contentSubTab[tab.page] = segOrder[0];
+    }
+    var activeSub = useSubTabs ? contentSubTab[tab.page] : segOrder[0];
+
+    if(useSubTabs){
+      html += '<div class="bg-type-row" style="flex-wrap:wrap;gap:8px">' + segOrder.map(function(sub){
+        var label = sub === '__general__' ? 'ზოგადი' : humanizeSegment(sub);
+        return '<button type="button" class="bg-type-btn'+(sub===activeSub?' is-active':'')+'" data-content-subtab="'+sub+'" style="flex:0 1 auto">'+label+'</button>';
+      }).join('') + '</div>';
+    }
+
+    html += '<div class="card">';
+    if(useSubTabs && activeSub !== '__general__') html += '<div class="seg-label" style="margin-top:0">' + humanizeSegment(activeSub) + '</div>';
+    (segKeys[activeSub] || []).forEach(function(k){
       var val = Object.prototype.hasOwnProperty.call(state.content,k) ? state.content[k] : CONTENT_DEFAULTS[k];
       html += '<div class="field-block">'
         + '<label>' + labelForCk(k) + '<span class="ck-key">' + k + '</span></label>'
@@ -684,6 +709,13 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     html += '</div>';
     html += saveBarHtml();
     main.innerHTML = html;
+
+    main.querySelectorAll('[data-content-subtab]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        contentSubTab[tab.page] = btn.getAttribute('data-content-subtab');
+        renderContentPanel(main, tab);
+      });
+    });
 
     main.querySelectorAll('[data-ck-edit]').forEach(function(ta){
       ta.addEventListener('input', function(){
