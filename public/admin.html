@@ -274,6 +274,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 (function(){
   'use strict';
@@ -423,6 +424,47 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   function labelForCk(key){ return CK_FIELD_LABELS[parseCk(key).field] || parseCk(key).field; }
   function escAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
   function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // Pages whose sub-items are a free-form, addable/removable list (services
+  // rows, terms clauses, warranty-service clauses) instead of a fixed set of
+  // CONTENT_ORDER keys. The item order + which ids exist is kept as a JSON
+  // array under a synthetic "<page>.__order" content key (saved through the
+  // same content-site payload, no separate backend field needed); items
+  // beyond the factory defaultIds are freshly-minted ids the admin added.
+  var LIST_CONTENT_PAGES = {
+    services: { label:'სერვისი', idPrefix:'row', fixedSubs:['head'],
+      defaultIds:['row1','row2','row3','row4','row5','row6'],
+      fields:[{key:'title',label:'სათაური'},{key:'desc',label:'აღწერა'},{key:'price',label:'ფასი'}] },
+    terms: { label:'პუნქტი', idPrefix:'s', fixedSubs:['head'],
+      defaultIds:['s1','s2','s3','s4','s5','s6','s7'],
+      fields:[{key:'title',label:'სათაური'},{key:'body',label:'ტექსტი'},{key:'list',label:'სია (HTML <li> ჩანაწერები — არასავალდებულო)'}] },
+    wservice: { label:'პუნქტი', idPrefix:'s', fixedSubs:['head','band'],
+      defaultIds:['s1','s2','s3','s4','s5'],
+      fields:[{key:'title',label:'სათაური'},{key:'desc',label:'ტექსტი'},{key:'list',label:'სია (HTML <li> ჩანაწერები — არასავალდებულო)'}] }
+  };
+  function listOrderFor(page){
+    var cfg = LIST_CONTENT_PAGES[page];
+    var raw = state.content[page + '.__order'];
+    if(raw){
+      try{ var arr = JSON.parse(raw); if(Array.isArray(arr) && arr.length) return arr; }catch(e){}
+    }
+    return cfg.defaultIds.slice();
+  }
+  function saveListOrder(page, ids){ state.content[page + '.__order'] = JSON.stringify(ids); }
+  function nextListId(page){
+    var cfg = LIST_CONTENT_PAGES[page];
+    var re = new RegExp('^' + cfg.idPrefix + '(\\d+)$');
+    var max = 0;
+    listOrderFor(page).concat(cfg.defaultIds).forEach(function(id){
+      var m = id.match(re);
+      if(m) max = Math.max(max, parseInt(m[1], 10));
+    });
+    return cfg.idPrefix + (max + 1);
+  }
+  function listItemFieldVal(page, id, key){
+    var ck = page + '.' + id + '.' + key;
+    return Object.prototype.hasOwnProperty.call(state.content, ck) ? state.content[ck] : (CONTENT_DEFAULTS[ck] || '');
+  }
 
   /* ---------- toast ---------- */
   var toastTimer;
@@ -630,7 +672,10 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
 
     if(!tab){ main.innerHTML=''; return; }
 
-    if(tab.kind === 'content') return renderContentPanel(main, tab);
+    if(tab.kind === 'content'){
+      var listCfg = LIST_CONTENT_PAGES[tab.page];
+      return listCfg ? renderListContentPanel(main, tab, listCfg) : renderContentPanel(main, tab);
+    }
     if(tab.kind === 'pages') return renderPagesPanel(main, tab);
     if(tab.kind === 'colors') return renderColorsPanel(main, tab);
     if(tab.kind === 'typography') return renderTypographyPanel(main, tab);
@@ -672,6 +717,108 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       + '</div>'
       + '<p class="field-hint" style="margin-top:6px">თუ ფოტო არ ატვირთავთ, ბარათზე ფერადი ფონი და ხატულა დარჩება.</p>'
       + '</div>';
+  }
+
+  // Card-list editor for LIST_CONTENT_PAGES pages (services rows, terms /
+  // wservice clauses): a small fixed "head" card for page-level fields,
+  // then one editable card per list item with its own delete button, plus
+  // an "add new" button — items can be freely added/removed, unlike the
+  // fixed CONTENT_ORDER-driven sub-tabs renderContentPanel uses elsewhere.
+  function renderListContentPanel(main, tab, cfg){
+    var page = tab.page;
+    var html = panelHeadHtml(tab, 'შეცვალეთ ტექსტი და დააჭირეთ „ცვლილებების შენახვას“. ქვემოთ შეგიძლიათ დაამატოთ ახალი ' + cfg.label + ' ან წაშალოთ არსებული — საიტზეც შესაბამისად განახლდება.');
+
+    var fixedKeys = CONTENT_ORDER.filter(function(k){
+      var p = parseCk(k);
+      return p.page === page && cfg.fixedSubs.indexOf(p.sub) !== -1;
+    });
+    if(fixedKeys.length){
+      html += '<div class="card">';
+      fixedKeys.forEach(function(k){
+        var val = Object.prototype.hasOwnProperty.call(state.content,k) ? state.content[k] : CONTENT_DEFAULTS[k];
+        html += '<div class="field-block"><label>' + labelForCk(k) + '<span class="ck-key">' + k + '</span></label>'
+          + '<textarea data-ck-edit="'+escAttr(k)+'">' + escHtml(val) + '</textarea></div>';
+      });
+      html += '</div>';
+    }
+
+    html += '<div id="list-items"></div>';
+    html += '<button type="button" class="btn btn-ghost" id="list-item-add" style="margin:4px 0 16px">+ ახალი ' + cfg.label + '</button>';
+    html += saveBarHtml();
+    main.innerHTML = html;
+
+    function itemCardHtml(id, idx){
+      var title = listItemFieldVal(page, id, 'title');
+      var fieldsHtml = cfg.fields.map(function(f){
+        var ck = page + '.' + id + '.' + f.key;
+        var val = listItemFieldVal(page, id, f.key);
+        return '<div class="field-block"><label>' + f.label + '<span class="ck-key">' + ck + '</span></label>'
+          + '<textarea data-list-field="'+f.key+'" data-list-id="'+escAttr(id)+'">' + escHtml(val) + '</textarea></div>';
+      }).join('');
+      return '<div class="card" data-list-card="'+escAttr(id)+'">'
+        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">'
+          + '<h3 style="margin:0;font-family:var(--font-display);font-size:1.02rem" data-list-title>' + (idx+1) + '. ' + (escHtml(title) || cfg.label) + '</h3>'
+          + '<button type="button" class="drag-eye" data-list-delete="'+escAttr(id)+'" title="წაშლა">🗑</button>'
+        + '</div>'
+        + fieldsHtml
+        + '</div>';
+    }
+
+    function renderItems(){
+      var ids = listOrderFor(page);
+      document.getElementById('list-items').innerHTML = ids.map(itemCardHtml).join('');
+      wireItems(ids);
+    }
+
+    function wireItems(ids){
+      main.querySelectorAll('[data-list-field]').forEach(function(ta){
+        ta.addEventListener('input', function(){
+          var id = ta.getAttribute('data-list-id'), field = ta.getAttribute('data-list-field');
+          state.content[page + '.' + id + '.' + field] = ta.value;
+          setDirty(tab, true);
+          updateStatusChip(tab);
+          if(field === 'title'){
+            var idx = ids.indexOf(id);
+            ta.closest('.card').querySelector('[data-list-title]').textContent = (idx+1) + '. ' + (ta.value || cfg.label);
+          }
+        });
+      });
+      main.querySelectorAll('[data-list-delete]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var id = btn.getAttribute('data-list-delete');
+          var current = listOrderFor(page);
+          if(current.length <= 1){ alert('ბოლო ჩანაწერის წაშლა შეუძლებელია.'); return; }
+          if(!confirm('წავშალო ეს ' + cfg.label + '? საიტზეც გაქრება.')) return;
+          saveListOrder(page, current.filter(function(x){ return x !== id; }));
+          cfg.fields.forEach(function(f){ delete state.content[page + '.' + id + '.' + f.key]; });
+          setDirty(tab, true);
+          updateStatusChip(tab);
+          renderItems();
+        });
+      });
+    }
+
+    main.querySelectorAll('[data-ck-edit]').forEach(function(ta){
+      ta.addEventListener('input', function(){
+        state.content[ta.getAttribute('data-ck-edit')] = ta.value;
+        setDirty(tab, true);
+        updateStatusChip(tab);
+      });
+    });
+
+    renderItems();
+
+    document.getElementById('list-item-add').addEventListener('click', function(){
+      var id = nextListId(page);
+      saveListOrder(page, listOrderFor(page).concat([id]));
+      setDirty(tab, true);
+      updateStatusChip(tab);
+      renderItems();
+      var card = main.querySelector('[data-list-card="'+id+'"]');
+      if(card) card.scrollIntoView({behavior:'smooth', block:'center'});
+    });
+
+    wireSaveBar(tab, function(){ return {path:'content-site', body: state.content}; });
   }
 
   function renderContentPanel(main, tab){
@@ -1244,13 +1391,50 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     return o[key] != null ? o[key] : (def[key] != null ? def[key] : '');
   }
 
+  var PARTS_XLSX_COL_MAP = {
+    id:'id', 'იდი':'id',
+    name:'name', 'დასახელება':'name',
+    price:'price', 'ფასი':'price', 'ფასი ₾':'price',
+    stock:'stock', 'მარაგი':'stock',
+    brand:'brand', 'ბრენდი':'brand',
+    cat:'cat', 'ტიპი':'cat', 'ნაწილის ტიპი':'cat', category:'cat',
+    device:'device', 'მოწყობილობა':'device', 'მოწყობილობის ტიპი':'device',
+    compat:'compat', 'თავსებადობა':'compat', compatibility:'compat'
+  };
+  function partsXlsxNormStock(v){
+    v = String(v||'').trim().toLowerCase();
+    if(v === 'low' || v === 'მცირდება') return 'low';
+    return 'in';
+  }
+  function partsXlsxRowsToParts(rows){
+    var out = [];
+    rows.forEach(function(row){
+      var rec = {};
+      Object.keys(row).forEach(function(k){
+        var norm = PARTS_XLSX_COL_MAP[String(k).trim().toLowerCase()];
+        if(norm) rec[norm] = row[k];
+      });
+      if(!rec.name && !rec.id) return;
+      rec.stock = partsXlsxNormStock(rec.stock);
+      out.push(rec);
+    });
+    return out;
+  }
+
   function renderPartsPanel(main, tab){
     var html = panelHeadHtml(tab, 'შეავსეთ ნაწილის დასახელება, ფასი, ბრენდი, ნაწილის ტიპი და მოწყობილობის ტიპი (რომლისთვისაცაა ეს ნაწილი — მაგ. „მობილურის ნაწილი"), ან ატვირთეთ საკუთარი ფოტო — თუ ფოტო არ ატვირთეთ, საიტზე საერთო ტიპის ილუსტრაცია გამოჩნდება. ახალი ნაწილის დამატებისას სასურველია მოწყობილობა+ტიპი შეავსოთ, რომ საიტის ფილტრებში სწორად გამოჩნდეს.');
     html += partsDatalistsHtml();
+    html += '<div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px">'
+      + '<input type="text" id="parts-search" placeholder="ძებნა: დასახელება, ბრენდი, ტიპი, მოწყობილობა…" style="flex:1;min-width:220px;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink);font-size:.9rem">'
+      + '<label class="btn btn-ghost" style="margin:0">Excel-დან ატვირთვა (.xlsx/.csv)<input type="file" accept=".xlsx,.xls,.csv" id="parts-xlsx-input" style="display:none"></label>'
+      + '</div>'
+      + '<p class="field-hint" style="margin:-8px 0 14px">ფაილში სვეტები: დასახელება, ფასი, ბრენდი, ნაწილის ტიპი, მოწყობილობის ტიპი, თავსებადობა, მარაგი (და სურვილისამებრ — id, უკვე არსებული ნაწილის განსაახლებლად).</p>';
     html += '<div id="parts-list"></div>';
     html += '<button type="button" class="btn btn-ghost" id="parts-add" style="margin:4px 0 16px">+ ახალი ნაწილი</button>';
     html += saveBarHtml();
     main.innerHTML = html;
+
+    var partsSearchQ = '';
 
     function partCardHtml(id){
       var isCustom = !PARTS_DEFAULTS.some(function(def){ return def.id === id; });
@@ -1284,8 +1468,21 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         + '</div></div>';
     }
 
+    function filteredPartsIdList(){
+      var q = partsSearchQ.trim().toLowerCase();
+      if(!q) return partsIdList();
+      return partsIdList().filter(function(id){
+        return ['name','brand','cat','device','compat'].some(function(k){
+          return String(partsFieldVal(id, k) || '').toLowerCase().indexOf(q) !== -1;
+        });
+      });
+    }
+
     function renderList(){
-      document.getElementById('parts-list').innerHTML = partsIdList().map(partCardHtml).join('');
+      var ids = filteredPartsIdList();
+      document.getElementById('parts-list').innerHTML = ids.length
+        ? ids.map(partCardHtml).join('')
+        : '<p class="field-hint">ვერაფერი მოიძებნა.</p>';
       wireList();
     }
 
@@ -1379,6 +1576,43 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       renderList();
       var card = main.querySelector('[data-part-card="'+id+'"]');
       if(card) card.scrollIntoView({behavior:'smooth', block:'center'});
+    });
+
+    document.getElementById('parts-search').addEventListener('input', function(){
+      partsSearchQ = this.value;
+      renderList();
+    });
+
+    document.getElementById('parts-xlsx-input').addEventListener('change', function(){
+      var inp = this;
+      var file = inp.files && inp.files[0];
+      if(!file) return;
+      var reader = new FileReader();
+      reader.onload = function(){
+        var recs;
+        try{
+          var wb = XLSX.read(reader.result, {type:'array'});
+          var sheet = wb.Sheets[wb.SheetNames[0]];
+          recs = partsXlsxRowsToParts(XLSX.utils.sheet_to_json(sheet, {defval:''}));
+        }catch(e){
+          alert('ფაილის წაკითხვა ვერ მოხერხდა — შეამოწმეთ ფორმატი (.xlsx ან .csv).');
+          inp.value = '';
+          return;
+        }
+        if(!recs.length){ alert('ფაილში ვერცერთი ნაწილი ვერ მოიძებნა.'); inp.value = ''; return; }
+        if(!confirm('ფაილში ნაპოვნია ' + recs.length + ' ნაწილი. დავამატო/განვაახლო კატალოგში?')){ inp.value = ''; return; }
+        recs.forEach(function(rec, i){
+          var id = rec.id && String(rec.id).trim() ? String(rec.id).trim() : ('custom-' + Date.now() + '-' + i);
+          delete rec.id;
+          var existing = state.parts[id] || {};
+          state.parts[id] = Object.assign({}, existing, rec);
+        });
+        setDirty(tab, true);
+        updateStatusChip(tab);
+        renderList();
+        inp.value = '';
+      };
+      reader.readAsArrayBuffer(file);
     });
 
     wireSaveBar(tab, function(){ return {path:'content-parts', body: state.parts}; });
@@ -2036,7 +2270,11 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(resetBtn) resetBtn.addEventListener('click', function(){
       if(!confirm('დარწმუნებული ხართ, რომ გსურთ ამ ჩანართის ნაგულისხმევ მდგომარეობაში დაბრუნება?')) return;
       if(tab.kind === 'content'){
-        CONTENT_ORDER.filter(function(k){ return parseCk(k).page === tab.page; }).forEach(function(k){ delete state.content[k]; });
+        if(LIST_CONTENT_PAGES[tab.page]){
+          Object.keys(state.content).forEach(function(k){ if(k.indexOf(tab.page + '.') === 0) delete state.content[k]; });
+        } else {
+          CONTENT_ORDER.filter(function(k){ return parseCk(k).page === tab.page; }).forEach(function(k){ delete state.content[k]; });
+        }
       } else if(tab.kind === 'colors'){ THEME_TOKENS.forEach(function(t){ delete state.theme[t.key]; }); }
       else if(tab.kind === 'typography'){
         TYPOGRAPHY_GROUPS.forEach(function(g){ g.fields.forEach(function(f){ delete state.theme[f.key]; }); });

@@ -798,7 +798,7 @@
     </nav>
 
     <div class="header-actions">
-      <button class="icon-btn" id="warranty-quick-btn" aria-label="საგარანტიო შემოწმება" title="საგარანტიო შემოწმება" data-route="warranty-check"><svg><use href="#ic-search"/></svg></button>
+      <button class="icon-btn" id="warranty-quick-btn" aria-label="ნაწილების ძიება" title="ნაწილების ძიება" data-route="catalog"><svg><use href="#ic-search"/></svg></button>
       <button class="icon-btn" id="profile-btn" aria-label="პროფილი" title="პროფილი" data-route="profile"><svg><use href="#ic-user"/></svg></button>
       <button class="icon-btn" id="cart-btn" aria-label="კალათა" title="კალათა">
         <svg><use href="#ic-cart"/></svg>
@@ -1494,7 +1494,7 @@
           </ul>
           <h2 id="wc-claim" data-ck="wservice.s3.title">როგორ გამოვიყენოთ გარანტია</h2>
           <p data-ck="wservice.s3.desc">საგარანტიო შემთხვევის დაფიქსირებისთვის:</p>
-          <ul>
+          <ul data-ck="wservice.s3.list">
             <li>შეამოწმეთ გარანტიის სტატუსი <a href="#warranty-check" data-route="warranty-check" style="color:var(--blue);font-weight:700">საგარანტიო შემოწმების გვერდზე</a></li>
             <li>დაჯავშნეთ ვიზიტი ნებისმიერ ფილიალში — მიუთითეთ, რომ საქმე საგარანტიო შემთხვევას ეხება</li>
             <li>თან იქონიეთ პირადობის დამადასტურებელი დოკუმენტი და, შეძლებისდაგვარად, თავდაპირველი ქვითარი</li>
@@ -1692,7 +1692,7 @@
           <h2 id="t-cancel" data-ck="terms.s6.title">6. გაუქმება და დაბრუნება</h2>
           <p data-ck="terms.s6.body">დაჯავშნილი ვიზიტის გაუქმება ან გადატანა შესაძლებელია ვიზიტამდე მინიმუმ 2 საათით ადრე, უფასოდ. შეძენილი ნაწილის დაბრუნება შესაძლებელია შეძენიდან 14 დღის განმავლობაში, თუ ნაწილი არ არის დამონტაჟებული და შენარჩუნებულია სასაქონლო სახე.</p>
           <h2 id="t-contact" data-ck="terms.s7.title">7. კონტაქტი</h2>
-          <p>წინამდებარე პირობებთან დაკავშირებული კითხვებისთვის დაგვიკავშირდით — <a href="#contact" data-route="contact" style="color:var(--blue);font-weight:700">საკონტაქტო გვერდზე</a> მითითებულ არხებზე.</p>
+          <p data-ck="terms.s7.body">წინამდებარე პირობებთან დაკავშირებული კითხვებისთვის დაგვიკავშირდით — <a href="#contact" data-route="contact" style="color:var(--blue);font-weight:700">საკონტაქტო გვერდზე</a> მითითებულ არხებზე.</p>
         </div>
       </div>
     </div>
@@ -1947,7 +1947,11 @@
     closeDrawer();
     if(route === 'profile') renderProfileView();
     if(route === 'orders') renderOrders();
-    if(route === 'catalog') renderCatalog();
+    if(route === 'catalog'){
+      renderCatalog();
+      var searchInp = document.getElementById('cat-search');
+      if(searchInp) setTimeout(function(){ searchInp.focus(); }, 50);
+    }
   }
 
   document.addEventListener('click', function(e){
@@ -2919,6 +2923,7 @@
     document.querySelectorAll('[data-ck]').forEach(function(el){
       var k = el.getAttribute('data-ck');
       var v = Object.prototype.hasOwnProperty.call(siteContent.content, k) ? siteContent.content[k] : CONTENT_DEFAULTS[k];
+      if(v == null) v = '';
       if(el.innerHTML !== v) el.innerHTML = v;
     });
     refreshTelLinks();
@@ -3043,6 +3048,79 @@
     }
     if(photo) photo.style.display = wantPhoto ? 'block' : 'none';
   }
+  // Pages whose sub-sections are an admin-addable/removable list (services
+  // pricing rows, terms/warranty-service clauses) instead of a fixed set of
+  // markup blocks. The admin panel keeps the live id order as a JSON array
+  // under a "<page>.__order" content key; as long as that matches the
+  // page's original built-in ids (the common case — nobody has added or
+  // removed anything) this is a no-op and the page's own static markup,
+  // already kept in sync by applyContentOverrides, is left alone. Only once
+  // the set actually changes does this rebuild the section from scratch.
+  var LIST_PAGES = {
+    services: {
+      defaultIds: ['row1','row2','row3','row4','row5','row6'],
+      container: function(){ return document.querySelector('.svc-tariff-grid'); },
+      itemHtml: function(page, id){
+        return '<div class="svc-tariff-card">'
+          + '<div class="svc-icon"><svg><use href="#ic-tools"/></svg></div>'
+          + '<h3 data-ck="'+page+'.'+id+'.title"></h3>'
+          + '<p data-ck="'+page+'.'+id+'.desc"></p>'
+          + '<div class="svc-tariff-foot"><div class="price" data-ck="'+page+'.'+id+'.price"></div><a href="#booking" data-route="booking" class="btn btn-ghost btn-sm">დაჯავშნა</a></div>'
+          + '</div>';
+      }
+    },
+    terms: {
+      defaultIds: ['s1','s2','s3','s4','s5','s6','s7'],
+      container: function(){ return document.querySelector('#view-terms .prose'); },
+      toc: function(){ return document.querySelector('#view-terms .toc'); }, tocHref: '#terms',
+      itemHtml: function(page, id){
+        return '<h2 id="li-'+page+'-'+id+'" data-ck="'+page+'.'+id+'.title"></h2>'
+          + '<p data-ck="'+page+'.'+id+'.body"></p>'
+          + '<ul data-ck="'+page+'.'+id+'.list"></ul>';
+      }
+    },
+    wservice: {
+      defaultIds: ['s1','s2','s3','s4','s5'],
+      container: function(){ return document.querySelector('#view-warranty-service .prose'); },
+      toc: function(){ return document.querySelector('#view-warranty-service .toc'); }, tocHref: '#warranty-service',
+      itemHtml: function(page, id){
+        return '<h2 id="li-'+page+'-'+id+'" data-ck="'+page+'.'+id+'.title"></h2>'
+          + '<p data-ck="'+page+'.'+id+'.desc"></p>'
+          + '<ul data-ck="'+page+'.'+id+'.list"></ul>';
+      }
+    }
+  };
+  function listOrderFor(page, cfg){
+    var raw = siteContent.content[page + '.__order'];
+    if(raw){
+      try{ var arr = JSON.parse(raw); if(Array.isArray(arr) && arr.length) return arr; }catch(e){}
+    }
+    return cfg.defaultIds;
+  }
+  function applyListContentOverrides(){
+    Object.keys(LIST_PAGES).forEach(function(page){
+      var cfg = LIST_PAGES[page];
+      var ids = listOrderFor(page, cfg);
+      var unchanged = ids.length === cfg.defaultIds.length && ids.every(function(id, i){ return id === cfg.defaultIds[i]; });
+      if(unchanged) return;
+      var container = cfg.container();
+      if(container) container.innerHTML = ids.map(function(id){ return cfg.itemHtml(page, id); }).join('');
+      if(cfg.toc){
+        var toc = cfg.toc();
+        if(toc){
+          toc.innerHTML = '';
+          ids.forEach(function(id){
+            var ck = page + '.' + id + '.title';
+            var raw2 = Object.prototype.hasOwnProperty.call(siteContent.content, ck) ? siteContent.content[ck] : (CONTENT_DEFAULTS[ck] || '');
+            var label = String(raw2).replace(/<[^>]*>/g, '').replace(/^\s*\d+\.\s*/, '').trim() || 'პუნქტი';
+            var a = document.createElement('a');
+            a.href = cfg.tocHref; a.setAttribute('data-scroll', 'li-' + page + '-' + id); a.textContent = label;
+            toc.appendChild(a);
+          });
+        }
+      }
+    });
+  }
   function applyPartsOverrides(){
     var FIELDS = ['name','brand','cat','device','compat'];
     var overridden = PARTS_BASE.map(function(def){
@@ -3117,6 +3195,7 @@
       siteContent.theme = data.theme || {};
       siteContent.parts = data.parts || {};
       siteContent.branches = data.branches || {};
+      applyListContentOverrides();
       applyContentOverrides();
       applyThemeOverrides();
       applyPartsOverrides();
