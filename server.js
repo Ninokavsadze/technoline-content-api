@@ -418,6 +418,10 @@ function getMailTransport() {
   return mailTransport;
 }
 
+// Used to build an absolute link back to this API (e.g. the warranty card
+// URL texted to customers) — Render sets RENDER_EXTERNAL_URL automatically
+// in production, so this fallback only matters for local/manual runs.
+const PUBLIC_API_BASE_URL = 'https://technoline-content-api.onrender.com';
 const WIFISHER_API_URL = process.env.WIFISHER_API_URL || 'https://sms-api.wifisher.com/api/v2/send';
 const WIFISHER_API_KEY = process.env.WIFISHER_API_KEY || '';
 const WIFISHER_SENDER = process.env.WIFISHER_SENDER || '';
@@ -610,17 +614,24 @@ app.post('/api/warranty/:serial/otp/verify', async function (req, res) {
 // positions when one has been saved from the admin panel's drag editor;
 // otherwise falls back to the built-in generic card design (warranty-pdf.js)
 // so the feature keeps working exactly as before for anyone who hasn't
-// uploaded a template yet.
+// uploaded a template yet. If the template-based fill throws for any reason
+// (a malformed saved template, a font/embedding error, etc.) we log the full
+// error and fall back to the generic design too, rather than failing the
+// customer's download/email/SMS-link outright.
 async function generateWarrantyCardPdf(db, serial, rec, status) {
   const template = db['content/warranty-template'] || {};
   if (template.pdf) {
-    return fillWarrantyTemplate(template, {
-      customerName: rec.customerName || '',
-      serial: serial,
-      model: rec.device || '',
-      purchase: rec.purchase || '',
-      warrantyEnd: rec.end || ''
-    });
+    try {
+      return await fillWarrantyTemplate(template, {
+        customerName: rec.customerName || '',
+        serial: serial,
+        model: rec.device || '',
+        purchase: rec.purchase || '',
+        warrantyEnd: rec.end || ''
+      });
+    } catch (e) {
+      console.error('template-based warranty card failed, falling back to generic design:', e.stack || e.message);
+    }
   }
   return buildWarrantyCardPdf({
     device: rec.device, cat: rec.cat, serial: serial, purchase: rec.purchase, end: rec.end,
@@ -641,7 +652,7 @@ app.get('/api/warranty/:serial/card', async function (req, res) {
     res.setHeader('Content-Disposition', 'attachment; filename="warranty-' + serial + '.pdf"');
     res.send(pdf);
   } catch (e) {
-    console.error('warranty card generation failed:', e.message);
+    console.error('warranty card generation failed:', e.stack || e.message);
     res.status(500).json({ error: 'server_error' });
   }
 });
@@ -715,13 +726,17 @@ app.post('/api/warranty/:serial/send', async function (req, res) {
       return res.json({ ok: true });
     }
 
-    // method === 'sms'
+    // method === 'sms' — SMS can't carry an attachment, so the card itself
+    // is a link to the same public, unauthenticated /card endpoint the
+    // customer's own "PDF download" button already uses.
     if (!SMS_CONFIGURED) return res.status(503).json({ error: 'not_configured', channel: 'sms' });
+    const publicBase = process.env.RENDER_EXTERNAL_URL || PUBLIC_API_BASE_URL;
+    const cardLink = publicBase + '/api/warranty/' + encodeURIComponent(serial) + '/card';
     await sendWifisherSms(destination, 'ტექნოლაინი — თქვენი გარანტია (' + serial + ') ' +
-      (status.active ? 'აქტიურია' : 'ამოწურულია') + ', ვადა: ' + rec.end);
+      (status.active ? 'აქტიურია' : 'ამოწურულია') + ', ვადა: ' + rec.end + '. ბარათი: ' + cardLink);
     res.json({ ok: true });
   } catch (e) {
-    console.error('warranty send failed:', e.message);
+    console.error('warranty send failed:', e.stack || e.message);
     res.status(500).json({ error: 'server_error' });
   }
 });
