@@ -95,7 +95,8 @@ const DEFAULT_DB = {
   },
   'content/warranty-template': {},
   bookings: [],
-  users: {}
+  users: {},
+  feedback: []
 };
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
@@ -122,7 +123,7 @@ async function readDb() {
     try {
       const values = await Promise.all(DB_KEYS.map(upstashGet));
       const db = {};
-      DB_KEYS.forEach(function (k, i) { db[k] = values[i] != null ? values[i] : (k === 'bookings' ? [] : {}); });
+      DB_KEYS.forEach(function (k, i) { db[k] = values[i] != null ? values[i] : ((k === 'bookings' || k === 'feedback') ? [] : {}); });
       return db;
     } catch (e) {
       console.error('Upstash read failed:', e.message);
@@ -377,6 +378,73 @@ app.put('/api/bookings/:id/qlogic', requireAuth, async function (req, res) {
     db.bookings[idx].qlogicSpace = b.qlogicSpace || db.bookings[idx].qlogicSpace;
     await writeDb(db);
     res.json({ ok: true, booking: db.bookings[idx] });
+  } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// --- Smart Q-Logic feedback webhook (opposite direction: Smart Q-Logic --
+// pushes each customer rating INTO this endpoint — see
+// smart-qlogic-feedback-webhook-spec.md for the full contract). Configure
+// the shared secret shown on Smart Q-Logic's own admin panel (ინტეგრაციები
+// -> "მომხმარებელთა უკუკავშირის გადაგზავნა საიტზე") as QLOGIC_FEEDBACK_SECRET
+// on Render; until it's set this endpoint always answers 503, so nothing
+// is ever accepted without a real secret to check against.
+const QLOGIC_FEEDBACK_SECRET = process.env.QLOGIC_FEEDBACK_SECRET || '';
+
+// Constant-time secret comparison (spec §3, explicit requirement). Hashing
+// both sides to a fixed-length digest first means crypto.timingSafeEqual
+// never sees two differently-sized buffers (it throws on a length
+// mismatch) — so a wrong-length guess can't be told apart from a
+// wrong-content one by response timing either.
+function safeSecretEqual(a, b) {
+  const hashA = crypto.createHash('sha256').update(String(a)).digest();
+  const hashB = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+}
+
+app.post('/api/qlogic-feedback', async function (req, res) {
+  if (!QLOGIC_FEEDBACK_SECRET) return res.status(503).json({ error: 'not_configured' });
+  const provided = req.headers['x-qlogic-webhook-secret'] || '';
+  if (!provided || !safeSecretEqual(provided, QLOGIC_FEEDBACK_SECRET)) {
+    return res.status(401).json({ error: 'invalid_secret' });
+  }
+  const b = req.body || {};
+  if (b.event !== 'rating.created' && b.event !== 'rating.test') {
+    return res.status(400).json({ error: 'invalid_event' });
+  }
+  // Store first, answer fast — Smart Q-Logic times out at 8s and never
+  // retries a failed/slow delivery (spec §7), so there's no later chance
+  // to pick this rating back up if we're not quick about it.
+  try {
+    const db = await readDb();
+    db.feedback = db.feedback || [];
+    db.feedback.push({
+      id: 'fb_' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex'),
+      event: b.event,
+      isTest: b.event === 'rating.test', // rating.test is Smart Q-Logic's own "send test message" button — kept, but flagged so the admin view can tell it apart from a real customer rating
+      ratingId: b.rating_id != null ? b.rating_id : 0,
+      branchId: b.branch_id != null ? b.branch_id : null,
+      score: b.score != null ? b.score : null,
+      criteria: Array.isArray(b.criteria) ? b.criteria : [],
+      comment: b.comment || '',
+      orderCode: b.order_code != null ? b.order_code : null, // links back to our own booking's confirmationCode when set from our booking-API's external_ref; null for walk-ins
+      createdAt: b.created_at != null ? b.created_at : Date.now(),
+      receivedAt: new Date().toISOString()
+    });
+    await writeDb(db);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('qlogic feedback store failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// staff-only listing, for the admin panel's customer-feedback tab
+app.get('/api/feedback', requireAuth, async function (req, res) {
+  try {
+    const db = await readDb();
+    res.json((db.feedback || []).slice(-500).reverse());
   } catch (e) {
     res.status(500).json({ error: 'server_error' });
   }
