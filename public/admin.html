@@ -1479,11 +1479,12 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
           + '<iframe src="'+escAttr(pv.pdf)+'#toolbar=0&navpanes=0" style="width:100%;height:100%;border:none;pointer-events:none" title="შაბლონის გადახედვა"></iframe>';
         if(isTargetPage){
           var tableHPct = warrantyTableHeightPct(table, pv.height);
-          html += '<div class="drag-chip" data-warranty-table-chip style="position:absolute;left:'+table.xPct+'%;top:'+table.yPct+'%;width:'+table.widthPct+'%;height:'+tableHPct+'%;padding:0;overflow:hidden;border-radius:6px;flex-direction:column;align-items:stretch;background:none;backdrop-filter:none;border:1.5px solid '+escAttr(table.headerColor||'#0E4F8E')+'">'
-            + '<div style="background:'+escAttr(table.headerColor||'#0E4F8E')+';color:'+escAttr(table.headerTextColor||'#FFFFFF')+';font-size:10px;font-weight:700;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(table.title||'საგარანტიო ინფორმაცია')+'</div>'
-            + '<div style="background:rgba(255,255,255,.85);font-size:8.5px;line-height:1.5;color:#334;padding:3px 6px;overflow:hidden">'
+          html += '<div class="drag-chip" data-warranty-table-chip style="position:absolute;left:'+table.xPct+'%;top:'+table.yPct+'%;width:'+table.widthPct+'%;height:'+tableHPct+'%;padding:0;overflow:visible;border-radius:6px;flex-direction:column;align-items:stretch;background:none;backdrop-filter:none;border:1.5px solid '+escAttr(table.headerColor||'#0E4F8E')+'">'
+            + '<div style="background:'+escAttr(table.headerColor||'#0E4F8E')+';color:'+escAttr(table.headerTextColor||'#FFFFFF')+';font-size:10px;font-weight:700;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:5px 5px 0 0">'+escHtml(table.title||'საგარანტიო ინფორმაცია')+'</div>'
+            + '<div style="background:#FFFFFF;flex:1;font-size:8.5px;line-height:1.5;color:#334;padding:3px 6px;overflow:hidden;border-radius:0 0 5px 5px">'
               + WARRANTY_FIELD_KEYS.map(function(key){ return escHtml(WARRANTY_FIELD_LABELS[key]); }).join('<br>')
             + '</div>'
+            + '<div data-warranty-table-resize title="ზომის შეცვლა" style="position:absolute;right:-6px;bottom:-6px;width:16px;height:16px;border-radius:50%;background:var(--gold);border:2px solid #fff;cursor:nwse-resize;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>'
             + '</div>';
         }
         html += '</div>';
@@ -1584,6 +1585,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(tableChip){
       var dragging = false;
       tableChip.addEventListener('pointerdown', function(e){
+        if(e.target.closest('[data-warranty-table-resize]')) return; // handled separately below
         dragging = true;
         try{ tableChip.setPointerCapture(e.pointerId); }catch(err){}
         tableChip.classList.add('is-dragging');
@@ -1607,6 +1609,73 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       }
       tableChip.addEventListener('pointerup', endDrag);
       tableChip.addEventListener('pointercancel', endDrag);
+
+      // Corner handle: drag to resize (width + font size, which together
+      // determine the table's printed height) instead of only the sliders —
+      // staff asked to be able to grab the frame and grow/shrink it directly.
+      var resizeHandle = tableChip.querySelector('[data-warranty-table-resize]');
+      if(resizeHandle){
+        var resizing = false, rStartX = 0, rStartY = 0, rStartWidthPx = 0, rStartFontSize = 11;
+        resizeHandle.addEventListener('pointerdown', function(e){
+          e.stopPropagation();
+          resizing = true;
+          try{ resizeHandle.setPointerCapture(e.pointerId); }catch(err){}
+          var chipRect = tableChip.getBoundingClientRect();
+          rStartX = e.clientX; rStartY = e.clientY;
+          rStartWidthPx = chipRect.width;
+          rStartFontSize = Number(ensureTable().fontSize) || 11;
+          tableChip.classList.add('is-dragging');
+        });
+        resizeHandle.addEventListener('pointermove', function(e){
+          if(!resizing) return;
+          e.stopPropagation();
+          var previewRect = previewEl.getBoundingClientRect();
+          var table = ensureTable();
+
+          var newWidthPx = Math.max(60, rStartWidthPx + (e.clientX - rStartX));
+          var widthPct = Math.round(clampPct(newWidthPx / previewRect.width * 100));
+          widthPct = Math.max(30, Math.min(95, widthPct));
+          table.widthPct = widthPct;
+
+          // Printed height is derived from fontSize (header + 5 rows all
+          // scale with it), so "growing the box" vertically means solving
+          // for the fontSize whose computed height matches the drag — the
+          // inverse of warrantyTableHeightPct's own formula (totalPt =
+          // fontSize * 12.8 for a header + 5 rows).
+          if(warrantyPagePreview && warrantyPagePreview.height){
+            var pageHeightPt = warrantyPagePreview.height;
+            var rStartHeightPx = (rStartFontSize * 12.8) / pageHeightPt * previewRect.height;
+            var newHeightPx = Math.max(40, rStartHeightPx + (e.clientY - rStartY));
+            var heightPct = clampPct(newHeightPx / previewRect.height * 100);
+            var fontSize = Math.round(Math.max(7, Math.min(20, heightPct * pageHeightPt / (100 * 12.8))));
+            table.fontSize = fontSize;
+          }
+
+          tableChip.style.width = table.widthPct + '%';
+          tableChip.style.height = warrantyTableHeightPct(table, warrantyPagePreview ? warrantyPagePreview.height : 0) + '%';
+
+          var widthInpLive = document.getElementById('warranty-table-width');
+          if(widthInpLive){
+            widthInpLive.value = table.widthPct;
+            var wro = host.querySelector('[data-warranty-table-readout="widthPct"]');
+            if(wro) wro.textContent = table.widthPct + '%';
+          }
+          var fontInpLive = document.getElementById('warranty-table-font-size');
+          if(fontInpLive){
+            fontInpLive.value = table.fontSize;
+            var fro = host.querySelector('[data-warranty-table-readout="fontSize"]');
+            if(fro) fro.textContent = table.fontSize + 'pt';
+          }
+        });
+        function endResize(){
+          if(!resizing) return;
+          resizing = false;
+          tableChip.classList.remove('is-dragging');
+          dirty.warrantyTemplate = true;
+        }
+        resizeHandle.addEventListener('pointerup', endResize);
+        resizeHandle.addEventListener('pointercancel', endResize);
+      }
     }
 
     var titleInp = document.getElementById('warranty-table-title');
