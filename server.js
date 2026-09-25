@@ -649,7 +649,9 @@ app.get('/api/warranty/:serial/card', async function (req, res) {
     const status = warrantyStatus(rec);
     const pdf = await generateWarrantyCardPdf(db, serial, rec, status);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="warranty-' + serial + '.pdf"');
+    // inline (not attachment) so the SMS/email-shared link opens the PDF
+    // directly in the phone's browser instead of forcing a file download.
+    res.setHeader('Content-Disposition', 'inline; filename="warranty-' + serial + '.pdf"');
     res.send(pdf);
   } catch (e) {
     console.error('warranty card generation failed:', e.stack || e.message);
