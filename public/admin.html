@@ -1273,7 +1273,21 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     purchase:     {xPct:6, yPct:54, size:12},
     warrantyEnd:  {xPct:6, yPct:64, size:12}
   };
+  // Table layout: one positioned block with a colored header + a label/value
+  // row per field, instead of dragging five separate chips around (which
+  // made the printed result look unaligned/cluttered). This is now the
+  // default for any new or freshly-uploaded template.
+  var WARRANTY_TABLE_DEFAULTS = {
+    xPct:6, yPct:20, widthPct:85, headerColor:'#0E4F8E', headerTextColor:'#FFFFFF',
+    title:'საგარანტიო ინფორმაცია', fontSize:11
+  };
   var WARRANTY_PDF_MAX_BYTES = 8 * 1024 * 1024;
+  function warrantyTableHeightPct(table, pageHeightPt){
+    var fontSize = Number(table.fontSize) || 11;
+    var headerH = fontSize * 2.3, rowH = fontSize * 2.1;
+    var totalPt = headerH + WARRANTY_FIELD_KEYS.length * rowH;
+    return pageHeightPt ? (totalPt / pageHeightPt * 100) : 30;
+  }
 
   function warrantySaveBarHtml(resetLabel){
     return '<div class="save-bar"><button class="btn btn-ghost" id="btn-warranty-reset">'+resetLabel+'</button><button class="btn btn-gold" id="btn-warranty-save">ცვლილებების შენახვა</button></div>';
@@ -1433,7 +1447,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(!host) return;
     var t = state.warrantyTemplate || {};
     var hasPdf = !!t.pdf;
-    var fields = t.fields || {};
+    var table = t.table || Object.assign({}, WARRANTY_TABLE_DEFAULTS);
     var targetPage = t.page || 1;
     if(warrantyViewedPage == null) warrantyViewedPage = targetPage;
 
@@ -1447,7 +1461,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       + '</div>';
 
     if(hasPdf){
-      html += '<p class="field-hint" style="margin-bottom:10px">დაათვალიერეთ გვერდები ‹ › ღილაკებით — დათვალიერება არაფერს ინახავს. სასურველ გვერდზე მიხვედრისას დააჭირეთ „ამ გვერდის არჩევას" და მხოლოდ მაშინ გადაათრიეთ ველები ადგილზე.</p>';
+      html += '<p class="field-hint" style="margin-bottom:10px">დაათვალიერეთ გვერდები ‹ › ღილაკებით — დათვალიერება არაფერს ინახავს. სასურველ გვერდზე მიხვედრისას დააჭირეთ „ამ გვერდის არჩევას" და მხოლოდ მაშინ გადაათრიეთ ცხრილი ადგილზე.</p>';
       html += '<div id="warranty-pdf-preview-wrap">';
       if(!warrantyPagePreview || warrantyPagePreview.page !== warrantyViewedPage){
         html += '<div class="empty-state" style="aspect-ratio:1/1.414"><p>გვერდი იტვირთება…</p></div>';
@@ -1464,12 +1478,13 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         html += '<div id="warranty-pdf-preview" style="position:relative;width:100%;max-width:420px;margin:0 auto;aspect-ratio:'+pv.width+'/'+pv.height+';border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper-soft)">'
           + '<iframe src="'+escAttr(pv.pdf)+'#toolbar=0&navpanes=0" style="width:100%;height:100%;border:none;pointer-events:none" title="შაბლონის გადახედვა"></iframe>';
         if(isTargetPage){
-          WARRANTY_FIELD_KEYS.forEach(function(key){
-            var f = fields[key] || WARRANTY_FIELD_DEFAULTS[key];
-            html += '<div class="drag-chip" data-warranty-chip="'+key+'" style="position:absolute;left:'+f.xPct+'%;top:'+f.yPct+'%">'
-              + '<span class="drag-chip-label">'+WARRANTY_FIELD_LABELS[key]+'</span>'
-              + '</div>';
-          });
+          var tableHPct = warrantyTableHeightPct(table, pv.height);
+          html += '<div class="drag-chip" data-warranty-table-chip style="position:absolute;left:'+table.xPct+'%;top:'+table.yPct+'%;width:'+table.widthPct+'%;height:'+tableHPct+'%;padding:0;overflow:hidden;border-radius:6px;flex-direction:column;align-items:stretch;background:none;backdrop-filter:none;border:1.5px solid '+escAttr(table.headerColor||'#0E4F8E')+'">'
+            + '<div style="background:'+escAttr(table.headerColor||'#0E4F8E')+';color:'+escAttr(table.headerTextColor||'#FFFFFF')+';font-size:10px;font-weight:700;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(table.title||'საგარანტიო ინფორმაცია')+'</div>'
+            + '<div style="background:rgba(255,255,255,.85);font-size:8.5px;line-height:1.5;color:#334;padding:3px 6px;overflow:hidden">'
+              + WARRANTY_FIELD_KEYS.map(function(key){ return escHtml(WARRANTY_FIELD_LABELS[key]); }).join('<br>')
+            + '</div>'
+            + '</div>';
         }
         html += '</div>';
         if(isTargetPage){
@@ -1480,14 +1495,23 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       }
       html += '</div>';
 
-      html += '<div class="seg-label">ველების ზომა (pt)</div>';
-      WARRANTY_FIELD_KEYS.forEach(function(key){
-        var f = fields[key] || WARRANTY_FIELD_DEFAULTS[key];
-        html += '<div class="field-block">'
-          + '<label>'+WARRANTY_FIELD_LABELS[key]+'<span class="ck-key" data-warranty-size-readout="'+key+'">'+(f.size||12)+'pt</span></label>'
-          + '<input type="range" data-warranty-size="'+key+'" min="7" max="28" step="1" value="'+(f.size||12)+'" style="width:100%">'
-          + '</div>';
-      });
+      html += '<div class="seg-label">ცხრილის გაფორმება</div>';
+      html += '<div class="field-block">'
+        + '<label>სათაური</label>'
+        + '<input type="text" id="warranty-table-title" value="'+escAttr(table.title||'')+'" placeholder="საგარანტიო ინფორმაცია">'
+        + '</div>';
+      html += '<div class="part-photo-actions" style="flex-direction:row;gap:14px">'
+        + '<div class="field-block" style="flex:1"><label>ჰედერის ფერი</label><input type="color" id="warranty-table-header-color" value="'+escAttr(table.headerColor||'#0E4F8E')+'" style="width:100%;height:38px;padding:2px"></div>'
+        + '<div class="field-block" style="flex:1"><label>ტექსტის ფერი</label><input type="color" id="warranty-table-header-text-color" value="'+escAttr(table.headerTextColor||'#FFFFFF')+'" style="width:100%;height:38px;padding:2px"></div>'
+        + '</div>';
+      html += '<div class="field-block">'
+        + '<label>სიგანე<span class="ck-key" data-warranty-table-readout="widthPct">'+(table.widthPct||85)+'%</span></label>'
+        + '<input type="range" id="warranty-table-width" min="30" max="95" step="1" value="'+(table.widthPct||85)+'" style="width:100%">'
+        + '</div>';
+      html += '<div class="field-block">'
+        + '<label>ტექსტის ზომა<span class="ck-key" data-warranty-table-readout="fontSize">'+(table.fontSize||11)+'pt</span></label>'
+        + '<input type="range" id="warranty-table-font-size" min="7" max="20" step="1" value="'+(table.fontSize||11)+'" style="width:100%">'
+        + '</div>';
 
       html += '<button type="button" class="btn btn-ghost" id="warranty-pdf-test" style="margin-top:6px">სატესტო ბარათის გახსნა</button>'
         + '<p class="field-hint" style="margin-top:6px">ტესტი ჯერ ინახავს შაბლონს, შემდეგ ხსნის ნიმუშ-ბარათს ახალ ჩანართში.</p>';
@@ -1530,11 +1554,8 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       if(file.size > WARRANTY_PDF_MAX_BYTES){ toast('ფაილი ძალიან დიდია (მაქს. 8MB)'); return; }
       var reader = new FileReader();
       reader.onload = function(){
-        var prevFields = (state.warrantyTemplate && state.warrantyTemplate.fields) || {};
-        state.warrantyTemplate = { pdf: reader.result, page: 1, fields: prevFields };
-        WARRANTY_FIELD_KEYS.forEach(function(key){
-          if(!state.warrantyTemplate.fields[key]) state.warrantyTemplate.fields[key] = Object.assign({}, WARRANTY_FIELD_DEFAULTS[key]);
-        });
+        var prevTable = (state.warrantyTemplate && state.warrantyTemplate.table) || Object.assign({}, WARRANTY_TABLE_DEFAULTS);
+        state.warrantyTemplate = { pdf: reader.result, page: 1, table: prevTable };
         warrantyPagePreview = null;
         warrantyViewedPage = null;
         dirty.warrantyTemplate = true;
@@ -1554,49 +1575,85 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     });
 
     function clampPct(n){ return Math.max(0, Math.min(100, n)); }
+    function ensureTable(){
+      if(!state.warrantyTemplate.table) state.warrantyTemplate.table = Object.assign({}, WARRANTY_TABLE_DEFAULTS);
+      return state.warrantyTemplate.table;
+    }
     var previewEl = document.getElementById('warranty-pdf-preview');
-    if(previewEl){
-      previewEl.querySelectorAll('[data-warranty-chip]').forEach(function(chip){
-        var key = chip.getAttribute('data-warranty-chip');
-        var dragging = false;
-        chip.addEventListener('pointerdown', function(e){
-          dragging = true;
-          try{ chip.setPointerCapture(e.pointerId); }catch(err){}
-          chip.classList.add('is-dragging');
-        });
-        chip.addEventListener('pointermove', function(e){
-          if(!dragging) return;
-          var rect = previewEl.getBoundingClientRect();
-          var xPct = Math.round(clampPct(((e.clientX - rect.left) / rect.width) * 100) * 10) / 10;
-          var yPct = Math.round(clampPct(((e.clientY - rect.top) / rect.height) * 100) * 10) / 10;
-          if(!state.warrantyTemplate.fields) state.warrantyTemplate.fields = {};
-          if(!state.warrantyTemplate.fields[key]) state.warrantyTemplate.fields[key] = Object.assign({}, WARRANTY_FIELD_DEFAULTS[key]);
-          state.warrantyTemplate.fields[key].xPct = xPct;
-          state.warrantyTemplate.fields[key].yPct = yPct;
-          chip.style.left = xPct+'%';
-          chip.style.top = yPct+'%';
-        });
-        function endDrag(){
-          if(!dragging) return;
-          dragging = false;
-          chip.classList.remove('is-dragging');
-          dirty.warrantyTemplate = true;
-        }
-        chip.addEventListener('pointerup', endDrag);
-        chip.addEventListener('pointercancel', endDrag);
+    var tableChip = previewEl ? previewEl.querySelector('[data-warranty-table-chip]') : null;
+    if(tableChip){
+      var dragging = false;
+      tableChip.addEventListener('pointerdown', function(e){
+        dragging = true;
+        try{ tableChip.setPointerCapture(e.pointerId); }catch(err){}
+        tableChip.classList.add('is-dragging');
       });
+      tableChip.addEventListener('pointermove', function(e){
+        if(!dragging) return;
+        var rect = previewEl.getBoundingClientRect();
+        var xPct = Math.round(clampPct(((e.clientX - rect.left) / rect.width) * 100) * 10) / 10;
+        var yPct = Math.round(clampPct(((e.clientY - rect.top) / rect.height) * 100) * 10) / 10;
+        var table = ensureTable();
+        table.xPct = xPct;
+        table.yPct = yPct;
+        tableChip.style.left = xPct+'%';
+        tableChip.style.top = yPct+'%';
+      });
+      function endDrag(){
+        if(!dragging) return;
+        dragging = false;
+        tableChip.classList.remove('is-dragging');
+        dirty.warrantyTemplate = true;
+      }
+      tableChip.addEventListener('pointerup', endDrag);
+      tableChip.addEventListener('pointercancel', endDrag);
     }
 
-    host.querySelectorAll('[data-warranty-size]').forEach(function(inp){
-      inp.addEventListener('input', function(){
-        var key = inp.getAttribute('data-warranty-size');
-        if(!state.warrantyTemplate.fields) state.warrantyTemplate.fields = {};
-        if(!state.warrantyTemplate.fields[key]) state.warrantyTemplate.fields[key] = Object.assign({}, WARRANTY_FIELD_DEFAULTS[key]);
-        state.warrantyTemplate.fields[key].size = Number(inp.value);
-        dirty.warrantyTemplate = true;
-        var ro = host.querySelector('[data-warranty-size-readout="'+key+'"]');
-        if(ro) ro.textContent = inp.value + 'pt';
-      });
+    var titleInp = document.getElementById('warranty-table-title');
+    if(titleInp) titleInp.addEventListener('input', function(){
+      ensureTable().title = titleInp.value;
+      dirty.warrantyTemplate = true;
+      var chipTitle = tableChip && tableChip.querySelector('div:first-child');
+      if(chipTitle) chipTitle.textContent = titleInp.value || 'საგარანტიო ინფორმაცია';
+    });
+
+    var headerColorInp = document.getElementById('warranty-table-header-color');
+    if(headerColorInp) headerColorInp.addEventListener('input', function(){
+      ensureTable().headerColor = headerColorInp.value;
+      dirty.warrantyTemplate = true;
+      if(tableChip){
+        tableChip.style.borderColor = headerColorInp.value;
+        var headerDiv = tableChip.querySelector('div:first-child');
+        if(headerDiv) headerDiv.style.background = headerColorInp.value;
+      }
+    });
+
+    var headerTextColorInp = document.getElementById('warranty-table-header-text-color');
+    if(headerTextColorInp) headerTextColorInp.addEventListener('input', function(){
+      ensureTable().headerTextColor = headerTextColorInp.value;
+      dirty.warrantyTemplate = true;
+      if(tableChip){
+        var headerDiv = tableChip.querySelector('div:first-child');
+        if(headerDiv) headerDiv.style.color = headerTextColorInp.value;
+      }
+    });
+
+    var widthInp = document.getElementById('warranty-table-width');
+    if(widthInp) widthInp.addEventListener('input', function(){
+      ensureTable().widthPct = Number(widthInp.value);
+      dirty.warrantyTemplate = true;
+      var ro = host.querySelector('[data-warranty-table-readout="widthPct"]');
+      if(ro) ro.textContent = widthInp.value + '%';
+      if(tableChip) tableChip.style.width = widthInp.value + '%';
+    });
+
+    var fontSizeInp = document.getElementById('warranty-table-font-size');
+    if(fontSizeInp) fontSizeInp.addEventListener('input', function(){
+      ensureTable().fontSize = Number(fontSizeInp.value);
+      dirty.warrantyTemplate = true;
+      var ro = host.querySelector('[data-warranty-table-readout="fontSize"]');
+      if(ro) ro.textContent = fontSizeInp.value + 'pt';
+      if(tableChip && warrantyPagePreview) tableChip.style.height = warrantyTableHeightPct(state.warrantyTemplate.table, warrantyPagePreview.height) + '%';
     });
 
     var testBtn = document.getElementById('warranty-pdf-test');
@@ -1659,11 +1716,19 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       }
       card.innerHTML = list.map(function(b){
         var when = (b.date||'') + ' · ' + (b.timeSlot||'');
+        // Smart Q-Logic sync happens after the booking is saved (see server.js) —
+        // it's what actually sends the visit-confirmation SMS on their side, so
+        // a booking with no qlogicId means that sync never went through and no
+        // SMS was sent, even though the booking itself was received fine here.
+        var qlogicHtml = b.qlogicId
+          ? '<span style="color:var(--good,#237A4C)">✓ Q-Logic-თან დასინქრონდა'+(b.qlogicVerifyCode?' ('+escHtml(b.qlogicVerifyCode)+')':'')+'</span>'
+          : '<span style="color:var(--bad,#B3261E)">✗ Q-Logic სინქრონი ვერ მოხერხდა — SMS არ გაუვა</span>';
         return '<div class="booking-row">'
           + '<div class="bcode">'+escHtml(b.confirmationCode)+'</div>'
           + '<div><div class="bname">'+escHtml(b.name)+'</div><div class="bmeta">'+escHtml(b.phone)+' · '+escHtml(b.serviceType||b.issue||'')+'</div></div>'
           + '<div class="bmeta">'+escHtml(when)+'</div>'
           + '<div class="bstatus">'+escHtml(b.status||'received')+'</div>'
+          + '<div class="bmeta" style="font-size:.78rem">'+qlogicHtml+'</div>'
           + '</div>';
       }).join('');
     }).catch(function(){
