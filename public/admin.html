@@ -1396,6 +1396,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     name:'name', 'დასახელება':'name',
     price:'price', 'ფასი':'price', 'ფასი ₾':'price',
     stock:'stock', 'მარაგი':'stock',
+    qty:'qty', quantity:'qty', 'რაოდენობა':'qty',
     brand:'brand', 'ბრენდი':'brand',
     cat:'cat', 'ტიპი':'cat', 'ნაწილის ტიპი':'cat', category:'cat',
     device:'device', 'მოწყობილობა':'device', 'მოწყობილობის ტიპი':'device',
@@ -1426,46 +1427,45 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     html += partsDatalistsHtml();
     html += '<div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px">'
       + '<input type="text" id="parts-search" placeholder="ძებნა: დასახელება, ბრენდი, ტიპი, მოწყობილობა…" style="flex:1;min-width:220px;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink);font-size:.9rem">'
+      + '<button type="button" class="btn btn-gold" id="parts-add" style="margin:0">+ ახალი ნაწილი</button>'
       + '<label class="btn btn-ghost" style="margin:0">Excel-დან ატვირთვა (.xlsx/.csv)<input type="file" accept=".xlsx,.xls,.csv" id="parts-xlsx-input" style="display:none"></label>'
       + '</div>'
-      + '<p class="field-hint" style="margin:-8px 0 14px">ფაილში სვეტები: დასახელება, ფასი, ბრენდი, ნაწილის ტიპი, მოწყობილობის ტიპი, თავსებადობა, მარაგი (და სურვილისამებრ — id, უკვე არსებული ნაწილის განსაახლებლად).</p>';
-    html += '<div id="parts-list"></div>';
-    html += '<button type="button" class="btn btn-ghost" id="parts-add" style="margin:4px 0 16px">+ ახალი ნაწილი</button>';
+      + '<p class="field-hint" style="margin:-8px 0 14px">ფაილში სვეტები: დასახელება, ფასი, ბრენდი, ნაწილის ტიპი, მოწყობილობის ტიპი, თავსებადობა, მარაგი, რაოდენობა (და სურვილისამებრ — id, უკვე არსებული ნაწილის განსაახლებლად).</p>';
+    html += '<div class="card" style="overflow-x:auto"><table class="admin-table"><thead><tr>'
+      + '<th style="width:64px">ფოტო</th><th style="min-width:170px">დასახელება</th><th style="width:120px">ბრენდი</th>'
+      + '<th style="width:140px">ნაწილის ტიპი</th><th style="width:150px">მოწყობილობა</th><th style="width:140px">თავსებადობა</th>'
+      + '<th style="width:90px">ფასი ₾</th><th style="width:120px">მარაგი</th><th style="width:90px">რაოდენობა</th><th style="width:34px"></th>'
+      + '</tr></thead><tbody id="parts-tbody"></tbody></table></div>';
     html += saveBarHtml();
     main.innerHTML = html;
 
     var partsSearchQ = '';
 
-    function partCardHtml(id){
+    function partRowHtml(id){
       var isCustom = !PARTS_DEFAULTS.some(function(def){ return def.id === id; });
       var stock = partsFieldVal(id, 'stock') || 'in';
-      var name = partsFieldVal(id, 'name') || (isCustom ? 'ახალი ნაწილი' : '');
+      var qty = partsFieldVal(id, 'qty');
       var fieldsHtml = PARTS_FIELD_DEFS.map(function(f){
         var val = partsFieldVal(id, f.key);
         var listAttr = f.list ? ' list="'+f.list+'"' : '';
-        return '<div class="field-block" style="margin-bottom:0"><label>'+f.label+'</label>'
-          + '<input type="text" data-part-field="'+f.key+'" data-part-id="'+escAttr(id)+'"'+listAttr+' value="'+escAttr(val)+'"></div>';
-      }).join('')
-        + '<div class="field-block" style="margin-bottom:0"><label>მარაგი</label>'
-        + '<select data-part-field="stock" data-part-id="'+escAttr(id)+'">'
+        return '<td><input type="text" data-part-field="'+f.key+'" data-part-id="'+escAttr(id)+'"'+listAttr+' value="'+escAttr(val)+'"></td>';
+      }).join('');
+      return '<tr data-part-row="'+escAttr(id)+'">'
+        + '<td><div class="part-photo-cell" data-part-photo-cell="'+escAttr(id)+'">'
+          + renderPartsThumb(id)
+          + '<div class="part-photo-actions">'
+            + '<label>ატვირთვა<input type="file" accept="image/*" data-parts-photo="'+escAttr(id)+'"></label>'
+            + (state.parts[id] && state.parts[id].image ? '<button type="button" data-parts-photo-clear="'+escAttr(id)+'">წაშლა</button>' : '')
+          + '</div>'
+        + '</div></td>'
+        + fieldsHtml
+        + '<td><select data-part-field="stock" data-part-id="'+escAttr(id)+'">'
           + '<option value="in"'+(stock==='in'?' selected':'')+'>მარაგშია</option>'
           + '<option value="low"'+(stock==='low'?' selected':'')+'>მცირდება</option>'
-        + '</select></div>';
-      return '<div class="branch-card" data-part-card="'+escAttr(id)+'">'
-        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">'
-          + '<h3 style="margin:0">'+escHtml(name)+(isCustom?' <span style="color:var(--ink-soft);font-weight:600;font-size:.78rem">— ახალი</span>':'')+'</h3>'
-          + (isCustom ? '<button type="button" class="drag-eye" data-part-delete="'+escAttr(id)+'" title="წაშლა">🗑</button>' : '')
-        + '</div>'
-        + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
-          + '<div class="part-photo-cell" data-part-photo-cell="'+escAttr(id)+'" style="flex-shrink:0">'
-            + renderPartsThumb(id)
-            + '<div class="part-photo-actions">'
-              + '<label>ატვირთვა<input type="file" accept="image/*" data-parts-photo="'+escAttr(id)+'"></label>'
-              + (state.parts[id] && state.parts[id].image ? '<button type="button" data-parts-photo-clear="'+escAttr(id)+'">წაშლა</button>' : '')
-            + '</div>'
-          + '</div>'
-          + '<div class="branch-grid" style="flex:1;min-width:240px">' + fieldsHtml + '</div>'
-        + '</div></div>';
+        + '</select></td>'
+        + '<td><input type="number" min="0" step="1" data-part-field="qty" data-part-id="'+escAttr(id)+'" value="'+escAttr(qty)+'"></td>'
+        + '<td>' + (isCustom ? '<button type="button" class="drag-eye" data-part-delete="'+escAttr(id)+'" title="წაშლა">🗑</button>' : '') + '</td>'
+        + '</tr>';
     }
 
     function filteredPartsIdList(){
@@ -1480,9 +1480,9 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
 
     function renderList(){
       var ids = filteredPartsIdList();
-      document.getElementById('parts-list').innerHTML = ids.length
-        ? ids.map(partCardHtml).join('')
-        : '<p class="field-hint">ვერაფერი მოიძებნა.</p>';
+      document.getElementById('parts-tbody').innerHTML = ids.length
+        ? ids.map(partRowHtml).join('')
+        : '<tr><td colspan="10" class="field-hint" style="padding:16px 10px">ვერაფერი მოიძებნა.</td></tr>';
       wireList();
     }
 
@@ -1494,11 +1494,6 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
           state.parts[id][field] = inp.value;
           setDirty(tab, true);
           updateStatusChip(tab);
-          if(field === 'name'){
-            var h3 = inp.closest('.branch-card').querySelector('h3');
-            var isCustom = !PARTS_DEFAULTS.some(function(def){ return def.id === id; });
-            h3.textContent = inp.value || (isCustom ? 'ახალი ნაწილი' : '');
-          }
         });
       });
       main.querySelectorAll('[data-part-delete]').forEach(function(btn){
@@ -1511,7 +1506,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
           renderList();
         });
       });
-      partsIdList().forEach(wirePhotoCell);
+      filteredPartsIdList().forEach(wirePhotoCell);
     }
 
     function refreshPhotoCell(id){
@@ -1570,12 +1565,14 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
 
     document.getElementById('parts-add').addEventListener('click', function(){
       var id = 'custom-' + Date.now();
-      state.parts[id] = {name:'', price:'', stock:'in', brand:'', cat:'', device:'', compat:''};
+      state.parts[id] = {name:'', price:'', stock:'in', qty:'', brand:'', cat:'', device:'', compat:''};
       setDirty(tab, true);
       updateStatusChip(tab);
+      partsSearchQ = '';
+      document.getElementById('parts-search').value = '';
       renderList();
-      var card = main.querySelector('[data-part-card="'+id+'"]');
-      if(card) card.scrollIntoView({behavior:'smooth', block:'center'});
+      var row = main.querySelector('[data-part-row="'+id+'"]');
+      if(row) row.scrollIntoView({behavior:'smooth', block:'center'});
     });
 
     document.getElementById('parts-search').addEventListener('input', function(){
@@ -2161,33 +2158,55 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
 
   function renderBookingsPanel(main, tab){
     var html = panelHeadHtml(tab, 'ბოლო ვიზიტის ჯავშნები, საიტიდან შემოსული (სატესტო/საწარმოო API-დან).');
+    html += '<div class="card" style="padding:14px 18px;margin-bottom:14px">'
+      + '<input type="text" id="bookings-search" placeholder="ძებნა: სახელი, ტელეფონი, კოდი, სერვისი, სტატუსი…" style="width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink);font-size:.9rem">'
+      + '</div>';
     html += '<div class="card" id="bookings-card"><div class="empty-state"><p>იტვირთება…</p></div></div>';
     main.innerHTML = html;
 
-    apiGet('/api/bookings').then(function(list){
+    var allBookings = [];
+    function bookingRowHtml(b){
+      var when = (b.date||'') + ' · ' + (b.timeSlot||'');
+      // Smart Q-Logic sync happens after the booking is saved (see server.js) —
+      // it's what actually sends the visit-confirmation SMS on their side, so
+      // a booking with no qlogicId means that sync never went through and no
+      // SMS was sent, even though the booking itself was received fine here.
+      var qlogicHtml = b.qlogicId
+        ? '<span style="color:var(--good,#237A4C)">✓ Q-Logic-თან დასინქრონდა'+(b.qlogicVerifyCode?' ('+escHtml(b.qlogicVerifyCode)+')':'')+'</span>'
+        : '<span style="color:var(--bad,#B3261E)">✗ Q-Logic სინქრონი ვერ მოხერხდა — SMS არ გაუვა</span>';
+      return '<div class="booking-row">'
+        + '<div class="bcode">'+escHtml(b.confirmationCode)+'</div>'
+        + '<div><div class="bname">'+escHtml(b.name)+'</div><div class="bmeta">'+escHtml(b.phone)+' · '+escHtml(b.serviceType||b.issue||'')+'</div></div>'
+        + '<div class="bmeta">'+escHtml(when)+'</div>'
+        + '<div class="bstatus">'+escHtml(b.status||'received')+'</div>'
+        + '<div class="bmeta" style="font-size:.78rem">'+qlogicHtml+'</div>'
+        + '</div>';
+    }
+    function renderBookingsList(q){
       var card = document.getElementById('bookings-card');
       if(!card) return;
-      if(!list.length){
+      var filtered = !q ? allBookings : allBookings.filter(function(b){
+        return [b.confirmationCode, b.name, b.phone, b.serviceType, b.issue, b.status].some(function(v){
+          return String(v||'').toLowerCase().indexOf(q) !== -1;
+        });
+      });
+      card.innerHTML = filtered.length
+        ? filtered.map(bookingRowHtml).join('')
+        : '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ვერაფერი მოიძებნა.</p></div>';
+    }
+
+    apiGet('/api/bookings').then(function(list){
+      allBookings = list || [];
+      var card = document.getElementById('bookings-card');
+      if(!card) return;
+      if(!allBookings.length){
         card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ჯერ არცერთი ჯავშანი არ დაფიქსირებულა.</p></div>';
         return;
       }
-      card.innerHTML = list.map(function(b){
-        var when = (b.date||'') + ' · ' + (b.timeSlot||'');
-        // Smart Q-Logic sync happens after the booking is saved (see server.js) —
-        // it's what actually sends the visit-confirmation SMS on their side, so
-        // a booking with no qlogicId means that sync never went through and no
-        // SMS was sent, even though the booking itself was received fine here.
-        var qlogicHtml = b.qlogicId
-          ? '<span style="color:var(--good,#237A4C)">✓ Q-Logic-თან დასინქრონდა'+(b.qlogicVerifyCode?' ('+escHtml(b.qlogicVerifyCode)+')':'')+'</span>'
-          : '<span style="color:var(--bad,#B3261E)">✗ Q-Logic სინქრონი ვერ მოხერხდა — SMS არ გაუვა</span>';
-        return '<div class="booking-row">'
-          + '<div class="bcode">'+escHtml(b.confirmationCode)+'</div>'
-          + '<div><div class="bname">'+escHtml(b.name)+'</div><div class="bmeta">'+escHtml(b.phone)+' · '+escHtml(b.serviceType||b.issue||'')+'</div></div>'
-          + '<div class="bmeta">'+escHtml(when)+'</div>'
-          + '<div class="bstatus">'+escHtml(b.status||'received')+'</div>'
-          + '<div class="bmeta" style="font-size:.78rem">'+qlogicHtml+'</div>'
-          + '</div>';
-      }).join('');
+      renderBookingsList('');
+      document.getElementById('bookings-search').addEventListener('input', function(){
+        renderBookingsList(this.value.trim().toLowerCase());
+      });
     }).catch(function(){
       var card = document.getElementById('bookings-card');
       if(card) card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ჯავშნების ჩატვირთვა ვერ მოხერხდა — შეამოწმეთ სერვერთან კავშირი.</p></div>';

@@ -163,6 +163,24 @@
   .nav-item.first .mega{left:0;transform:translateX(0) translateY(-6px)}
   .nav-item.is-open .mega{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
   .nav-item.first.is-open .mega{transform:translateX(0) translateY(0)}
+
+  /* header quick-search dropdown */
+  .hdr-search-wrap{position:relative}
+  .hdr-search-panel{position:absolute;top:calc(100% + 10px);right:0;width:360px;max-width:calc(100vw - 32px);background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--radius-m);box-shadow:var(--shadow-3);padding:14px;opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .18s ease, transform .18s ease;z-index:70}
+  .hdr-search-wrap.is-open .hdr-search-panel{opacity:1;visibility:visible;transform:translateY(0)}
+  .hdr-search-box{display:flex;align-items:center;gap:9px;border:1.5px solid var(--line);border-radius:11px;padding:10px 13px;background:var(--surface)}
+  .hdr-search-box svg{width:16px;height:16px;color:var(--ink-faint);flex-shrink:0}
+  .hdr-search-box input{border:0;outline:0;background:none;width:100%;font-size:.9rem;color:var(--ink)}
+  .hdr-search-results{margin-top:10px;max-height:360px;overflow-y:auto}
+  .hdr-search-empty{padding:16px 6px;font-size:.85rem;color:var(--ink-faint);text-align:center}
+  .hdr-search-row{display:flex;align-items:center;gap:10px;padding:9px 6px;border-radius:10px;text-decoration:none;color:inherit}
+  .hdr-search-row:hover{background:var(--surface-alt)}
+  .hdr-search-row .hsr-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .hdr-search-row .hsr-name{font-size:.86rem;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hdr-search-row .hsr-meta{font-size:.74rem;color:var(--ink-faint)}
+  .hdr-search-row .hsr-price{margin-left:auto;font-size:.85rem;font-weight:800;color:var(--blue-deep);white-space:nowrap;flex-shrink:0}
+  .hdr-search-more{display:block;text-align:center;padding:10px 6px;margin-top:6px;font-size:.83rem;font-weight:700;color:var(--blue);border-top:1px solid var(--line-soft);text-decoration:none}
+  @media (max-width:640px){ .hdr-search-panel{right:-60px} }
   .mega-grid{display:grid;grid-template-columns:1.1fr 1.1fr 1fr;gap:28px}
   .mega-col h4{font-size:.72rem;letter-spacing:.08em;color:var(--ink-faint);font-weight:700;margin-bottom:12px}
   .mega-col a{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:.92rem;font-weight:600;color:var(--ink-soft);border-radius:8px}
@@ -621,7 +639,7 @@
   @media (max-width:980px){
     nav.primary-nav{display:none}
     .hamburger{display:inline-flex}
-    #warranty-quick-btn,#profile-btn,#admin-btn,.header-actions > a.btn{display:none}
+    .hdr-search-wrap,#profile-btn,#admin-btn,.header-actions > a.btn{display:none}
     .header-actions{gap:2px}
     .hero-inner{grid-template-columns:1fr}
     .hero-art{order:-1;height:280px}
@@ -798,7 +816,16 @@
     </nav>
 
     <div class="header-actions">
-      <button class="icon-btn" id="warranty-quick-btn" aria-label="ნაწილების ძიება" title="ნაწილების ძიება" data-route="catalog"><svg><use href="#ic-search"/></svg></button>
+      <div class="hdr-search-wrap" id="hdr-search-wrap">
+        <button class="icon-btn" id="warranty-quick-btn" aria-label="ნაწილების ძიება" title="ნაწილების ძიება" aria-expanded="false"><svg><use href="#ic-search"/></svg></button>
+        <div class="hdr-search-panel" id="hdr-search-panel">
+          <div class="hdr-search-box">
+            <svg><use href="#ic-search"/></svg>
+            <input type="text" id="hdr-search-input" placeholder="მოძებნეთ ნაწილი, მაგ: ეკრანი, ბატარეა…" autocomplete="off">
+          </div>
+          <div class="hdr-search-results" id="hdr-search-results"></div>
+        </div>
+      </div>
       <button class="icon-btn" id="profile-btn" aria-label="პროფილი" title="პროფილი" data-route="profile"><svg><use href="#ic-user"/></svg></button>
       <button class="icon-btn" id="cart-btn" aria-label="კალათა" title="კალათა">
         <svg><use href="#ic-cart"/></svg>
@@ -1945,6 +1972,7 @@
     window.scrollTo(0,0);
     closeAllMegas();
     closeDrawer();
+    closeHdrSearch();
     if(route === 'profile') renderProfileView();
     if(route === 'orders') renderOrders();
     if(route === 'catalog'){
@@ -2002,7 +2030,7 @@
       if(!isOpen){ item.classList.add('is-open'); btn.setAttribute('aria-expanded','true'); }
     });
   });
-  document.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ closeAllMegas(); closeDrawer(); closeCart(); closeQuickView(); } });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ closeAllMegas(); closeDrawer(); closeCart(); closeQuickView(); closeHdrSearch(); } });
   document.addEventListener('click', function(e){
     if(!e.target.closest('.nav-item')) closeAllMegas();
   });
@@ -2036,6 +2064,87 @@
      known — see loadSiteContent below); the admin panel itself lives
      in a separately published Artifact, so no click handler is needed
      here. */
+
+  /* header quick-search dropdown — opens in place (no navigation), shows
+     an instant substring preview while the AI-ranked answer is in flight,
+     same /api/catalog/search-ai endpoint the catalog page's own search uses. */
+  var hdrSearchWrap = document.getElementById('hdr-search-wrap');
+  var hdrSearchInput = document.getElementById('hdr-search-input');
+  var hdrSearchResults = document.getElementById('hdr-search-results');
+  var hdrSearchBtn = document.getElementById('warranty-quick-btn');
+  var hdrSearchTimer = null;
+  function openHdrSearch(){
+    hdrSearchWrap.classList.add('is-open');
+    hdrSearchBtn.setAttribute('aria-expanded', 'true');
+    setTimeout(function(){ hdrSearchInput.focus(); }, 50);
+  }
+  function closeHdrSearch(){
+    hdrSearchWrap.classList.remove('is-open');
+    hdrSearchBtn.setAttribute('aria-expanded', 'false');
+  }
+  function hdrRenderResults(list, emptyMsg){
+    if(!list.length){
+      hdrSearchResults.innerHTML = '<div class="hdr-search-empty">' + (emptyMsg || 'დაიწყეთ წერა ძებნისთვის') + '</div>';
+      return;
+    }
+    var q = hdrSearchInput.value;
+    var shown = list.slice(0, 6);
+    hdrSearchResults.innerHTML = shown.map(function(p){
+      return '<a class="hdr-search-row" href="#catalog" data-hdr-goto>'
+        + '<span class="hsr-text"><span class="hsr-name">' + p.name + '</span>'
+        + '<span class="hsr-meta">' + [p.brand, p.cat, p.device].filter(Boolean).join(' · ') + '</span></span>'
+        + '<span class="hsr-price">' + p.price + ' ₾</span></a>';
+    }).join('') + '<a class="hdr-search-more" href="#catalog" data-hdr-goto>ყველა შედეგის ნახვა (' + list.length + ')</a>';
+  }
+  function hdrSubstringMatch(q){
+    return PARTS.filter(function(p){
+      return p.name.toLowerCase().indexOf(q) !== -1 || p.brand.toLowerCase().indexOf(q) !== -1
+        || (p.cat||'').toLowerCase().indexOf(q) !== -1 || (p.device||'').toLowerCase().indexOf(q) !== -1;
+    });
+  }
+  function hdrRunAiSearch(q){
+    var items = PARTS.map(function(p){ return {id:p.id, name:p.name, brand:p.brand, cat:p.cat, device:p.device, compat:p.compat}; });
+    fetch(API_BASE + '/api/catalog/search-ai', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({query: q, items: items})
+    }).then(function(res){
+      if(!res.ok) throw new Error('ai search unavailable');
+      return res.json();
+    }).then(function(data){
+      var current = (hdrSearchInput.value || '').trim().toLowerCase();
+      if(current !== q) return;
+      var ids = Array.isArray(data.ids) ? data.ids : null;
+      if(!ids) return;
+      var byId = {}; PARTS.forEach(function(p){ byId[p.id] = p; });
+      var ranked = ids.map(function(id){ return byId[id]; }).filter(Boolean);
+      hdrRenderResults(ranked, 'ვერაფერი მოიძებნა');
+    }).catch(function(){ /* silent — the substring preview stays as-is */ });
+  }
+  hdrSearchBtn.addEventListener('click', function(e){
+    e.preventDefault();
+    var isOpen = hdrSearchWrap.classList.contains('is-open');
+    closeAllMegas();
+    if(isOpen) closeHdrSearch(); else openHdrSearch();
+  });
+  hdrSearchInput.addEventListener('input', function(){
+    var q = (this.value || '').trim().toLowerCase();
+    clearTimeout(hdrSearchTimer);
+    if(!q){ hdrRenderResults([]); return; }
+    hdrRenderResults(hdrSubstringMatch(q));
+    hdrSearchTimer = setTimeout(function(){ hdrRunAiSearch(q); }, 450);
+  });
+  hdrSearchResults.addEventListener('click', function(e){
+    if(!e.target.closest('[data-hdr-goto]')) return;
+    var q = hdrSearchInput.value;
+    closeHdrSearch();
+    setTimeout(function(){
+      var catInput = document.getElementById('cat-search');
+      if(catInput){ catInput.value = q; catInput.dispatchEvent(new Event('input')); }
+    }, 60);
+  });
+  document.addEventListener('click', function(e){
+    if(!e.target.closest('#hdr-search-wrap')) closeHdrSearch();
+  });
 
   /* =====================================================
      CATALOG
