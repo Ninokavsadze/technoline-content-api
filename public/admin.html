@@ -1406,15 +1406,21 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   // {pdf, page, pageCount, width, height}. Cleared whenever a new file is
   // uploaded or the shown page changes, and refetched from the server.
   var warrantyPagePreview = null;
+  // Which page is currently being BROWSED in the editor — deliberately kept
+  // separate from state.warrantyTemplate.page (the page fields actually get
+  // saved against). Earlier these were the same variable, so simply paging
+  // through the document to see what was in it silently re-targeted every
+  // page you looked at — the chips seemed to "follow you" onto every page.
+  // Now browsing never moves the target; only the explicit "choose this
+  // page" button below does.
+  var warrantyViewedPage = null;
   function loadWarrantyPagePreview(tab, page){
     var t = state.warrantyTemplate || {};
     if(!t.pdf) return;
     var host = document.getElementById('warranty-subpanel');
     apiPost('/api/warranty-template/page', {pdf: t.pdf, page: page}).then(function(r){
       warrantyPagePreview = r;
-      if(!state.warrantyTemplate.page || state.warrantyTemplate.page !== r.page){
-        state.warrantyTemplate.page = r.page;
-      }
+      warrantyViewedPage = r.page;
       renderWarrantyTemplateSubpanel(tab);
     }).catch(function(){
       if(host) host.querySelector('#warranty-pdf-preview-wrap').innerHTML =
@@ -1428,7 +1434,8 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     var t = state.warrantyTemplate || {};
     var hasPdf = !!t.pdf;
     var fields = t.fields || {};
-    var wantedPage = t.page || 1;
+    var targetPage = t.page || 1;
+    if(warrantyViewedPage == null) warrantyViewedPage = targetPage;
 
     var html = '<div class="card">';
     html += '<div class="field-block">'
@@ -1440,28 +1447,36 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       + '</div>';
 
     if(hasPdf){
-      html += '<p class="field-hint" style="margin-bottom:10px">გადაათრიეთ ველები შაბლონზე სასურველ ადგილას იმ გვერდზე, სადაც მომხმარებლის მონაცემები უნდა დაიბეჭდოს — პოზიცია პროცენტულად გამოითვლება, ამიტომ PDF-ის ნებისმიერ ზომასთან იმუშავებს.</p>';
+      html += '<p class="field-hint" style="margin-bottom:10px">დაათვალიერეთ გვერდები ‹ › ღილაკებით — დათვალიერება არაფერს ინახავს. სასურველ გვერდზე მიხვედრისას დააჭირეთ „ამ გვერდის არჩევას" და მხოლოდ მაშინ გადაათრიეთ ველები ადგილზე.</p>';
       html += '<div id="warranty-pdf-preview-wrap">';
-      if(!warrantyPagePreview || warrantyPagePreview.page !== wantedPage){
+      if(!warrantyPagePreview || warrantyPagePreview.page !== warrantyViewedPage){
         html += '<div class="empty-state" style="aspect-ratio:1/1.414"><p>გვერდი იტვირთება…</p></div>';
       } else {
         var pv = warrantyPagePreview;
+        var isTargetPage = (pv.page === targetPage);
         if(pv.pageCount > 1){
           html += '<div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:10px">'
             + '<button type="button" class="btn btn-ghost" id="warranty-page-prev"'+(pv.page<=1?' disabled':'')+' style="padding:6px 12px">‹</button>'
-            + '<span class="field-hint">გვერდი '+pv.page+' / '+pv.pageCount+'</span>'
+            + '<span class="field-hint">გვერდი '+pv.page+' / '+pv.pageCount+(isTargetPage?' — ველების გვერდი':'')+'</span>'
             + '<button type="button" class="btn btn-ghost" id="warranty-page-next"'+(pv.page>=pv.pageCount?' disabled':'')+' style="padding:6px 12px">›</button>'
             + '</div>';
         }
         html += '<div id="warranty-pdf-preview" style="position:relative;width:100%;max-width:420px;margin:0 auto;aspect-ratio:'+pv.width+'/'+pv.height+';border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper-soft)">'
           + '<iframe src="'+escAttr(pv.pdf)+'#toolbar=0&navpanes=0" style="width:100%;height:100%;border:none;pointer-events:none" title="შაბლონის გადახედვა"></iframe>';
-        WARRANTY_FIELD_KEYS.forEach(function(key){
-          var f = fields[key] || WARRANTY_FIELD_DEFAULTS[key];
-          html += '<div class="drag-chip" data-warranty-chip="'+key+'" style="position:absolute;left:'+f.xPct+'%;top:'+f.yPct+'%">'
-            + '<span class="drag-chip-label">'+WARRANTY_FIELD_LABELS[key]+'</span>'
-            + '</div>';
-        });
+        if(isTargetPage){
+          WARRANTY_FIELD_KEYS.forEach(function(key){
+            var f = fields[key] || WARRANTY_FIELD_DEFAULTS[key];
+            html += '<div class="drag-chip" data-warranty-chip="'+key+'" style="position:absolute;left:'+f.xPct+'%;top:'+f.yPct+'%">'
+              + '<span class="drag-chip-label">'+WARRANTY_FIELD_LABELS[key]+'</span>'
+              + '</div>';
+          });
+        }
         html += '</div>';
+        if(isTargetPage){
+          html += '<p class="field-hint" style="margin-top:10px;color:var(--good,#237A4C)">✓ მომხმარებლის მონაცემები დაიბეჭდება ამ გვერდზე</p>';
+        } else {
+          html += '<button type="button" class="btn btn-gold" id="warranty-page-choose" style="margin-top:10px;width:100%">ამ გვერდის არჩევა ველების დასასმელად</button>';
+        }
       }
       html += '</div>';
 
@@ -1481,24 +1496,28 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     html += warrantySaveBarHtml('ბოლო შენახულის დაბრუნება');
     host.innerHTML = html;
 
-    if(hasPdf && (!warrantyPagePreview || warrantyPagePreview.page !== wantedPage)){
-      loadWarrantyPagePreview(tab, wantedPage);
+    if(hasPdf && (!warrantyPagePreview || warrantyPagePreview.page !== warrantyViewedPage)){
+      loadWarrantyPagePreview(tab, warrantyViewedPage);
     }
 
     var prevPageBtn = document.getElementById('warranty-page-prev');
     if(prevPageBtn) prevPageBtn.addEventListener('click', function(){
-      var target = (state.warrantyTemplate.page || 1) - 1;
+      var target = (warrantyViewedPage || 1) - 1;
       if(target < 1) return;
-      state.warrantyTemplate.page = target;
-      dirty.warrantyTemplate = true;
+      warrantyViewedPage = target;
       renderWarrantyTemplateSubpanel(tab);
     });
     var nextPageBtn = document.getElementById('warranty-page-next');
     if(nextPageBtn) nextPageBtn.addEventListener('click', function(){
       var max = warrantyPagePreview ? warrantyPagePreview.pageCount : 1;
-      var target = (state.warrantyTemplate.page || 1) + 1;
+      var target = (warrantyViewedPage || 1) + 1;
       if(target > max) return;
-      state.warrantyTemplate.page = target;
+      warrantyViewedPage = target;
+      renderWarrantyTemplateSubpanel(tab);
+    });
+    var choosePageBtn = document.getElementById('warranty-page-choose');
+    if(choosePageBtn) choosePageBtn.addEventListener('click', function(){
+      state.warrantyTemplate.page = warrantyViewedPage;
       dirty.warrantyTemplate = true;
       renderWarrantyTemplateSubpanel(tab);
     });
@@ -1517,6 +1536,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
           if(!state.warrantyTemplate.fields[key]) state.warrantyTemplate.fields[key] = Object.assign({}, WARRANTY_FIELD_DEFAULTS[key]);
         });
         warrantyPagePreview = null;
+        warrantyViewedPage = null;
         dirty.warrantyTemplate = true;
         renderWarrantyTemplateSubpanel(tab);
       };
@@ -1528,6 +1548,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       if(!confirm('წავშალო ატვირთული შაბლონი? ბარათი დაბრუნდება ჩაშენებულ დიზაინზე.')) return;
       state.warrantyTemplate = {};
       warrantyPagePreview = null;
+      warrantyViewedPage = null;
       dirty.warrantyTemplate = true;
       renderWarrantyTemplateSubpanel(tab);
     });
@@ -1617,6 +1638,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       apiGet('/api/site/warranty-template').then(function(d){
         state.warrantyTemplate = d || {};
         warrantyPagePreview = null;
+        warrantyViewedPage = null;
         dirty.warrantyTemplate = false;
         renderWarrantyTemplateSubpanel(tab);
       });
