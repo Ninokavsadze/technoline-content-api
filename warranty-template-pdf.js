@@ -155,6 +155,10 @@ async function fillWarrantyTemplate(template, data) {
     let headerSize = fontSize + 1;
     const headerTextW = measureMixed(table.title || 'საგარანტიო ინფორმაცია', headerSize);
     if (headerTextW > tw - 16) headerSize = Math.max(7, headerSize * (tw - 16) / headerTextW);
+    // Solid white body background FIRST, under everything else — the template
+    // page underneath (QR codes, other printed text) must not show through
+    // any row, not just the odd/zebra ones, or the table reads as see-through.
+    page.drawRectangle({ x: x0, y: height - yTop0 - totalH, width: tw, height: bodyH, color: rgb(1, 1, 1) });
     page.drawRectangle({ x: x0, y: height - yTop0 - headerH, width: tw, height: headerH, color: headerColor });
     drawMixedAtPx(table.title || 'საგარანტიო ინფორმაცია', x0 + 8, yTop0 + (headerH - headerSize) / 2, headerSize, headerTextColor);
 
