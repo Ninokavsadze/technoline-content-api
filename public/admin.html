@@ -351,22 +351,27 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     {key:'hours', label:'სამუშაო საათები'}, {key:'phone', label:'ტელეფონი'}
   ];
 
+  // Kept in sync with technoline.html's PARTS_BASE (same ids, brand, cat,
+  // device, compat) — this is only the admin editor's own copy of the
+  // defaults shown when a field hasn't been overridden yet.
   var PARTS_DEFAULTS = [
-    {id:'p1', name:'iPhone 13 Pro დისპლეი (OLED)', price:420, stock:'in'},
-    {id:'p2', name:'iPhone 12 დისპლეი', price:310, stock:'in'},
-    {id:'p3', name:'iPhone 11 ბატარეა', price:95, stock:'in'},
-    {id:'p4', name:'MacBook Air M1 ბატარეა', price:230, stock:'low'},
-    {id:'p5', name:'Galaxy S23 დისპლეი', price:380, stock:'in'},
-    {id:'p6', name:'Galaxy A54 ბატარეა', price:75, stock:'in'},
-    {id:'p7', name:'Galaxy S22 უკანა კამერა', price:165, stock:'low'},
-    {id:'p8', name:'Redmi Note 12 დისპლეი', price:135, stock:'in'},
-    {id:'p9', name:'Xiaomi 13 ბატარეა', price:88, stock:'in'},
-    {id:'p10', name:'USB-C სწრაფი დამტენი 30W', price:45, stock:'in'},
-    {id:'p11', name:'Huawei P40 დისპლეი', price:210, stock:'low'},
-    {id:'p12', name:'Lightning კაბელი 1მ', price:38, stock:'in'},
-    {id:'p13', name:'iPhone დამცავი მინა', price:25, stock:'in'},
-    {id:'p14', name:'სილიკონის ქეისი', price:29, stock:'in'}
+    {id:'p1', name:'iPhone 13 Pro დისპლეი (OLED)', price:420, stock:'in', brand:'Apple', cat:'ეკრანები', device:'სმარტფონები', compat:'iPhone 13 Pro'},
+    {id:'p2', name:'iPhone 12 დისპლეი', price:310, stock:'in', brand:'Apple', cat:'ეკრანები', device:'სმარტფონები', compat:'iPhone 12 / 12 Pro'},
+    {id:'p3', name:'iPhone 11 ბატარეა', price:95, stock:'in', brand:'Apple', cat:'ბატარეები', device:'სმარტფონები', compat:'iPhone 11'},
+    {id:'p4', name:'MacBook Air M1 ბატარეა', price:230, stock:'low', brand:'Apple', cat:'ბატარეები', device:'ლეპტოპები და კომპიუტერები', compat:'MacBook Air 2020–21'},
+    {id:'p5', name:'Galaxy S23 დისპლეი', price:380, stock:'in', brand:'Samsung', cat:'ეკრანები', device:'სმარტფონები', compat:'Galaxy S23'},
+    {id:'p6', name:'Galaxy A54 ბატარეა', price:75, stock:'in', brand:'Samsung', cat:'ბატარეები', device:'სმარტფონები', compat:'Galaxy A54'},
+    {id:'p7', name:'Galaxy S22 უკანა კამერა', price:165, stock:'low', brand:'Samsung', cat:'კამერები', device:'სმარტფონები', compat:'Galaxy S22'},
+    {id:'p8', name:'Redmi Note 12 დისპლეი', price:135, stock:'in', brand:'Xiaomi', cat:'ეკრანები', device:'სმარტფონები', compat:'Redmi Note 12'},
+    {id:'p9', name:'Xiaomi 13 ბატარეა', price:88, stock:'in', brand:'Xiaomi', cat:'ბატარეები', device:'სმარტფონები', compat:'Xiaomi 13'},
+    {id:'p10', name:'USB-C სწრაფი დამტენი 30W', price:45, stock:'in', brand:'Xiaomi', cat:'დამტენები და კაბელები', device:'უნივერსალური', compat:'უნივერსალური'},
+    {id:'p11', name:'Huawei P40 დისპლეი', price:210, stock:'low', brand:'Huawei', cat:'ეკრანები', device:'სმარტფონები', compat:'Huawei P40'},
+    {id:'p12', name:'Lightning კაბელი 1მ', price:38, stock:'in', brand:'Apple', cat:'დამტენები და კაბელები', device:'უნივერსალური', compat:'iPhone / iPad'},
+    {id:'p13', name:'iPhone დამცავი მინა', price:25, stock:'in', brand:'Apple', cat:'აქსესუარები', device:'სმარტფონები', compat:'iPhone 11–15'},
+    {id:'p14', name:'სილიკონის ქეისი', price:29, stock:'in', brand:'Samsung', cat:'აქსესუარები', device:'სმარტფონები', compat:'Galaxy S22 / S23'}
   ];
+  var PARTS_CAT_OPTIONS = ['ეკრანები', 'ბატარეები', 'კამერები', 'დამტენები და კაბელები', 'აქსესუარები'];
+  var PARTS_DEVICE_OPTIONS = ['სმარტფონები', 'ლეპტოპები და კომპიუტერები', 'პლანშეტები', 'სმარტ-საათები', 'უნივერსალური'];
 
   var BRANCHES_DEFAULTS = [
     {id:'b1', name:'ვაჟა-ფშაველას ფილიალი', addr:'ვაჟა-ფშაველას გამზ. 71', hours:'ორშ–შაბ, 10:00–20:00', phone:'+995 322 55 11 01'},
@@ -786,19 +791,55 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     {navitem:'about', hideKey:'navHideAbout', label:'ჩვენს შესახებ (ყოფილი „კომპანია")'},
     {navitem:'contact', hideKey:'navHideContact', label:'კონტაქტი'}
   ];
+  // Effective nav order: state.theme.navOrder (an array of navitem keys)
+  // if present and valid, filtered to known items and with any new item
+  // NAV_ITEMS gained since it was saved appended at the end — otherwise
+  // just NAV_ITEMS' own built-in order.
+  function orderedNavItems(){
+    var saved = Array.isArray(state.theme.navOrder) ? state.theme.navOrder : null;
+    if(!saved) return NAV_ITEMS.slice();
+    var byKey = {}; NAV_ITEMS.forEach(function(it){ byKey[it.navitem] = it; });
+    var out = saved.map(function(k){ return byKey[k]; }).filter(Boolean);
+    NAV_ITEMS.forEach(function(it){ if(out.indexOf(it) === -1) out.push(it); });
+    return out;
+  }
+
   function renderPagesPanel(main, tab){
-    var html = panelHeadHtml(tab, 'ჩართეთ/გამორთეთ ჰედერის მენიუს პუნქტები — გამორთვისას გვერდი ერთი დაწკაპუნებით ისევ დაბრუნდება. სახელების გადარქმევა შესაძლებელია „საერთო ელემენტები" ტაბში.');
+    var html = panelHeadHtml(tab, 'ჩართეთ/გამორთეთ ჰედერის მენიუს პუნქტები და ისრებით დაალაგეთ ის რიგითობა, რომლითაც საიტის ჰედერში გამოჩნდება — გამორთვისას გვერდი ერთი დაწკაპუნებით ისევ დაბრუნდება. სახელების გადარქმევა შესაძლებელია „საერთო ელემენტები" ტაბში.');
     html += '<div class="card">';
-    NAV_ITEMS.forEach(function(it){
+    var items = orderedNavItems();
+    items.forEach(function(it, i){
       var hidden = !!state.theme[it.hideKey];
       html += '<div class="branch-card" style="display:flex;align-items:center;justify-content:space-between;gap:14px">'
-        + '<h3 style="margin:0">'+it.label+(hidden ? ' <span style="color:var(--ink-soft);font-weight:600">— დამალულია</span>' : '')+'</h3>'
+        + '<div style="display:flex;flex-direction:column;gap:2px">'
+          + '<button type="button" class="drag-eye" style="font-size:.85rem;padding:0"'+(i===0?' disabled':'')+' data-nav-move-up="'+it.navitem+'" title="ზემოთ აწევა">▲</button>'
+          + '<button type="button" class="drag-eye" style="font-size:.85rem;padding:0"'+(i===items.length-1?' disabled':'')+' data-nav-move-down="'+it.navitem+'" title="ქვემოთ ჩამოწევა">▼</button>'
+        + '</div>'
+        + '<h3 style="margin:0;flex:1">'+it.label+(hidden ? ' <span style="color:var(--ink-soft);font-weight:600">— დამალულია</span>' : '')+'</h3>'
         + '<button type="button" class="drag-eye" style="font-size:1.3rem" data-nav-hide-key="'+it.hideKey+'" title="ჩვენება/დამალვა">'+(hidden?'🚫':'👁')+'</button>'
         + '</div>';
     });
     html += '</div>';
     html += saveBarHtml();
     main.innerHTML = html;
+
+    function moveNav(key, dir){
+      var order = orderedNavItems().map(function(it){ return it.navitem; });
+      var idx = order.indexOf(key);
+      var swapWith = idx + dir;
+      if(idx === -1 || swapWith < 0 || swapWith >= order.length) return;
+      var tmp = order[idx]; order[idx] = order[swapWith]; order[swapWith] = tmp;
+      state.theme.navOrder = order;
+      setDirty(tab, true);
+      updateStatusChip(tab);
+      renderMain();
+    }
+    main.querySelectorAll('[data-nav-move-up]').forEach(function(btn){
+      btn.addEventListener('click', function(){ moveNav(btn.getAttribute('data-nav-move-up'), -1); });
+    });
+    main.querySelectorAll('[data-nav-move-down]').forEach(function(btn){
+      btn.addEventListener('click', function(){ moveNav(btn.getAttribute('data-nav-move-down'), 1); });
+    });
 
     main.querySelectorAll('[data-nav-hide-key]').forEach(function(btn){
       btn.addEventListener('click', function(){
@@ -1173,37 +1214,108 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       : '<div class="part-thumb-empty">—</div>';
   }
 
-  function renderPartsPanel(main, tab){
-    var html = panelHeadHtml(tab, 'შეცვალეთ ნაწილის დასახელება, ფასი, მარაგის სტატუსი (in — მარაგშია, low — მცირდება) ან ატვირთეთ საკუთარი ფოტო — თუ ფოტო არ ატვირთეთ, საიტზე საერთო ტიპის ილუსტრაცია გამოჩნდება.');
-    html += '<div class="card"><table class="admin-table"><thead><tr><th style="width:150px">ფოტო</th><th>ნაწილი</th><th style="width:110px">ფასი ₾</th><th style="width:100px">მარაგი</th></tr></thead><tbody>';
-    PARTS_DEFAULTS.forEach(function(def){
-      var o = state.parts[def.id] || {};
-      html += '<tr>'
-        + '<td><div class="part-photo-cell" data-part-photo-cell="'+def.id+'">'
-          + renderPartsThumb(def.id)
-          + '<div class="part-photo-actions">'
-            + '<label>ატვირთვა<input type="file" accept="image/*" data-parts-photo="'+def.id+'"></label>'
-            + (o.image ? '<button type="button" data-parts-photo-clear="'+def.id+'">წაშლა</button>' : '')
-          + '</div>'
-        + '</div></td>'
-        + '<td><input type="text" data-parts-edit="'+def.id+'" data-parts-field="name" value="'+escAttr(o.name!=null?o.name:def.name)+'"></td>'
-        + '<td><input type="text" data-parts-edit="'+def.id+'" data-parts-field="price" value="'+escAttr(o.price!=null?o.price:def.price)+'"></td>'
-        + '<td><input type="text" data-parts-edit="'+def.id+'" data-parts-field="stock" value="'+escAttr(o.stock!=null?o.stock:def.stock)+'"></td>'
-        + '</tr>';
+  var PARTS_FIELD_DEFS = [
+    {key:'name', label:'დასახელება'},
+    {key:'price', label:'ფასი ₾'},
+    {key:'brand', label:'ბრენდი', list:'parts-brand-options'},
+    {key:'cat', label:'ნაწილის ტიპი', list:'parts-cat-options'},
+    {key:'device', label:'მოწყობილობის ტიპი', list:'parts-device-options'},
+    {key:'compat', label:'თავსებადობა'}
+  ];
+
+  function partsDatalistsHtml(){
+    return '<datalist id="parts-cat-options">' + PARTS_CAT_OPTIONS.map(function(v){ return '<option value="'+escAttr(v)+'">'; }).join('') + '</datalist>'
+      + '<datalist id="parts-device-options">' + PARTS_DEVICE_OPTIONS.map(function(v){ return '<option value="'+escAttr(v)+'">'; }).join('') + '</datalist>'
+      + '<datalist id="parts-brand-options"><option value="Apple"><option value="Samsung"><option value="Xiaomi"><option value="Huawei"></datalist>';
+  }
+
+  function partsIdList(){
+    // built-in demo parts first (in their fixed order), then any extra
+    // parts created straight from this panel's "+ ახალი ნაწილი" button
+    var extra = Object.keys(state.parts).filter(function(id){
+      return !PARTS_DEFAULTS.some(function(def){ return def.id === id; });
     });
-    html += '</tbody></table></div>';
+    return PARTS_DEFAULTS.map(function(def){ return def.id; }).concat(extra);
+  }
+
+  function partsFieldVal(id, key){
+    var def = PARTS_DEFAULTS.find(function(d){ return d.id === id; }) || {};
+    var o = state.parts[id] || {};
+    return o[key] != null ? o[key] : (def[key] != null ? def[key] : '');
+  }
+
+  function renderPartsPanel(main, tab){
+    var html = panelHeadHtml(tab, 'შეავსეთ ნაწილის დასახელება, ფასი, ბრენდი, ნაწილის ტიპი და მოწყობილობის ტიპი (რომლისთვისაცაა ეს ნაწილი — მაგ. „მობილურის ნაწილი"), ან ატვირთეთ საკუთარი ფოტო — თუ ფოტო არ ატვირთეთ, საიტზე საერთო ტიპის ილუსტრაცია გამოჩნდება. ახალი ნაწილის დამატებისას სასურველია მოწყობილობა+ტიპი შეავსოთ, რომ საიტის ფილტრებში სწორად გამოჩნდეს.');
+    html += partsDatalistsHtml();
+    html += '<div id="parts-list"></div>';
+    html += '<button type="button" class="btn btn-ghost" id="parts-add" style="margin:4px 0 16px">+ ახალი ნაწილი</button>';
     html += saveBarHtml();
     main.innerHTML = html;
 
-    main.querySelectorAll('[data-parts-edit]').forEach(function(inp){
-      inp.addEventListener('input', function(){
-        var id = inp.getAttribute('data-parts-edit'), field = inp.getAttribute('data-parts-field');
-        if(!state.parts[id]) state.parts[id] = {};
-        state.parts[id][field] = inp.value;
-        setDirty(tab, true);
-        updateStatusChip(tab);
+    function partCardHtml(id){
+      var isCustom = !PARTS_DEFAULTS.some(function(def){ return def.id === id; });
+      var stock = partsFieldVal(id, 'stock') || 'in';
+      var name = partsFieldVal(id, 'name') || (isCustom ? 'ახალი ნაწილი' : '');
+      var fieldsHtml = PARTS_FIELD_DEFS.map(function(f){
+        var val = partsFieldVal(id, f.key);
+        var listAttr = f.list ? ' list="'+f.list+'"' : '';
+        return '<div class="field-block" style="margin-bottom:0"><label>'+f.label+'</label>'
+          + '<input type="text" data-part-field="'+f.key+'" data-part-id="'+escAttr(id)+'"'+listAttr+' value="'+escAttr(val)+'"></div>';
+      }).join('')
+        + '<div class="field-block" style="margin-bottom:0"><label>მარაგი</label>'
+        + '<select data-part-field="stock" data-part-id="'+escAttr(id)+'">'
+          + '<option value="in"'+(stock==='in'?' selected':'')+'>მარაგშია</option>'
+          + '<option value="low"'+(stock==='low'?' selected':'')+'>მცირდება</option>'
+        + '</select></div>';
+      return '<div class="branch-card" data-part-card="'+escAttr(id)+'">'
+        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">'
+          + '<h3 style="margin:0">'+escHtml(name)+(isCustom?' <span style="color:var(--ink-soft);font-weight:600;font-size:.78rem">— ახალი</span>':'')+'</h3>'
+          + (isCustom ? '<button type="button" class="drag-eye" data-part-delete="'+escAttr(id)+'" title="წაშლა">🗑</button>' : '')
+        + '</div>'
+        + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
+          + '<div class="part-photo-cell" data-part-photo-cell="'+escAttr(id)+'" style="flex-shrink:0">'
+            + renderPartsThumb(id)
+            + '<div class="part-photo-actions">'
+              + '<label>ატვირთვა<input type="file" accept="image/*" data-parts-photo="'+escAttr(id)+'"></label>'
+              + (state.parts[id] && state.parts[id].image ? '<button type="button" data-parts-photo-clear="'+escAttr(id)+'">წაშლა</button>' : '')
+            + '</div>'
+          + '</div>'
+          + '<div class="branch-grid" style="flex:1;min-width:240px">' + fieldsHtml + '</div>'
+        + '</div></div>';
+    }
+
+    function renderList(){
+      document.getElementById('parts-list').innerHTML = partsIdList().map(partCardHtml).join('');
+      wireList();
+    }
+
+    function wireList(){
+      main.querySelectorAll('[data-part-field]').forEach(function(inp){
+        inp.addEventListener('input', function(){
+          var id = inp.getAttribute('data-part-id'), field = inp.getAttribute('data-part-field');
+          if(!state.parts[id]) state.parts[id] = {};
+          state.parts[id][field] = inp.value;
+          setDirty(tab, true);
+          updateStatusChip(tab);
+          if(field === 'name'){
+            var h3 = inp.closest('.branch-card').querySelector('h3');
+            var isCustom = !PARTS_DEFAULTS.some(function(def){ return def.id === id; });
+            h3.textContent = inp.value || (isCustom ? 'ახალი ნაწილი' : '');
+          }
+        });
       });
-    });
+      main.querySelectorAll('[data-part-delete]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var id = btn.getAttribute('data-part-delete');
+          if(!confirm('წავშალო ეს ნაწილი? საიტზე კატალოგიდანაც გაქრება.')) return;
+          delete state.parts[id];
+          setDirty(tab, true);
+          updateStatusChip(tab);
+          renderList();
+        });
+      });
+      partsIdList().forEach(wirePhotoCell);
+    }
 
     function refreshPhotoCell(id){
       var cell = main.querySelector('[data-part-photo-cell="'+id+'"]');
@@ -1257,7 +1369,17 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       }
     }
 
-    PARTS_DEFAULTS.forEach(function(def){ wirePhotoCell(def.id); });
+    renderList();
+
+    document.getElementById('parts-add').addEventListener('click', function(){
+      var id = 'custom-' + Date.now();
+      state.parts[id] = {name:'', price:'', stock:'in', brand:'', cat:'', device:'', compat:''};
+      setDirty(tab, true);
+      updateStatusChip(tab);
+      renderList();
+      var card = main.querySelector('[data-part-card="'+id+'"]');
+      if(card) card.scrollIntoView({behavior:'smooth', block:'center'});
+    });
 
     wireSaveBar(tab, function(){ return {path:'content-parts', body: state.parts}; });
   }
@@ -1927,7 +2049,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       }
       else if(tab.kind === 'parts'){ state.parts = {}; }
       else if(tab.kind === 'branches'){ state.branches = {}; }
-      else if(tab.kind === 'pages'){ NAV_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); }
+      else if(tab.kind === 'pages'){ NAV_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); delete state.theme.navOrder; }
       setDirty(tab, true);
       renderMain();
     });

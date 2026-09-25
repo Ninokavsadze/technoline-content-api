@@ -1,8 +1,3 @@
-<!doctype html>
-<html lang="ka">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Technoline სერვისი</title>
 <style>
   /* ============ TOKENS ============ */
@@ -611,6 +606,18 @@
   @media (max-width:600px){ #scroll-top-btn{right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px))} }
 
   /* ============ RESPONSIVE ============ */
+  /* The 6 top-level nav items (plus icons + booking button) need ~1350px of
+     header width to lay out on one line without spilling — below that the
+     row used to overflow the header and push the whole page into a
+     horizontal scrollbar (most visible after re-enabling a 6th/7th item
+     like the parts catalog from the admin panel). Switching to the already
+     mobile-ready hamburger drawer earlier, at 1400px, keeps every width
+     below that clean without touching the true mobile layout rules in the
+     980px block below (hero grid, hidden header icons, etc.). */
+  @media (max-width:1400px){
+    nav.primary-nav{display:none}
+    .hamburger{display:inline-flex}
+  }
   @media (max-width:980px){
     nav.primary-nav{display:none}
     .hamburger{display:inline-flex}
@@ -665,8 +672,6 @@
     .band-dark{padding:32px 24px}
   }
 </style>
-</head>
-<body>
 <noscript><style>body{opacity:1 !important}</style></noscript>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1214,6 +1219,14 @@
             <label class="filter-opt"><input type="checkbox" name="cat-cat" value="კამერები"> კამერები</label>
             <label class="filter-opt"><input type="checkbox" name="cat-cat" value="დამტენები და კაბელები"> დამტენები და კაბელები</label>
             <label class="filter-opt"><input type="checkbox" name="cat-cat" value="აქსესუარები"> აქსესუარები</label>
+          </div>
+          <div class="filter-group">
+            <h4>მოწყობილობის ტიპი</h4>
+            <label class="filter-opt"><input type="checkbox" name="cat-device" value="სმარტფონები"> სმარტფონები</label>
+            <label class="filter-opt"><input type="checkbox" name="cat-device" value="ლეპტოპები და კომპიუტერები"> ლეპტოპები და კომპიუტერები</label>
+            <label class="filter-opt"><input type="checkbox" name="cat-device" value="პლანშეტები"> პლანშეტები</label>
+            <label class="filter-opt"><input type="checkbox" name="cat-device" value="სმარტ-საათები"> სმარტ-საათები</label>
+            <label class="filter-opt"><input type="checkbox" name="cat-device" value="უნივერსალური"> უნივერსალური</label>
           </div>
           <button class="btn btn-ghost btn-sm btn-block" id="cat-clear">ფილტრების გასუფთავება</button>
         </aside>
@@ -1848,22 +1861,32 @@
     return p.customPhoto || (p.photo && PART_PHOTOS[p.photo]) || null;
   }
 
-  var PARTS = [
-    {id:'p1', name:'iPhone 13 Pro დისპლეი (OLED)', brand:'Apple', cat:'ეკრანები', price:420, stock:'in', compat:'iPhone 13 Pro', icon:'ic-screen', photo:'screen'},
-    {id:'p2', name:'iPhone 12 დისპლეი', brand:'Apple', cat:'ეკრანები', price:310, stock:'in', compat:'iPhone 12 / 12 Pro', icon:'ic-screen', photo:'screen'},
-    {id:'p3', name:'iPhone 11 ბატარეა', brand:'Apple', cat:'ბატარეები', price:95, stock:'in', compat:'iPhone 11', icon:'ic-battery', photo:'battery-phone'},
-    {id:'p4', name:'MacBook Air M1 ბატარეა', brand:'Apple', cat:'ბატარეები', price:230, stock:'low', compat:'MacBook Air 2020–21', icon:'ic-battery', photo:'battery-laptop'},
-    {id:'p5', name:'Galaxy S23 დისპლეი', brand:'Samsung', cat:'ეკრანები', price:380, stock:'in', compat:'Galaxy S23', icon:'ic-screen', photo:'screen'},
-    {id:'p6', name:'Galaxy A54 ბატარეა', brand:'Samsung', cat:'ბატარეები', price:75, stock:'in', compat:'Galaxy A54', icon:'ic-battery', photo:'battery-phone'},
-    {id:'p7', name:'Galaxy S22 უკანა კამერა', brand:'Samsung', cat:'კამერები', price:165, stock:'low', compat:'Galaxy S22', icon:'ic-data', photo:'camera'},
-    {id:'p8', name:'Redmi Note 12 დისპლეი', brand:'Xiaomi', cat:'ეკრანები', price:135, stock:'in', compat:'Redmi Note 12', icon:'ic-screen', photo:'screen'},
-    {id:'p9', name:'Xiaomi 13 ბატარეა', brand:'Xiaomi', cat:'ბატარეები', price:88, stock:'in', compat:'Xiaomi 13', icon:'ic-battery', photo:'battery-phone'},
-    {id:'p10', name:'USB-C სწრაფი დამტენი 30W', brand:'Xiaomi', cat:'დამტენები და კაბელები', price:45, stock:'in', compat:'უნივერსალური', icon:'ic-chip', photo:'charger'},
-    {id:'p11', name:'Huawei P40 დისპლეი', brand:'Huawei', cat:'ეკრანები', price:210, stock:'low', compat:'Huawei P40', icon:'ic-screen', photo:'screen'},
-    {id:'p12', name:'Lightning კაბელი 1მ', brand:'Apple', cat:'დამტენები და კაბელები', price:38, stock:'in', compat:'iPhone / iPad', icon:'ic-chip', photo:'cable'},
-    {id:'p13', name:'iPhone დამცავი მინა', brand:'Apple', cat:'აქსესუარები', price:25, stock:'in', compat:'iPhone 11–15', icon:'ic-shield', photo:'glass'},
-    {id:'p14', name:'სილიკონის ქეისი', brand:'Samsung', cat:'აქსესუარები', price:29, stock:'in', compat:'Galaxy S22 / S23', icon:'ic-shield', photo:'case'}
+  // device: the new device-type category (მობილური/ლეპტოპი/... — same
+  // vocabulary as the "services" mega-menu's device list) alongside the
+  // existing part-type "cat" (ეკრანები/ბატარეები/...) — both are now
+  // editable per part from the admin panel (see applyPartsOverrides).
+  var PARTS_BASE = [
+    {id:'p1', name:'iPhone 13 Pro დისპლეი (OLED)', brand:'Apple', cat:'ეკრანები', device:'სმარტფონები', price:420, stock:'in', compat:'iPhone 13 Pro', icon:'ic-screen', photo:'screen'},
+    {id:'p2', name:'iPhone 12 დისპლეი', brand:'Apple', cat:'ეკრანები', device:'სმარტფონები', price:310, stock:'in', compat:'iPhone 12 / 12 Pro', icon:'ic-screen', photo:'screen'},
+    {id:'p3', name:'iPhone 11 ბატარეა', brand:'Apple', cat:'ბატარეები', device:'სმარტფონები', price:95, stock:'in', compat:'iPhone 11', icon:'ic-battery', photo:'battery-phone'},
+    {id:'p4', name:'MacBook Air M1 ბატარეა', brand:'Apple', cat:'ბატარეები', device:'ლეპტოპები და კომპიუტერები', price:230, stock:'low', compat:'MacBook Air 2020–21', icon:'ic-battery', photo:'battery-laptop'},
+    {id:'p5', name:'Galaxy S23 დისპლეი', brand:'Samsung', cat:'ეკრანები', device:'სმარტფონები', price:380, stock:'in', compat:'Galaxy S23', icon:'ic-screen', photo:'screen'},
+    {id:'p6', name:'Galaxy A54 ბატარეა', brand:'Samsung', cat:'ბატარეები', device:'სმარტფონები', price:75, stock:'in', compat:'Galaxy A54', icon:'ic-battery', photo:'battery-phone'},
+    {id:'p7', name:'Galaxy S22 უკანა კამერა', brand:'Samsung', cat:'კამერები', device:'სმარტფონები', price:165, stock:'low', compat:'Galaxy S22', icon:'ic-data', photo:'camera'},
+    {id:'p8', name:'Redmi Note 12 დისპლეი', brand:'Xiaomi', cat:'ეკრანები', device:'სმარტფონები', price:135, stock:'in', compat:'Redmi Note 12', icon:'ic-screen', photo:'screen'},
+    {id:'p9', name:'Xiaomi 13 ბატარეა', brand:'Xiaomi', cat:'ბატარეები', device:'სმარტფონები', price:88, stock:'in', compat:'Xiaomi 13', icon:'ic-battery', photo:'battery-phone'},
+    {id:'p10', name:'USB-C სწრაფი დამტენი 30W', brand:'Xiaomi', cat:'დამტენები და კაბელები', device:'უნივერსალური', price:45, stock:'in', compat:'უნივერსალური', icon:'ic-chip', photo:'charger'},
+    {id:'p11', name:'Huawei P40 დისპლეი', brand:'Huawei', cat:'ეკრანები', device:'სმარტფონები', price:210, stock:'low', compat:'Huawei P40', icon:'ic-screen', photo:'screen'},
+    {id:'p12', name:'Lightning კაბელი 1მ', brand:'Apple', cat:'დამტენები და კაბელები', device:'უნივერსალური', price:38, stock:'in', compat:'iPhone / iPad', icon:'ic-chip', photo:'cable'},
+    {id:'p13', name:'iPhone დამცავი მინა', brand:'Apple', cat:'აქსესუარები', device:'სმარტფონები', price:25, stock:'in', compat:'iPhone 11–15', icon:'ic-shield', photo:'glass'},
+    {id:'p14', name:'სილიკონის ქეისი', brand:'Samsung', cat:'აქსესუარები', device:'სმარტფონები', price:29, stock:'in', compat:'Galaxy S22 / S23', icon:'ic-shield', photo:'case'}
   ];
+  var CATALOG_DEVICE_TYPES = ['სმარტფონები', 'ლეპტოპები და კომპიუტერები', 'პლანშეტები', 'სმარტ-საათები', 'უნივერსალური'];
+  // Working copy the rest of the page reads/filters — rebuilt from
+  // PARTS_BASE plus admin overrides (and any admin-added extra parts) each
+  // time applyPartsOverrides() runs, so it always starts clean instead of
+  // layering edits onto a previous run's result.
+  var PARTS = PARTS_BASE.slice();
 
   var WARRANTY_DB = {
     'TL-227719-GE': {device:'iPhone 13 Pro', cat:'სმარტფონი — ეკრანის შეცვლა', purchase:'2026-04-15', end:'2026-10-15'},
@@ -2025,9 +2048,42 @@
     return Array.prototype.slice.call(document.querySelectorAll('input[name="'+name+'"]:checked')).map(function(i){ return i.value; });
   }
 
+  // AI-assisted search: aiMatchIds holds the last AI-ranked id list, valid
+  // only for the exact query text it was computed for (aiMatchQuery) — if
+  // the box no longer matches that text (still typing, or cleared) we fall
+  // straight back to plain substring matching below instead of showing a
+  // stale/irrelevant result set.
+  var aiMatchIds = null, aiMatchQuery = '', aiSearchTimer = null;
+  function scheduleAiSearch(q){
+    clearTimeout(aiSearchTimer);
+    if(!q){ aiMatchIds = null; aiMatchQuery = ''; return; }
+    aiSearchTimer = setTimeout(function(){ runAiSearch(q); }, 450);
+  }
+  function runAiSearch(q){
+    var items = PARTS.map(function(p){ return {id:p.id, name:p.name, brand:p.brand, cat:p.cat, device:p.device, compat:p.compat}; });
+    fetch(API_BASE + '/api/catalog/search-ai', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({query: q, items: items})
+    }).then(function(res){
+      if(!res.ok) throw new Error('ai search unavailable');
+      return res.json();
+    }).then(function(data){
+      // the box may have moved on to a different query while this was in
+      // flight — ignore a now-stale answer rather than overwriting newer results
+      var current = (document.getElementById('cat-search').value || '').trim().toLowerCase();
+      if(current !== q) return;
+      aiMatchIds = Array.isArray(data.ids) ? data.ids : null;
+      aiMatchQuery = q;
+      renderCatalog();
+    }).catch(function(){
+      // AI search not configured / network hiccup / timeout — quietly keep
+      // using the instant substring match below, search never breaks.
+    });
+  }
+
   function renderCatalog(){
     if(pendingCatalogFilter){
-      document.querySelectorAll('input[name="cat-brand"],input[name="cat-cat"]').forEach(function(i){ i.checked = false; });
+      document.querySelectorAll('input[name="cat-brand"],input[name="cat-cat"],input[name="cat-device"]').forEach(function(i){ i.checked = false; });
       var sel = document.querySelector('input[name="cat-'+ (pendingCatalogFilter.type==='brand'?'brand':'cat') +'"][value="'+pendingCatalogFilter.value+'"]');
       if(sel) sel.checked = true;
       pendingCatalogFilter = null;
@@ -2036,17 +2092,26 @@
     var q = (document.getElementById('cat-search').value || '').trim().toLowerCase();
     var brands = getCheckedValues('cat-brand');
     var cats = getCheckedValues('cat-cat');
+    var devices = getCheckedValues('cat-device');
     var sort = document.getElementById('cat-sort').value;
+    var useAi = q && aiMatchQuery === q && Array.isArray(aiMatchIds);
 
     var list = PARTS.filter(function(p){
-      if(q && p.name.toLowerCase().indexOf(q) === -1 && p.brand.toLowerCase().indexOf(q) === -1) return false;
+      if(useAi){
+        if(aiMatchIds.indexOf(p.id) === -1) return false;
+      } else if(q && p.name.toLowerCase().indexOf(q) === -1 && p.brand.toLowerCase().indexOf(q) === -1
+          && (p.cat||'').toLowerCase().indexOf(q) === -1 && (p.device||'').toLowerCase().indexOf(q) === -1){
+        return false;
+      }
       if(brands.length && brands.indexOf(p.brand) === -1) return false;
       if(cats.length && cats.indexOf(p.cat) === -1) return false;
+      if(devices.length && devices.indexOf(p.device) === -1) return false;
       return true;
     });
 
     if(sort === 'price-asc') list.sort(function(a,b){ return a.price - b.price; });
-    if(sort === 'price-desc') list.sort(function(a,b){ return b.price - a.price; });
+    else if(sort === 'price-desc') list.sort(function(a,b){ return b.price - a.price; });
+    else if(useAi) list.sort(function(a,b){ return aiMatchIds.indexOf(a.id) - aiMatchIds.indexOf(b.id); });
 
     catCount.textContent = list.length + ' ნაწილი ნაპოვნია';
     catEmpty.hidden = list.length !== 0;
@@ -2066,7 +2131,7 @@
       return '<div class="product-card">'
         + '<div class="product-media"><span class="stock-pill ' + (p.stock==='in'?'in':'low') + '">' + (p.stock==='in'?'მარაგშია':'მცირე მარაგი') + '</span>' + mediaInner + qvBtn + '</div>'
         + '<div class="product-body">'
-        + '<span class="product-cat">' + p.brand + ' · ' + p.cat + '</span>'
+        + '<span class="product-cat">' + [p.brand, p.cat, p.device].filter(Boolean).join(' · ') + '</span>'
         + '<h4>' + p.name + '</h4>'
         + '<span class="compat">თავსებადია: ' + p.compat + '</span>'
         + '<div class="product-foot"><span class="price">' + p.price + ' <small>₾</small></span>'
@@ -2099,12 +2164,19 @@
     grid.scrollIntoView({behavior:'smooth', block:'start'});
   });
 
-  ['cat-search'].forEach(function(id){ document.getElementById(id).addEventListener('input', function(){ catPage = 1; renderCatalog(); }); });
+  document.getElementById('cat-search').addEventListener('input', function(){
+    catPage = 1;
+    var q = (this.value || '').trim().toLowerCase();
+    if(!q){ aiMatchIds = null; aiMatchQuery = ''; }
+    renderCatalog(); // instant substring result while the AI search (debounced) is still in flight
+    scheduleAiSearch(q);
+  });
   document.getElementById('cat-sort').addEventListener('change', function(){ catPage = 1; renderCatalog(); });
-  document.querySelectorAll('input[name="cat-brand"],input[name="cat-cat"]').forEach(function(i){ i.addEventListener('change', function(){ catPage = 1; renderCatalog(); }); });
+  document.querySelectorAll('input[name="cat-brand"],input[name="cat-cat"],input[name="cat-device"]').forEach(function(i){ i.addEventListener('change', function(){ catPage = 1; renderCatalog(); }); });
   document.getElementById('cat-clear').addEventListener('click', function(){
     document.getElementById('cat-search').value = '';
-    document.querySelectorAll('input[name="cat-brand"],input[name="cat-cat"]').forEach(function(i){ i.checked = false; });
+    aiMatchIds = null; aiMatchQuery = ''; clearTimeout(aiSearchTimer);
+    document.querySelectorAll('input[name="cat-brand"],input[name="cat-cat"],input[name="cat-device"]').forEach(function(i){ i.checked = false; });
     catPage = 1;
     renderCatalog();
   });
@@ -2801,8 +2873,29 @@
       });
     });
   }
+  // Admin-set custom order (theme.navOrder, an array of navitem keys) for
+  // the desktop header menu — its 6 top-level items are all direct
+  // children of nav.primary-nav (either a .nav-item div with a mega menu,
+  // or a plain .nav-link <a>), each tagged data-navitem, so they can be
+  // reordered generically regardless of which markup shape they are.
+  // The mobile hamburger drawer keeps its fixed layout: its items are
+  // interspersed with non-reorderable anchors (home, the booking CTA,
+  // profile) and one item (warranty-service) only exists nested inside
+  // the services dropdown there, so a matching reorder isn't safe to do
+  // generically without risking that layout.
+  function applyNavOrder(){
+    var order = siteContent.theme.navOrder;
+    var nav = document.querySelector('nav.primary-nav');
+    if(!nav || !Array.isArray(order) || !order.length) return;
+    order.forEach(function(key){
+      var el = nav.querySelector(':scope > [data-navitem="'+key+'"]');
+      if(el) nav.appendChild(el);
+    });
+    var first = nav.firstElementChild;
+    nav.querySelectorAll('.nav-item').forEach(function(item){ item.classList.toggle('first', item === first); });
+  }
 
-  var PARTS_DEFAULTS = PARTS.map(function(p){ return {id:p.id, name:p.name, price:p.price, stock:p.stock}; });
+  var PARTS_DEFAULTS = PARTS_BASE.map(function(p){ return {id:p.id, name:p.name, price:p.price, stock:p.stock, brand:p.brand, cat:p.cat, device:p.device, compat:p.compat}; });
   var BRANCHES_DEFAULTS = BRANCHES.map(function(b){ return {id:b.id, name:b.name, addr:b.addr, hours:b.hours, phone:b.phone}; });
 
   var siteContent = { content:{}, theme:{}, parts:{}, branches:{} };
@@ -2926,6 +3019,7 @@
     if(craftAlignH) document.documentElement.style.setProperty('--craft-align-h', craftAlignH);
     else document.documentElement.style.removeProperty('--craft-align-h');
     applyNavVisibility();
+    applyNavOrder();
   }
   function applyVideoBg(videoSel, photoSel, typeKey, photoKey, videoKey){
     var video = document.querySelector(videoSel);
@@ -2950,14 +3044,33 @@
     if(photo) photo.style.display = wantPhoto ? 'block' : 'none';
   }
   function applyPartsOverrides(){
-    PARTS.forEach(function(p){
-      var def = PARTS_DEFAULTS.find(function(d){ return d.id === p.id; });
-      var o = siteContent.parts[p.id];
-      p.name = (o && o.name != null && o.name !== '') ? o.name : def.name;
+    var FIELDS = ['name','brand','cat','device','compat'];
+    var overridden = PARTS_BASE.map(function(def){
+      var o = siteContent.parts[def.id] || null;
+      var p = { id: def.id, icon: def.icon, photo: def.photo };
+      FIELDS.forEach(function(f){ p[f] = (o && o[f] != null && o[f] !== '') ? o[f] : def[f]; });
       p.price = (o && o.price != null && o.price !== '') ? (Number(o.price) || def.price) : def.price;
       p.stock = (o && o.stock != null && o.stock !== '') ? o.stock : def.stock;
       p.customPhoto = (o && o.image) ? o.image : null;
+      return p;
     });
+    // Parts created straight from the admin panel's "+ ახალი ჩანაწერი"
+    // (no matching built-in id) didn't used to appear on the live site at
+    // all — only the original 14 demo parts could ever be shown. Now any
+    // such extra id in the saved parts data is rendered too, with a
+    // generic icon unless the admin uploads its own photo.
+    var added = Object.keys(siteContent.parts || {}).filter(function(id){
+      return !PARTS_BASE.some(function(def){ return def.id === id; });
+    }).map(function(id){
+      var o = siteContent.parts[id] || {};
+      return {
+        id: id, name: o.name || 'ახალი ნაწილი', brand: o.brand || '', cat: o.cat || '',
+        device: o.device || '', compat: o.compat || '',
+        price: Number(o.price) || 0, stock: o.stock || 'in',
+        icon: 'ic-chip', photo: null, customPhoto: o.image || null
+      };
+    });
+    PARTS = overridden.concat(added);
     renderCatalog();
   }
   function applyBranchesOverrides(){
@@ -3061,6 +3174,3 @@
   loadSiteContent();
 })();
 </script>
-
-</body>
-</html>
