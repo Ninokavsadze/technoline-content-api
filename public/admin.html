@@ -218,6 +218,7 @@
   <symbol id="ic-inbox" viewBox="0 0 24 24"><path d="M3 12h5l1.6 3h4.8L16 12h5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 12v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6L18 5a2 2 0 0 0-1.8-1H7.8A2 2 0 0 0 6 5L3 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
   <symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.3-3.8 4.3-5.8 7.5-5.8s6.2 2 7.5 5.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="ic-star" viewBox="0 0 24 24"><path d="M12 3.2l2.6 5.6 6 .7-4.4 4.2 1.1 6-5.3-3-5.3 3 1.1-6-4.4-4.2 6-.7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 8.3 8.3 0 0 1-3.8-.9L3 21l1.9-5.8a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3a8.4 8.4 0 0 1 8.5 8.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
 </svg>
 
 <!-- ============ LOGIN ============ -->
@@ -569,6 +570,9 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   document.getElementById('logout-btn').addEventListener('click', function(){
     authToken = null;
     try{ sessionStorage.removeItem('tl_admin_token'); }catch(e){}
+    if(chatState.ws){ try{ chatState.ws.close(); }catch(e){} }
+    clearTimeout(chatState.reconnectTimer);
+    chatState = { chats:{}, listLoaded:false, ws:null, wsReady:false, selectedId:null, reconnectTimer:null };
     document.getElementById('app').classList.remove('is-active');
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('login-password').value = '';
@@ -580,6 +584,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   var TABS = [];
   var activeTab = null;
   var bookingsLoaded = false;
+  var chatState = { chats:{}, listLoaded:false, ws:null, wsReady:false, selectedId:null, reconnectTimer:null };
   var warrantyLoaded = { records:false, template:false };
   var warrantySubTab = 'records';
   // Which segment sub-tab is active per content page (e.g. "services" ->
@@ -603,11 +608,12 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     TABS.push({id:'branches', label:'ფილიალები', kind:'branches', group:'other'});
     TABS.push({id:'warranty', label:'საგარანტიო ბარათი', kind:'warranty', group:'other'});
     TABS.push({id:'bookings', label:'ვიზიტების ჯავშნები', kind:'bookings', group:'other'});
+    TABS.push({id:'chat', label:'ლაივ ჩატი', kind:'chat', group:'other'});
     TABS.push({id:'feedback', label:'მომხმარებელთა უკუკავშირი', kind:'feedback', group:'other'});
     TABS.push({id:'users', label:'მომხმარებლები', kind:'users', group:'other'});
   }
 
-  var TAB_ICONS = { content:'ic-inbox', pages:'ic-menu', colors:'ic-palette', typography:'ic-palette', parts:'ic-box', branches:'ic-pin', warranty:'ic-lock', bookings:'ic-calendar', feedback:'ic-star', users:'ic-user' };
+  var TAB_ICONS = { content:'ic-inbox', pages:'ic-menu', colors:'ic-palette', typography:'ic-palette', parts:'ic-box', branches:'ic-pin', warranty:'ic-lock', bookings:'ic-calendar', chat:'ic-chat', feedback:'ic-star', users:'ic-user' };
 
   function renderNav(){
     var nav = document.getElementById('side-nav');
@@ -630,9 +636,14 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   }
   function navBtn(t){
     var icon = TAB_ICONS[t.kind] || 'ic-inbox';
+    var badge = '';
+    if(t.kind === 'chat'){
+      var n = chatUnreadCount();
+      if(n) badge = '<span style="margin-left:auto;background:var(--bad,#B3261E);color:#fff;font-size:.7rem;font-weight:800;border-radius:999px;padding:1px 7px;line-height:1.5">'+n+'</span>';
+    }
     return '<button class="side-btn' + (t.id===activeTab?' is-active':'') + '" data-tab="'+t.id+'">'
       + '<svg class="icon" style="width:16px;height:16px"><use href="#'+icon+'"/></svg>'
-      + '<span>'+t.label+'</span></button>';
+      + '<span>'+t.label+'</span>' + badge + '</button>';
   }
 
   function dirtyKeyForTab(tab){
@@ -655,7 +666,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   }
 
   function statusChipHtml(tab){
-    if(!tab || tab.kind === 'bookings' || tab.kind === 'warranty' || tab.kind === 'feedback') return '';
+    if(!tab || tab.kind === 'bookings' || tab.kind === 'warranty' || tab.kind === 'feedback' || tab.kind === 'chat') return '';
     var d = isDirty(tab);
     return '<span class="status-chip ' + (d?'dirty':'saved') + '" id="status-chip">' + (d?'ცვლილება არ არის შენახული':'შენახულია') + '</span>';
   }
@@ -685,6 +696,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(tab.kind === 'branches') return renderBranchesPanel(main, tab);
     if(tab.kind === 'warranty') return renderWarrantyPanel(main, tab);
     if(tab.kind === 'bookings') return renderBookingsPanel(main, tab);
+    if(tab.kind === 'chat') return renderChatPanel(main, tab);
     if(tab.kind === 'feedback') return renderFeedbackPanel(main, tab);
     if(tab.kind === 'users') return renderUsersPanel(main, tab);
   }
@@ -2217,6 +2229,172 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     });
   }
 
+  /* ---------- live chat (WebSocket) ---------- */
+  function chatUnreadCount(){
+    return Object.keys(chatState.chats).filter(function(id){ return chatState.chats[id].unread; }).length;
+  }
+  function chatWsUrl(){
+    return API_BASE.replace(/^https/, 'wss').replace(/^http:/, 'ws:') + '/ws/admin-chat?token=' + encodeURIComponent(authToken || '');
+  }
+  function connectChatWs(){
+    if(!authToken || chatState.ws) return;
+    var ws;
+    try{ ws = new WebSocket(chatWsUrl()); }catch(e){ return; }
+    chatState.ws = ws;
+    ws.onopen = function(){ chatState.wsReady = true; };
+    ws.onclose = function(){
+      chatState.wsReady = false;
+      if(chatState.ws === ws) chatState.ws = null;
+      clearTimeout(chatState.reconnectTimer);
+      chatState.reconnectTimer = setTimeout(function(){ if(authToken) connectChatWs(); }, 4000);
+    };
+    ws.onerror = function(){ try{ ws.close(); }catch(e){} };
+    ws.onmessage = function(evt){
+      var msg;
+      try{ msg = JSON.parse(evt.data); }catch(e){ return; }
+      handleChatWsMessage(msg);
+    };
+  }
+  function handleChatWsMessage(msg){
+    if(msg.type === 'chat_new'){
+      if(!chatState.chats[msg.chat.id]){
+        chatState.chats[msg.chat.id] = msg.chat;
+        chatState.chats[msg.chat.id].unread = true;
+      }
+    } else if(msg.type === 'message'){
+      var c = chatState.chats[msg.chatId];
+      if(!c) c = chatState.chats[msg.chatId] = { id: msg.chatId, messages: [] };
+      c.messages = c.messages || [];
+      c.messages.push(msg.message);
+      if(msg.chatSummary){ c.name = msg.chatSummary.name; c.phone = msg.chatSummary.phone; c.status = msg.chatSummary.status; c.lastAt = msg.chatSummary.lastAt; }
+      if(msg.message.from === 'customer' && chatState.selectedId !== msg.chatId) c.unread = true;
+    } else if(msg.type === 'chat_status'){
+      var cs = chatState.chats[msg.chatId];
+      if(cs) cs.status = msg.status;
+    } else {
+      return;
+    }
+    renderNav();
+    renderChatListDom();
+    if(chatState.selectedId && chatState.chats[chatState.selectedId] &&
+       (msg.chatId === chatState.selectedId || msg.chat && msg.chat.id === chatState.selectedId)){
+      renderChatThreadDom();
+    }
+  }
+  function chatSortedList(){
+    return Object.keys(chatState.chats).map(function(id){ return chatState.chats[id]; })
+      .sort(function(a, b){ return (b.lastAt || 0) - (a.lastAt || 0); });
+  }
+  function renderChatListDom(){
+    var listEl = document.getElementById('chat-list');
+    if(!listEl) return;
+    var items = chatSortedList();
+    listEl.innerHTML = items.length ? items.map(function(c){
+      var preview = c.messages && c.messages.length ? c.messages[c.messages.length - 1].text : '';
+      return '<button type="button" class="chat-list-item" data-chat-id="' + escHtml(c.id) + '" style="display:block;width:100%;text-align:left;padding:12px 16px;border:none;border-bottom:1px solid var(--line);background:' + (c.id === chatState.selectedId ? 'var(--blue-soft)' : 'transparent') + ';cursor:pointer">'
+        + '<div style="display:flex;justify-content:space-between;gap:6px;align-items:baseline">'
+        + '<span style="font-weight:800;font-size:.86rem">' + escHtml(c.name || '—') + '</span>'
+        + (c.unread ? '<span style="width:8px;height:8px;border-radius:50%;background:var(--bad,#B3261E);flex:none"></span>' : '')
+        + '</div>'
+        + '<div style="font-size:.76rem;color:var(--ink-faint)">' + escHtml(c.phone || '') + (c.status === 'closed' ? ' · დახურულია' : '') + '</div>'
+        + '<div style="font-size:.8rem;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px">' + escHtml(preview) + '</div>'
+        + '</button>';
+    }).join('') : '<div class="empty-state" style="padding:24px 14px"><p>ჯერ არცერთი საუბარი არ დაწყებულა.</p></div>';
+  }
+  function chatMessageBubbleHtml(m){
+    var mine = m.from === 'admin';
+    return '<div style="align-self:' + (mine ? 'flex-end' : 'flex-start') + ';max-width:75%;background:' + (mine ? 'var(--gold-ghost,#FFEAC5)' : 'var(--surface-alt)') + ';border-radius:14px;padding:9px 13px;font-size:.86rem;line-height:1.4">'
+      + escHtml(m.text)
+      + '<div style="font-size:.68rem;color:var(--ink-faint);margin-top:3px">' + escHtml(fmtDate(m.at)) + '</div></div>';
+  }
+  function appendChatMessageDom(m){
+    var msgsEl = document.getElementById('chat-thread-messages');
+    if(!msgsEl) return;
+    msgsEl.insertAdjacentHTML('beforeend', chatMessageBubbleHtml(m));
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+  function renderChatThreadDom(){
+    var wrap = document.getElementById('chat-thread-wrap');
+    if(!wrap) return;
+    var c = chatState.selectedId ? chatState.chats[chatState.selectedId] : null;
+    if(!c){
+      wrap.innerHTML = '<div class="empty-state" style="height:100%;display:flex;align-items:center;justify-content:center"><p>აირჩიეთ საუბარი მარცხნივ</p></div>';
+      return;
+    }
+    var msgsHtml = (c.messages || []).map(chatMessageBubbleHtml).join('');
+    wrap.innerHTML = '<div style="display:flex;flex-direction:column;height:100%">'
+      + '<div style="padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">'
+      + '<div><div style="font-weight:800">' + escHtml(c.name || '—') + '</div><div style="font-size:.8rem;color:var(--ink-faint)">' + escHtml(c.phone || '') + '</div></div>'
+      + (c.status !== 'closed' ? '<button type="button" class="btn btn-ghost" id="chat-close-btn" style="font-size:.78rem;padding:7px 12px">საუბრის დახურვა</button>' : '<span style="font-size:.78rem;color:var(--ink-faint)">დახურულია</span>')
+      + '</div>'
+      + '<div id="chat-thread-messages" style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px">' + msgsHtml + '</div>'
+      + '<div style="padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px">'
+      + '<input type="text" id="chat-reply-input" placeholder="უპასუხეთ…" style="flex:1;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink);font-size:.9rem">'
+      + '<button type="button" class="btn btn-gold" id="chat-reply-send">გაგზავნა</button>'
+      + '</div>'
+      + '</div>';
+    var msgsEl = document.getElementById('chat-thread-messages');
+    if(msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+    var closeBtn = document.getElementById('chat-close-btn');
+    if(closeBtn) closeBtn.addEventListener('click', function(){
+      if(chatState.ws && chatState.wsReady) chatState.ws.send(JSON.stringify({type:'close_chat', chatId:c.id}));
+    });
+    function sendReply(){
+      var input = document.getElementById('chat-reply-input');
+      var text = input.value.trim();
+      if(!text || !chatState.ws || !chatState.wsReady) return;
+      chatState.ws.send(JSON.stringify({type:'reply', chatId:c.id, text:text}));
+      var m = {from:'admin', text:text, at:Date.now()};
+      c.messages = c.messages || [];
+      c.messages.push(m);
+      c.lastAt = m.at;
+      input.value = '';
+      appendChatMessageDom(m);
+      renderChatListDom();
+    }
+    document.getElementById('chat-reply-send').addEventListener('click', sendReply);
+    document.getElementById('chat-reply-input').addEventListener('keydown', function(e){ if(e.key === 'Enter') sendReply(); });
+  }
+  function selectChat(id){
+    chatState.selectedId = id;
+    var c = chatState.chats[id];
+    if(c) c.unread = false;
+    renderChatListDom();
+    renderChatThreadDom();
+    renderNav();
+  }
+  function renderChatPanel(main, tab){
+    var html = panelHeadHtml(tab, 'რეალურ დროში საუბარი საიტის ვიზიტორებთან.');
+    html += '<div class="card" style="display:grid;grid-template-columns:280px 1fr;gap:0;min-height:520px;max-height:640px;overflow:hidden;padding:0">'
+      + '<div id="chat-list" style="border-right:1px solid var(--line);overflow-y:auto"></div>'
+      + '<div id="chat-thread-wrap" style="overflow:hidden"></div>'
+      + '</div>';
+    main.innerHTML = html;
+
+    document.getElementById('chat-list').addEventListener('click', function(e){
+      var btn = e.target.closest('[data-chat-id]');
+      if(!btn) return;
+      selectChat(btn.getAttribute('data-chat-id'));
+    });
+
+    renderChatListDom();
+    renderChatThreadDom();
+
+    if(!chatState.listLoaded){
+      chatState.listLoaded = true;
+      apiGet('/api/chats').then(function(list){
+        (list || []).forEach(function(c){
+          if(!chatState.chats[c.id]) chatState.chats[c.id] = c;
+        });
+        renderChatListDom();
+        if(chatState.selectedId) renderChatThreadDom();
+      }).catch(function(err){
+        if(err && err.status === 401){ toast('ავტორიზაცია ვადაგასულია — გთხოვთ თავიდან შეხვიდეთ'); document.getElementById('logout-btn').click(); }
+      });
+    }
+    if(!chatState.ws) connectChatWs();
+  }
+
   function renderFeedbackPanel(main, tab){
     var html = panelHeadHtml(tab, 'Smart Q-Logic-დან ავტომატურად მიღებული მომხმარებელთა შეფასებები.');
     html += '<div class="card" style="padding:14px 18px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">'
@@ -2425,6 +2603,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     document.getElementById('app').classList.add('is-active');
     buildTabs();
     checkConnection();
+    connectChatWs();
     loadAll().then(function(){
       selectTab(TABS[0].id);
     });
@@ -2450,6 +2629,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     document.getElementById('app').classList.add('is-active');
     buildTabs();
     checkConnection();
+    connectChatWs();
     loadAll().then(function(){ selectTab(TABS[0].id); }).catch(function(){});
   }
 })();
