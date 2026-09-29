@@ -629,15 +629,19 @@
   #chat-fab svg{width:24px;height:24px}
   #chat-fab-badge{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:var(--danger,#B14526);color:#fff;font-size:.68rem;font-weight:800;align-items:center;justify-content:center;line-height:1;display:none}
   #chat-fab-badge.show{display:flex}
-  #chat-panel{position:absolute;right:0;bottom:70px;width:min(392px,calc(100vw - 32px));height:min(560px,calc(100vh - 140px));background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-3);display:none;flex-direction:column;overflow:hidden}
+  #chat-panel{position:absolute;right:0;bottom:56px;width:min(392px,calc(100vw - 32px));height:min(480px,calc(100vh - 230px));background:color-mix(in srgb, var(--surface) 80%, transparent);backdrop-filter:saturate(1.6) blur(22px);-webkit-backdrop-filter:saturate(1.6) blur(22px);border:1px solid rgba(255,255,255,.16);border-radius:20px;box-shadow:var(--shadow-3);display:none;flex-direction:column;overflow:hidden;transition:height .2s ease}
   #chat-panel.open{display:flex}
-  #chat-panel-head{padding:16px 18px;background:linear-gradient(135deg,var(--blue-deep),var(--blue-deeper));color:#fff;display:flex;justify-content:space-between;align-items:center;flex:none;position:relative;overflow:hidden}
+  #chat-panel.collapsed{height:auto}
+  #chat-panel.collapsed #chat-gate,#chat-panel.collapsed #chat-body{display:none !important}
+  #chat-panel-head{padding:16px 18px;background:linear-gradient(135deg,rgba(10,58,105,.88),rgba(8,43,78,.88));backdrop-filter:blur(10px);color:#fff;display:flex;justify-content:space-between;align-items:center;flex:none;position:relative;overflow:hidden}
   #chat-panel-head-title{display:flex;flex-direction:column;gap:2px;position:relative;z-index:1}
   #chat-panel-head-title b{font-size:.94rem;font-weight:800}
   #chat-panel-head-title span{font-size:.72rem;color:rgba(255,255,255,.72);display:flex;align-items:center;gap:5px}
   #chat-panel-head-title span::before{content:'';width:7px;height:7px;border-radius:50%;background:#3FCF7A;box-shadow:0 0 0 2px rgba(63,207,122,.25);display:inline-block}
-  #chat-panel-head button{background:rgba(255,255,255,.12);border:none;color:#fff;cursor:pointer;display:flex;padding:6px;border-radius:8px;position:relative;z-index:1}
-  #chat-panel-head button svg{width:16px;height:16px}
+  #chat-panel-head-actions{display:flex;gap:6px;position:relative;z-index:1}
+  #chat-panel-head button{background:rgba(255,255,255,.12);border:none;color:#fff;cursor:pointer;display:flex;padding:6px;border-radius:8px}
+  #chat-panel-head button svg{width:16px;height:16px;transition:transform .2s ease}
+  #chat-panel.collapsed #chat-panel-collapse svg{transform:rotate(180deg)}
   #chat-gate{padding:20px 18px;display:flex;flex-direction:column;gap:11px;flex:1;justify-content:center}
   #chat-gate p{font-size:.86rem;color:var(--ink-soft);margin:0 0 4px;line-height:1.5}
   #chat-gate input{padding:11px 14px;border:1.5px solid var(--line);border-radius:11px;background:var(--surface-alt);color:var(--ink);font-size:.9rem;font-family:inherit}
@@ -661,11 +665,15 @@
   .chat-attachment-file svg{width:18px;height:18px;flex:none;color:var(--blue-deep)}
   .chat-attachment-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .chat-attachment-file + .chat-msg-text{margin-top:7px}
+  .chat-attachment-audio{display:block;max-width:230px;height:36px}
+  .chat-attachment-audio + .chat-msg-text{margin-top:7px}
   #chat-status-line{padding:0 16px 6px;font-size:.74rem;color:var(--ink-faint);flex:none}
   #chat-toolbar{display:flex;align-items:center;gap:2px;padding:6px 10px 0;flex:none;position:relative}
   .chat-tool-btn{width:34px;height:34px;border-radius:9px;border:none;background:none;color:var(--ink-faint);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
   .chat-tool-btn:hover{background:var(--surface-alt);color:var(--blue-deep)}
   .chat-tool-btn svg{width:19px;height:19px}
+  .chat-tool-btn.recording{background:var(--danger,#B14526);color:#fff;animation:chatRecPulse 1.2s ease-in-out infinite}
+  @keyframes chatRecPulse{0%,100%{box-shadow:0 0 0 0 rgba(177,69,38,.45)}50%{box-shadow:0 0 0 6px rgba(177,69,38,0)}}
   #chat-emoji-popover{position:absolute;bottom:calc(100% + 4px);left:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-3);padding:8px;display:none;grid-template-columns:repeat(7,1fr);gap:2px;width:246px;z-index:2}
   #chat-emoji-popover.show{display:grid}
   #chat-emoji-popover button{border:none;background:none;font-size:1.15rem;padding:4px;border-radius:7px;cursor:pointer;line-height:1}
@@ -680,6 +688,9 @@
   #chat-input-row button#chat-send{width:42px;height:42px;border-radius:50%;border:none;background:var(--blue-deep);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
   #chat-input-row button#chat-send svg{width:18px;height:18px}
   @media (max-width:480px){ #chat-widget{right:14px;bottom:78px} #chat-panel{right:-6px} }
+  #chat-lightbox{position:fixed;inset:0;background:rgba(4,10,18,.88);z-index:400;display:none;align-items:center;justify-content:center;padding:30px;cursor:zoom-out}
+  #chat-lightbox.show{display:flex}
+  #chat-lightbox img{max-width:min(880px,92vw);max-height:88vh;border-radius:10px;box-shadow:var(--shadow-3)}
 
   /* ============ RESPONSIVE ============ */
   /* The 6 top-level nav items (plus icons + booking button) need ~1350px of
@@ -797,6 +808,7 @@
   <symbol id="ic-paperclip" viewBox="0 0 24 24"><path d="M8 12.5l6.5-6.5a3.5 3.5 0 0 1 5 5L11 19.5a5 5 0 0 1-7-7L13.5 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="ic-emoji" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="1.1" fill="currentColor"/><circle cx="15" cy="10" r="1.1" fill="currentColor"/><path d="M8 14.5c1 1.3 2.4 2 4 2s3-.7 4-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="ic-file" viewBox="0 0 24 24"><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
 </defs>
 </svg>
 
@@ -973,7 +985,10 @@
   <div id="chat-panel">
     <div id="chat-panel-head">
       <div id="chat-panel-head-title"><b>დაგვისვით შეკითხვა</b><span>ონლაინ</span></div>
-      <button type="button" id="chat-panel-close" aria-label="დახურვა"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      <div id="chat-panel-head-actions">
+        <button type="button" id="chat-panel-collapse" aria-label="ჩაკეცვა"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <button type="button" id="chat-panel-close" aria-label="დახურვა"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
     </div>
     <div id="chat-gate">
       <p>დაწყებამდე მიუთითეთ სახელი და ტელეფონის ნომერი, რომ პასუხი მიიღოთ.</p>
@@ -1001,6 +1016,7 @@
       <div id="chat-toolbar">
         <button type="button" class="chat-tool-btn" id="chat-attach-btn" aria-label="ფაილის მიმატება"><svg><use href="#ic-paperclip"/></svg></button>
         <button type="button" class="chat-tool-btn" id="chat-emoji-btn" aria-label="ემოჯი"><svg><use href="#ic-emoji"/></svg></button>
+        <button type="button" class="chat-tool-btn" id="chat-mic-btn" aria-label="ხმოვანი შეტყობინება"><svg><use href="#ic-mic"/></svg></button>
         <input type="file" id="chat-file-input" accept="image/*,.pdf,.doc,.docx,.zip,.rar,.txt" style="display:none">
         <div id="chat-emoji-popover"></div>
       </div>
@@ -1011,6 +1027,7 @@
     </div>
   </div>
 </div>
+<div id="chat-lightbox"><img id="chat-lightbox-img" alt=""></div>
 
 <main id="main-content">
 
@@ -3443,6 +3460,13 @@
         img.alt = att.name || '';
         return img;
       }
+      if(/^audio\//.test(att.type || '')){
+        var audio = document.createElement('audio');
+        audio.className = 'chat-attachment-audio';
+        audio.controls = true;
+        audio.src = att.dataUrl;
+        return audio;
+      }
       var a = document.createElement('a');
       a.className = 'chat-attachment-file';
       a.href = att.dataUrl;
@@ -3593,6 +3617,55 @@
       input.selectionStart = input.selectionEnd = start + em.length;
       autoResizeInput();
     }
+    var mediaRecorder = null, audioChunks = [], recordTimer = null, recordStartTime = 0;
+    function toggleVoiceRecording(){
+      if(mediaRecorder && mediaRecorder.state === 'recording'){ mediaRecorder.stop(); return; }
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined'){
+        setStatus('თქვენი ბრაუზერი არ უჭერს მხარს ხმის ჩაწერას');
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+        audioChunks = [];
+        var mimeType = (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm')) ? 'audio/webm' : '';
+        mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = function(e){ if(e.data && e.data.size) audioChunks.push(e.data); };
+        mediaRecorder.onstop = function(){
+          stream.getTracks().forEach(function(t){ t.stop(); });
+          clearInterval(recordTimer);
+          var micBtn = document.getElementById('chat-mic-btn');
+          if(micBtn) micBtn.classList.remove('recording');
+          setStatus('');
+          var blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+          if(blob.size < 300 || !wsReady) return; // too short (accidental click) or connection dropped
+          var reader = new FileReader();
+          reader.onload = function(){
+            var att = { name: 'ხმოვანი შეტყობინება.webm', type: blob.type || 'audio/webm', dataUrl: reader.result };
+            ws.send(JSON.stringify({ type: 'message', text: '', attachment: att }));
+            appendMsg({ from: 'customer', text: '', attachment: att });
+          };
+          reader.readAsDataURL(blob);
+        };
+        mediaRecorder.start();
+        var micBtn2 = document.getElementById('chat-mic-btn');
+        if(micBtn2) micBtn2.classList.add('recording');
+        recordStartTime = Date.now();
+        recordTimer = setInterval(function(){
+          var sec = Math.floor((Date.now() - recordStartTime) / 1000);
+          setStatus('იწერება… ' + Math.floor(sec / 60) + ':' + (sec % 60 < 10 ? '0' : '') + (sec % 60));
+        }, 500);
+      }).catch(function(){ setStatus('მიკროფონზე წვდომა ვერ მოხერხდა'); });
+    }
+    function openLightbox(src){
+      var box = document.getElementById('chat-lightbox');
+      var img = document.getElementById('chat-lightbox-img');
+      if(!box || !img) return;
+      img.src = src;
+      box.classList.add('show');
+    }
+    function closeLightbox(){
+      var box = document.getElementById('chat-lightbox');
+      if(box) box.classList.remove('show');
+    }
     function openPanel(){
       document.getElementById('chat-panel').classList.add('open');
       var b = document.getElementById('chat-fab-badge');
@@ -3609,6 +3682,15 @@
       if(panel.classList.contains('open')) closePanel(); else openPanel();
     });
     document.getElementById('chat-panel-close').addEventListener('click', closePanel);
+    document.getElementById('chat-panel-collapse').addEventListener('click', function(){
+      document.getElementById('chat-panel').classList.toggle('collapsed');
+    });
+    document.getElementById('chat-mic-btn').addEventListener('click', toggleVoiceRecording);
+    document.getElementById('chat-messages').addEventListener('click', function(e){
+      var img = e.target.closest('.chat-attachment-img');
+      if(img) openLightbox(img.src);
+    });
+    document.getElementById('chat-lightbox').addEventListener('click', closeLightbox);
     document.getElementById('chat-gate-start').addEventListener('click', startChat);
     document.getElementById('chat-gate-phone').addEventListener('keydown', function(e){ if(e.key === 'Enter') startChat(); });
     document.getElementById('chat-send').addEventListener('click', sendMessage);
