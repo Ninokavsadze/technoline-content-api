@@ -2290,7 +2290,8 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(!listEl) return;
     var items = chatSortedList();
     listEl.innerHTML = items.length ? items.map(function(c){
-      var preview = c.messages && c.messages.length ? c.messages[c.messages.length - 1].text : '';
+      var lastMsg = c.messages && c.messages.length ? c.messages[c.messages.length - 1] : null;
+      var preview = lastMsg ? (lastMsg.text || (lastMsg.attachment ? '📎 ' + (lastMsg.attachment.name || 'ფაილი') : '')) : '';
       return '<button type="button" class="chat-list-item" data-chat-id="' + escHtml(c.id) + '" style="display:block;width:100%;text-align:left;padding:12px 16px;border:none;border-bottom:1px solid var(--line);background:' + (c.id === chatState.selectedId ? 'var(--blue-soft)' : 'transparent') + ';cursor:pointer">'
         + '<div style="display:flex;justify-content:space-between;gap:6px;align-items:baseline">'
         + '<span style="font-weight:800;font-size:.86rem">' + escHtml(c.name || '—') + '</span>'
@@ -2301,10 +2302,18 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         + '</button>';
     }).join('') : '<div class="empty-state" style="padding:24px 14px"><p>ჯერ არცერთი საუბარი არ დაწყებულა.</p></div>';
   }
+  function chatAttachmentHtml(att){
+    if(!att || !att.dataUrl) return '';
+    if(/^image\//.test(att.type || '')){
+      return '<img src="' + att.dataUrl.replace(/"/g,'&quot;') + '" alt="' + escHtml(att.name || '') + '" style="max-width:220px;max-height:220px;border-radius:10px;display:block;margin-bottom:6px">';
+    }
+    return '<a href="' + att.dataUrl.replace(/"/g,'&quot;') + '" download="' + escHtml(att.name || 'ფაილი') + '" style="display:flex;align-items:center;gap:6px;font-size:.82rem;font-weight:700;color:var(--blue-deep);text-decoration:underline;margin-bottom:6px">📎 ' + escHtml(att.name || 'ფაილი') + '</a>';
+  }
   function chatMessageBubbleHtml(m){
     var mine = m.from === 'admin';
     return '<div style="align-self:' + (mine ? 'flex-end' : 'flex-start') + ';max-width:75%;background:' + (mine ? 'var(--gold-ghost,#FFEAC5)' : 'var(--surface-alt)') + ';border-radius:14px;padding:9px 13px;font-size:.86rem;line-height:1.4">'
-      + escHtml(m.text)
+      + chatAttachmentHtml(m.attachment)
+      + (m.text ? escHtml(m.text) : '')
       + '<div style="font-size:.68rem;color:var(--ink-faint);margin-top:3px">' + escHtml(fmtDate(m.at)) + '</div></div>';
   }
   function appendChatMessageDom(m){
