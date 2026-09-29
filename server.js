@@ -933,10 +933,27 @@ function chatBroadcastToAdmins(payload, exceptWs) {
   });
 }
 
+// Customer-side file/image attachments (widget upload button + Ctrl+V paste)
+// arrive as a base64 data URL over the same text-frame channel. Capped well
+// under maxPayload below so one oversized attachment can't bloat the DB file.
+const CHAT_MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+function chatAttachmentFromMsg(msg) {
+  if (!msg.attachment || typeof msg.attachment !== 'object') return null;
+  const dataUrl = String(msg.attachment.dataUrl || '');
+  if (!/^data:[\w.+-]+\/[\w.+-]+;base64,/.test(dataUrl)) return null;
+  const b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+  if (b64.length * 0.75 > CHAT_MAX_ATTACHMENT_BYTES) return null;
+  return {
+    name: String(msg.attachment.name || 'ფაილი').trim().slice(0, 200),
+    type: String(msg.attachment.type || '').slice(0, 100),
+    dataUrl: dataUrl
+  };
+}
+
 // noServer + a manual 'upgrade' router below (rather than each server's own
 // {server, path} option) — the query string on /ws/admin-chat?token=... was
 // tripping up path matching when attached directly.
-const wssChat = new WebSocket.Server({ noServer: true });
+const wssChat = new WebSocket.Server({ noServer: true, maxPayload: 8 * 1024 * 1024 });
 wssChat.on('connection', function (ws) {
   ws.chatId = null;
   ws.on('message', async function (raw) {
@@ -975,13 +992,15 @@ wssChat.on('connection', function (ws) {
 
     if (msg.type === 'message' && ws.chatId) {
       const text = String(msg.text || '').trim().slice(0, 2000);
-      if (!text) return;
+      const attachment = chatAttachmentFromMsg(msg);
+      if (!text && !attachment) return;
       try {
         const db = await readDb();
         db.chats = db.chats || [];
         const chat = db.chats.find(function (c) { return c.id === ws.chatId; });
         if (!chat) return;
         const m = { from: 'customer', text: text, at: Date.now() };
+        if (attachment) m.attachment = attachment;
         chat.messages.push(m);
         chat.lastAt = m.at;
         chat.status = 'open';
@@ -998,7 +1017,7 @@ wssChat.on('connection', function (ws) {
   });
 });
 
-const wssAdminChat = new WebSocket.Server({ noServer: true });
+const wssAdminChat = new WebSocket.Server({ noServer: true, maxPayload: 8 * 1024 * 1024 });
 wssAdminChat.on('connection', function (ws, req) {
   const url = new URL(req.url, 'http://internal');
   const token = url.searchParams.get('token') || '';
