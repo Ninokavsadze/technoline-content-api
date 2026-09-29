@@ -3520,7 +3520,11 @@
       return API_BASE.replace(/^https/, 'wss').replace(/^http:/, 'ws:') + '/ws/chat';
     }
     function attachmentBubbleHtml(att){
-      if(!att || !att.dataUrl) return '';
+      // always a real DOM node (never a bare string) — the caller does
+      // div.appendChild(...) directly, and appendChild('') throws, which
+      // would silently abort rendering of this message AND every later one
+      // in the same history-replay loop (see joined handler below)
+      if(!att || !att.dataUrl) return document.createTextNode('');
       if(/^image\//.test(att.type || '')){
         var img = document.createElement('img');
         img.className = 'chat-attachment-img';
@@ -3545,19 +3549,26 @@
       return a;
     }
     function appendMsg(m){
-      var box = document.getElementById('chat-messages');
-      if(!box) return;
-      var div = document.createElement('div');
-      div.className = 'chat-msg ' + (m.from === 'admin' ? 'from-admin' : 'from-customer');
-      if(m.attachment) div.appendChild(attachmentBubbleHtml(m.attachment));
-      if(m.text){
-        var t = document.createElement('div');
-        t.className = 'chat-msg-text';
-        t.textContent = m.text;
-        div.appendChild(t);
+      try{
+        var box = document.getElementById('chat-messages');
+        if(!box || !m) return;
+        var div = document.createElement('div');
+        div.className = 'chat-msg ' + (m.from === 'admin' ? 'from-admin' : 'from-customer');
+        if(m.attachment) div.appendChild(attachmentBubbleHtml(m.attachment));
+        if(m.text){
+          var t = document.createElement('div');
+          t.className = 'chat-msg-text';
+          t.textContent = m.text;
+          div.appendChild(t);
+        }
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+      }catch(e){
+        // one malformed message (e.g. corrupted attachment) must never break
+        // the rest of the conversation — this used to throw and silently
+        // abort every message after it when replaying chat history
+        console.error('chat message render failed:', e);
       }
-      box.appendChild(div);
-      box.scrollTop = box.scrollHeight;
     }
     function setStatus(text){
       var el = document.getElementById('chat-status-line');
