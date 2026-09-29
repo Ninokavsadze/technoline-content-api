@@ -832,12 +832,14 @@
           <div class="mega-grid">
             <div class="mega-col">
               <h4>მოწყობილობის ტიპი</h4>
-              <a href="#services" data-route="services"><svg><use href="#ic-phone"/></svg>სმარტფონები</a>
-              <a href="#services" data-route="services"><svg><use href="#ic-laptop"/></svg>ლეპტოპები და კომპიუტერები</a>
-              <a href="#services" data-route="services"><svg><use href="#ic-tablet"/></svg>პლანშეტები</a>
-              <a href="#services" data-route="services"><svg><use href="#ic-watch"/></svg>სმარტ-საათები</a>
-              <a href="#services" data-route="services"><svg><use href="#ic-console"/></svg>სათამაშო კონსოლები</a>
-              <a href="#services" data-route="services"><svg><use href="#ic-home-appl"/></svg>საყოფაცხოვრებო ტექნიკა</a>
+              <!-- იგივე data-ck გასაღებები, რაც "სერვისები" გვერდის ბარათების სათაურებს აქვთ (services.rowN.title) —
+                   ადმინში სერვისების ტექსტის შეცვლა ამ მენიუშიც ავტომატურად აისახება -->
+              <a href="#services" data-route="services"><svg><use href="#ic-phone"/></svg><span data-ck="services.row1.title">სმარტფონები</span></a>
+              <a href="#services" data-route="services"><svg><use href="#ic-laptop"/></svg><span data-ck="services.row2.title">ლეპტოპები და კომპიუტერები</span></a>
+              <a href="#services" data-route="services"><svg><use href="#ic-tablet"/></svg><span data-ck="services.row3.title">პლანშეტები</span></a>
+              <a href="#services" data-route="services"><svg><use href="#ic-watch"/></svg><span data-ck="services.row4.title">სმარტ-საათები</span></a>
+              <a href="#services" data-route="services"><svg><use href="#ic-console"/></svg><span data-ck="services.row5.title">სათამაშო კონსოლები</span></a>
+              <a href="#services" data-route="services"><svg><use href="#ic-home-appl"/></svg><span data-ck="services.row6.title">საყოფაცხოვრებო ტექნიკა</span></a>
             </div>
             <div class="mega-col">
               <h4>მომსახურების ტიპი</h4>
@@ -3063,7 +3065,20 @@
      page simply keeps its built-in defaults.
   ===================================================== */
   var CONTENT_ORDER = [];
-  var CONTENT_DEFAULTS = {};
+  // ეს 6 გასაღები წინასწარაა განსაზღვრული (და არა ქვემოთ არსებული სვლით ავტომატურად
+  // "პირველი ნაპოვნი" ელემენტიდან), რადგან ჰედერის მენიუც ახლა იმავე services.rowN.title
+  // გასაღებებს იყენებს რაც "სერვისები" გვერდის ბარათების სათაურები — ჰედერი DOM-ში
+  // უფრო ადრეა, და მისი მოკლე ტექსტი ("სმარტფონები") სხვანაირად გახდებოდა ნაგულისხმევი
+  // მნიშვნელობა "სერვისები" გვერდის სათაურისთვისაც კი (რომელსაც სჭირდება "X-ის შეკეთება" ფორმა).
+  var CONTENT_DEFAULTS = {
+    'services.row1.title': 'სმარტფონის შეკეთება',
+    'services.row2.title': 'ლეპტოპისა და კომპიუტერის შეკეთება',
+    'services.row3.title': 'პლანშეტის შეკეთება',
+    'services.row4.title': 'სმარტ-საათის შეკეთება',
+    'services.row5.title': 'სათამაშო კონსოლის შეკეთება',
+    'services.row6.title': 'საყოფაცხოვრებო ტექნიკა'
+  };
+  Object.keys(CONTENT_DEFAULTS).forEach(function(k){ CONTENT_ORDER.push(k); });
   document.querySelectorAll('[data-ck]').forEach(function(el){
     var k = el.getAttribute('data-ck');
     if(!Object.prototype.hasOwnProperty.call(CONTENT_DEFAULTS, k)){ CONTENT_DEFAULTS[k] = el.innerHTML; CONTENT_ORDER.push(k); }
