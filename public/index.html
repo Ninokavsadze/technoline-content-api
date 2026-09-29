@@ -2742,6 +2742,17 @@
       });
     }
   }
+  // A branch's phone field can hold more than one number (e.g. landline +
+  // mobile, separated by ";"/","/"/") — each gets its own tel: link instead
+  // of all of them sharing one link that only ever dials the first number.
+  function branchPhoneLinksHtml(phoneStr){
+    var parts = String(phoneStr || '').split(/\s*[;,/]\s*/).filter(Boolean);
+    if(!parts.length) return '';
+    return parts.map(function(p){
+      var tel = phoneToTel(p);
+      return tel ? '<a class="tel-link" href="tel:'+tel+'">'+p+'</a>' : p;
+    }).join('; ');
+  }
   function renderContactBranches(){
     if(!contactBranchesEl) return;
     contactBranchesEl.innerHTML = BRANCHES.map(function(b, i){
@@ -2754,7 +2765,7 @@
         + '<h4>'+b.name+'</h4>'
         + '<div class="contact-line"><svg><use href="#ic-pin"/></svg><span>'+b.addr+'</span></div>'
         + '<div class="contact-line"><svg><use href="#ic-clock"/></svg><span>'+b.hours+'</span></div>'
-        + '<div class="contact-line"><svg><use href="#ic-phone"/></svg><a class="tel-link" href="tel:'+phoneToTel(b.phone)+'">'+b.phone+'</a></div>'
+        + '<div class="contact-line"><svg><use href="#ic-phone"/></svg><span>'+branchPhoneLinksHtml(b.phone)+'</span></div>'
         + '</div>';
     }).join('');
     showBranchOnMap(activeMapBranchId || (BRANCHES[0] && BRANCHES[0].id));
