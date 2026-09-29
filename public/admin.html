@@ -182,6 +182,25 @@
   :root[data-theme="dark"] .toast{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
   @media (prefers-color-scheme: dark){ .toast{background:var(--paper);color:var(--ink);border:1px solid var(--line)} }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #chat-lightbox{position:fixed;inset:0;background:rgba(4,10,18,.88);z-index:1200;display:none;align-items:center;justify-content:center;padding:30px;cursor:zoom-out}
+  #chat-lightbox.show{display:flex}
+  #chat-lightbox img{max-width:min(880px,92vw);max-height:88vh;border-radius:10px;box-shadow:0 24px 60px -20px rgba(0,0,0,.6)}
+  .chat-attachment-img{max-width:220px;max-height:220px;border-radius:10px;display:block;margin-bottom:6px;cursor:zoom-in}
+  .chat-attachment-audio{display:block;max-width:230px;height:36px;margin-bottom:6px}
+  .chat-tool-btn{width:32px;height:32px;border-radius:9px;border:none;background:none;color:var(--ink-faint);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+  .chat-tool-btn:hover{background:var(--paper-soft);color:var(--blue-deep)}
+  .chat-tool-btn svg{width:18px;height:18px}
+  .chat-tool-btn.recording{background:var(--bad,#B3261E);color:#fff;animation:chatAdminRecPulse 1.2s ease-in-out infinite}
+  @keyframes chatAdminRecPulse{0%,100%{box-shadow:0 0 0 0 rgba(179,38,30,.45)}50%{box-shadow:0 0 0 6px rgba(179,38,30,0)}}
+  #chat-emoji-popover{position:absolute;bottom:calc(100% + 4px);left:0;background:var(--paper-soft);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px -14px rgba(0,0,0,.4);padding:8px;display:none;grid-template-columns:repeat(7,1fr);gap:2px;width:246px;z-index:20}
+  #chat-emoji-popover.show{display:grid}
+  #chat-emoji-popover button{border:none;background:none;font-size:1.15rem;padding:4px;border-radius:7px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}
+  #chat-emoji-popover button:hover{background:var(--paper)}
+  #chat-attach-preview{display:none;align-items:center;gap:8px;padding:0 16px 8px;flex:none}
+  #chat-attach-preview.show{display:flex}
+  #chat-attach-preview img{width:34px;height:34px;object-fit:cover;border-radius:8px}
+  #chat-attach-preview span{font-size:.78rem;font-weight:700;color:var(--ink-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  #chat-attach-preview button{border:none;background:var(--paper-soft);color:var(--ink-faint);width:20px;height:20px;border-radius:50%;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center}
 
   @media (max-width:880px){
     #app{grid-template-columns:1fr;grid-template-areas:"top" "main"}
@@ -219,6 +238,10 @@
   <symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.3-3.8 4.3-5.8 7.5-5.8s6.2 2 7.5 5.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="ic-star" viewBox="0 0 24 24"><path d="M12 3.2l2.6 5.6 6 .7-4.4 4.2 1.1 6-5.3-3-5.3 3 1.1-6-4.4-4.2 6-.7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
   <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 8.3 8.3 0 0 1-3.8-.9L3 21l1.9-5.8a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3a8.4 8.4 0 0 1 8.5 8.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-paperclip" viewBox="0 0 24 24"><path d="M8 12.5l6.5-6.5a3.5 3.5 0 0 1 5 5L11 19.5a5 5 0 0 1-7-7L13.5 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-emoji" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="1.1" fill="currentColor"/><circle cx="15" cy="10" r="1.1" fill="currentColor"/><path d="M8 14.5c1 1.3 2.4 2 4 2s3-.7 4-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="ic-file" viewBox="0 0 24 24"><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
 </svg>
 
 <!-- ============ LOGIN ============ -->
@@ -275,6 +298,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="chat-lightbox"><img id="chat-lightbox-img" src="" alt=""></div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
@@ -286,8 +310,8 @@
   var API_BASE = 'https://technoline-content-api.onrender.com';
   var SITE_URL = 'https://claude.ai/artifact/9DgADmJr7vngx4u3beCKHc';
 
-var CONTENT_ORDER = ["common.brandName","common.tagline","common.bookCta","common.catalogCta","common.navServices","common.navCatalog","common.navWarrantyService","common.navWarrantyCheck","common.navAbout","common.navContact","home.hero.eyebrow","home.hero.title","home.hero.lede","common.warrantyCheckCta","home.hero.badge1","home.hero.badge2Num","home.hero.badge2Label","home.hero.badge3Num","home.hero.badge3Label","home.stat1Num","home.stat1Label","home.stat2Num","home.stat2Label","home.stat3Num","home.stat3Label","home.stat4Num","home.stat4Label","home.services.eyebrow","home.services.title","home.services.lede","home.services.lead.title","home.services.lead.desc","home.services.card2.title","home.services.card2.desc","home.services.card3.title","home.services.card3.desc","home.services.card4.title","home.services.card4.desc","home.services.card5.title","home.services.card5.desc","home.steps.eyebrow","home.steps.title","home.steps.step1.title","home.steps.step1.desc","home.steps.step2.title","home.steps.step2.desc","home.steps.step3.title","home.steps.step3.desc","home.steps.step4.title","home.steps.step4.desc","home.craft.eyebrow","home.craft.title","home.craft.lede","home.band.title","home.band.desc","home.reviews.eyebrow","home.reviews.title","home.reviews.quote1","home.reviews.quote2","home.reviews.quote3","about.head.title","about.head.lede","about.history.eyebrow","about.history.title","about.history.p1","about.history.p2","about.stat1Num","about.stat1Label","about.stat2Num","about.stat2Label","about.stat3Num","about.stat3Label","about.stat4Num","about.stat4Label","about.principles.eyebrow","about.principles.title","about.p1.title","about.p1.desc","about.p2.title","about.p2.desc","about.p3.title","about.p3.desc","about.p4.title","about.p4.desc","about.p5.title","about.p5.desc","about.p6.title","about.p6.desc","about.band.title","about.band.desc","services.head.title","services.head.lede","services.row1.title","services.row1.desc","services.row1.price","services.row2.title","services.row2.desc","services.row2.price","services.row3.title","services.row3.desc","services.row3.price","services.row4.title","services.row4.desc","services.row4.price","services.row5.title","services.row5.desc","services.row5.price","services.row6.title","services.row6.desc","services.row6.price","catalog.head.title","catalog.head.lede","warranty-check.head.title","warranty-check.head.lede","warranty-check.side.title","warranty-check.side.desc","warranty-check.side.item1","warranty-check.side.item2","warranty-check.side.item3","booking.head.title","booking.head.lede","wservice.head.title","wservice.head.lede","wservice.s1.title","wservice.s1.desc","wservice.s1.list","wservice.s2.title","wservice.s2.desc","wservice.s2.list","wservice.s3.title","wservice.s3.desc","wservice.s4.title","wservice.s4.desc","wservice.s5.title","wservice.s5.desc","wservice.band.title","wservice.band.desc","profile.head.title","profile.head.lede","orders.head.title","orders.head.lede","terms.head.title","terms.head.date","terms.s1.title","terms.s1.body","terms.s2.title","terms.s2.body","terms.s2.list","terms.s3.title","terms.s3.body","terms.s4.title","terms.s4.body","terms.s5.title","terms.s5.body","terms.s6.title","terms.s6.body","terms.s7.title","contact.head.title","contact.head.lede","contact.center.title","contact.center.phone","contact.center.email","contact.corp.title","contact.corp.phone","contact.corp.email","contact.branches.eyebrow","contact.branches.title","footer.blurb","common.phone","common.email","footer.address","footer.copyright"];
-var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","common.tagline":"TECHNOLINE SERVICE","common.bookCta":"ვიზიტის დაჯავშნა","common.catalogCta":"კატალოგის ნახვა","home.hero.eyebrow":"<span class=\"dot\"></span>თბილისში, ბათუმსა და ქუთაისში — 9 ფილიალი","home.hero.title":"თქვენი ტექნიკა, <em>სანდო</em> ხელებში","home.hero.lede":"ტექნოლაინი აღადგენს სმარტფონებს, ლეპტოპებს, პლანშეტებსა და სხვა ციფრულ მოწყობილობებს — ორიგინალი ნაწილებით, გამჭვირვალე ფასად და საშუალოდ 48 საათში.","common.warrantyCheckCta":"საგარანტიოს შემოწმება","home.hero.badge1":"ორიგინალი<br>ნაწილები","home.hero.badge2Num":"48სთ","home.hero.badge2Label":"საშუალო<br>შეკეთების ვადა","home.hero.badge3Num":"12","home.hero.badge3Label":"წელი<br>გამოცდილება","home.stat1Num":"45,000+","home.stat1Label":"შეკეთებული მოწყობილობა","home.stat2Num":"9","home.stat2Label":"სერვის-ცენტრი საქართველოში","home.stat3Num":"4.8/5","home.stat3Label":"მომხმარებლის შეფასება","home.stat4Num":"6 თვე","home.stat4Label":"გარანტია ყველა შეკეთებაზე","home.services.eyebrow":"სერვისები","home.services.title":"ერთი ცენტრი, ყველა მოწყობილობისთვის","home.services.lede":"დიაგნოსტიკიდან შეკეთებამდე — ჩვენი ინჟინრები მუშაობენ ყველა ძირითად ბრენდთან და მოწყობილობის ტიპთან.","home.services.lead.title":"სმარტფონების შეკეთება","home.services.lead.desc":"ეკრანი, ბატარეა, კამერა, წყლის დაზიანება — ორიგინალი ნაწილებით, უმეტესად იმავე დღეს.","home.services.card2.title":"ლეპტოპები და კომპიუტერები","home.services.card2.desc":"დედაპლატის დიაგნოსტიკა, კლავიატურის და ეკრანის შეცვლა, სისტემის აღდგენა.","home.services.card3.title":"პლანშეტები","home.services.card3.desc":"iPad და Android პლანშეტების ეკრანის, ბატარეისა და პორტების შეკეთება.","home.services.card4.title":"სმარტ-საათები","home.services.card4.desc":"ეკრანის, ღილაკებისა და დატენვის მოდულის შეკეთება ყველა ძირითადი ბრენდისთვის.","home.services.card5.title":"სათამაშო კონსოლები","home.services.card5.desc":"PlayStation, Xbox და Nintendo კონსოლების გაწმენდა, გაცხელების და HDMI პრობლემები.","home.steps.eyebrow":"როგორ მუშაობს","home.steps.title":"დიაგნოსტიკიდან გატანამდე — 4 ნაბიჯი","home.steps.step1.title":"დაჯავშნა","home.steps.step1.desc":"აირჩიეთ ფილიალი და დრო ონლაინ, ან მიუტანეთ მოწყობილობა უშუალოდ სერვის-ცენტრში.","home.steps.step2.title":"უფასო დიაგნოსტიკა","home.steps.step2.desc":"ინჟინერი ადგენს პრობლემას და გიგზავნით ფასის ზუსტ შეთავაზებას 30 წუთში.","home.steps.step3.title":"შეკეთება","home.steps.step3.desc":"დამტკიცების შემდეგ ვიწყებთ სამუშაოს ორიგინალი ან სერტიფიცირებული ნაწილებით.","home.steps.step4.title":"გატანა და გარანტია","home.steps.step4.desc":"იღებთ მზა მოწყობილობას 6-თვიანი გარანტიით და SMS შეტყობინებით.","home.craft.eyebrow":"ჩვენი ინჟინრები საქმეში","home.craft.title":"სიზუსტე, რომელიც წლების გამოცდილებით შენდება","home.craft.lede":"დედაპლატის მიკრო-შედუღებიდან ბატარეის უსაფრთხო შეცვლამდე — ყოველი შეკეთება გადის იმავე ხარისხის კონტროლს, დამოუკიდებლად მოწყობილობის ბრენდისგან.","home.band.title":"შეამოწმეთ თქვენი მოწყობილობის საგარანტიო სტატუსი 10 წამში","home.band.desc":"შეიყვანეთ სერიული ნომერი ან IMEI და გაიგეთ, ფარავს თუ არა გარანტია მიმდინარე პრობლემას.","home.reviews.eyebrow":"მომხმარებელთა გამოხმაურება","home.reviews.title":"რას ამბობენ ჩვენი კლიენტები","home.reviews.quote1":"„ეკრანი ერთ საათში შემიცვალეს iPhone-ზე, ხარისხი — თითქოს ახალი მოწყობილობა მაქვს.“","home.reviews.quote2":"„ლეპტოპს წყალი დაესხა, ფიქრობდი ჩამორეცხილი იყო — 3 დღეში სრულად აღადგინეს მონაცემებთან ერთად.“","home.reviews.quote3":"„ონლაინ დავჯავშნე ვიზიტი, რიგში არ დამიდგამს და ფასიც წინასწარ ვიცოდი — მაქსიმალურად კომფორტული სერვისი.“","about.head.title":"ტექნოლაინის შესახებ","about.head.lede":"2013 წლიდან ვაწვდით საქართველოს ბაზარს ციფრული ტექნიკის სერვისს — გამჭვირვალედ, სწრაფად და ორიგინალი ნაწილებით.","about.history.eyebrow":"ჩვენი ისტორია","about.history.title":"დაიწყო ერთი სახელოსნოთი, გაგრძელდა ქვეყნის მასშტაბით","about.history.p1":"ტექნოლაინი დაარსდა თბილისში, როგორც პატარა სახელოსნო სმარტფონების შეკეთებისთვის. დღეს ჩვენ ვართ ერთ-ერთი უმსხვილესი დამოუკიდებელი სერვის-ცენტრების ქსელი საქართველოში — 9 ფილიალით სამ ქალაქში, 60-ზე მეტი სერტიფიცირებული ინჟინრით და საკუთარი ნაწილების ლაბორატორიით.","about.history.p2":"ჩვენი მიზანია, ტექნიკის შეკეთება იყოს ისეთივე მარტივი და გასაგები, როგორც მისი შეძენა — გამჭვირვალე ფასებით, რეალურ დროში სტატუსის თვალყურის დევნებით და გარანტიით ყველა სამუშაოზე.","about.stat1Num":"2013","about.stat1Label":"დაარსების წელი","about.stat2Num":"9","about.stat2Label":"ფილიალი","about.stat3Num":"60+","about.stat3Label":"სერტიფიცირებული ინჟინერი","about.stat4Num":"45,000+","about.stat4Label":"შეკეთებული მოწყობილობა","about.principles.eyebrow":"ჩვენი პრინციპები","about.principles.title":"რატომ გვირჩევენ","about.p1.title":"ორიგინალი ნაწილები","about.p1.desc":"ვმუშაობთ მხოლოდ სერტიფიცირებულ მომწოდებლებთან და გავცემთ 6-თვიან გარანტიას ყველა ნაწილზე.","about.p2.title":"სწრაფი შესრულება","about.p2.desc":"სტანდარტული შეკეთებების 80% სრულდება იმავე ან მომდევნო სამუშაო დღეს.","about.p3.title":"მონაცემთა უსაფრთხოება","about.p3.desc":"თქვენი პირადი მონაცემები დაცულია — მუშაობის დაწყებამდე ვაფორმებთ კონფიდენციალურობის ხელშეკრულებას.","about.p4.title":"გამოცდილი ინჟინრები","about.p4.desc":"გუნდი გადის რეგულარულ ტრენინგებს მწარმოებელთა უახლეს სტანდარტებზე.","about.p5.title":"გამჭვირვალე ფასები","about.p5.desc":"ფასს ადასტურებთ დიაგნოსტიკის შემდეგ — დამალული საფასურების გარეშე.","about.p6.title":"9 ფილიალი","about.p6.desc":"თბილისში, ბათუმსა და ქუთაისში — მოწყობილობა ყოველთვის ახლოსაა.","about.band.title":"გუნდი, რომელსაც შეგიძლიათ ენდოთ","about.band.desc":"60-ზე მეტი სერტიფიცირებული ინჟინერი, საკუთარი ხარისხის კონტროლის ლაბორატორია და 12 წლიანი გამოცდილება ციფრული ტექნიკის ბაზარზე.","services.head.title":"სერვისები და ტარიფები","services.head.lede":"საორიენტაციო ფასები — საბოლოო ღირებულებას ადასტურებთ უფასო დიაგნოსტიკის შემდეგ.","services.row1.title":"სმარტფონის შეკეთება","services.row1.desc":"ეკრანი, ბატარეა, კამერა, დამტენი პორტი, წყლის დაზიანება","services.row1.price":"85 ₾ – დან","services.row2.title":"ლეპტოპისა და კომპიუტერის შეკეთება","services.row2.desc":"დედაპლატის დიაგნოსტიკა, კლავიატურა, გაცხელება, SSD/RAM განახლება","services.row2.price":"120 ₾ – დან","services.row3.title":"პლანშეტის შეკეთება","services.row3.desc":"ეკრანი, ბატარეა, დამტენი პორტი — iPad და Android","services.row3.price":"95 ₾ – დან","services.row4.title":"სმარტ-საათის შეკეთება","services.row4.desc":"ეკრანი, ღილაკები, დატენვის მოდული","services.row4.price":"70 ₾ – დან","services.row5.title":"სათამაშო კონსოლის შეკეთება","services.row5.desc":"გაწმენდა, გაცხელება, HDMI/კონტროლერის პრობლემები","services.row5.price":"90 ₾ – დან","services.row6.title":"საყოფაცხოვრებო ტექნიკა","services.row6.desc":"დიაგნოსტიკა და შეკეთება მცირე საყოფაცხოვრებო ტექნიკისთვის","services.row6.price":"60 ₾ – დან","catalog.head.title":"ნაწილების კატალოგი","catalog.head.lede":"ორიგინალი და სერტიფიცირებული სათადარიგო ნაწილები — 6-თვიანი გარანტიით.","warranty-check.head.title":"საგარანტიო პერიოდის შემოწმება","warranty-check.head.lede":"შეიყვანეთ მოწყობილობის სერიული ნომერი ან IMEI და გაიგეთ გარანტიის სტატუსი მყისიერად.","warranty-check.side.title":"როგორ მუშაობს გარანტია","warranty-check.side.desc":"ყველა შეკეთებულ მოწყობილობასა და გაყიდულ ნაწილს ახლავს 6-თვიანი გარანტია დეფექტებზე.","warranty-check.side.item1":"გარანტია ვრცელდება შეცვლილ ნაწილსა და შესრულებულ სამუშაოზე","warranty-check.side.item2":"სერიული ნომერი იძებნება მოწყობილობის პარამეტრებში ან ყუთზე","warranty-check.side.item3":"საგარანტიო შეკეთება უფასოა, თუ დაზიანება არ არის მექანიკური","booking.head.title":"ვიზიტის დაჯავშნა სერვის ცენტრში","booking.head.lede":"აირჩიეთ ფილიალი, მომსახურება და თქვენთვის მოსახერხებელი დრო — 4 მარტივი ნაბიჯი.","wservice.head.title":"საგარანტიო მომსახურება","wservice.head.lede":"რას ფარავს გარანტია, როგორ გამოვიყენოთ და რა ვადებში ხდება საგარანტიო შეკეთება.","wservice.s1.title":"რას მოიცავს გარანტია","wservice.s1.desc":"ტექნოლაინში შესრულებულ ყველა სამუშაოსა და გაყიდულ სათადარიგო ნაწილს ახლავს სტანდარტული 6-თვიანი გარანტია. გარანტია მოქმედებს შემდეგზე:","wservice.s1.list":"\n            <li>შეცვლილი ნაწილის ქარხნული დეფექტი (ეკრანი, ბატარეა, კამერა, დამტენი პორტი და სხვ.)</li>\n            <li>შესრულებული სამუშაოს ხარისხი — თუ იგივე პრობლემა განმეორდა შეკეთების შემდეგ</li>\n            <li>მონტაჟის დროს წარმოქმნილი დაზიანება</li>\n          ","wservice.s2.title":"რას არ მოიცავს გარანტია","wservice.s2.desc":"გარანტია არ ვრცელდება შემდეგ შემთხვევებზე:","wservice.s2.list":"\n            <li>ახალი მექანიკური დაზიანება გარანტიის პერიოდში (ჩავარდნა, დარტყმა, ცემა)</li>\n            <li>წყლის ან სითხის ახალი ზემოქმედება, თუ თავდაპირველი პრობლემა სხვა იყო</li>\n            <li>სხვა სერვის-ცენტრის მიერ განხორციელებული ჩარევა შეკეთების შემდეგ</li>\n            <li>პროგრამული პრობლემები, რომლებიც არ უკავშირდება შესრულებულ სამუშაოს</li>\n          ","wservice.s3.title":"როგორ გამოვიყენოთ გარანტია","wservice.s3.desc":"საგარანტიო შემთხვევის დაფიქსირებისთვის:","wservice.s4.title":"შესრულების ვადები","wservice.s4.desc":"საგარანტიო შემთხვევების უმეტესობა მოგვარდება <strong>1–3 სამუშაო დღეში</strong>. თუ საჭიროა ნაწილის დამატებითი შეკვეთა, ვადა შესაძლოა გაიზარდოს 5–7 დღემდე — ამის შესახებ წინასწარ გეცნობებათ.","wservice.s5.title":"გაფართოებული გარანტია","wservice.s5.desc":"შეკეთების დასრულებისას შეგიძლიათ შეიძინოთ გაფართოებული, 12-თვიანი გარანტიის პაკეტი, რომელიც დამატებით მოიცავს ერთჯერად უფასო დიაგნოსტიკას მომდევნო წელს.","wservice.band.title":"გინდათ გაარკვიოთ, ფარავს თუ არა გარანტია თქვენს შემთხვევას?","wservice.band.desc":"შეამოწმეთ სერიული ნომერი ონლაინ ან დაჯავშნეთ ვიზიტი უფასო დიაგნოსტიკისთვის.","profile.head.title":"ჩემი პროფილი","profile.head.lede":"მართეთ თქვენი პირადი მონაცემები და დამატებული მოწყობილობები.","orders.head.title":"ჩემი შეკვეთები","orders.head.lede":"თვალი ადევნეთ თქვენი მიმდინარე და დასრულებული შეკეთებების სტატუსს.","terms.head.title":"წესები და პირობები","terms.head.date":"ბოლო განახლება: 1 სექტემბერი, 2026","terms.s1.title":"1. ზოგადი დებულებები","terms.s1.body":"წინამდებარე დოკუმენტი არეგულირებს ურთიერთობას შპს „ტექნოლაინსა\" (შემდგომში — კომპანია) და მომხმარებელს შორის, რომელიც სარგებლობს კომპანიის ვებგვერდით ან სერვის-ცენტრების მომსახურებით. ვებგვერდით სარგებლობით მომხმარებელი ეთანხმება ქვემოთ მოცემულ პირობებს.","terms.s2.title":"2. მომსახურების პირობები","terms.s2.body":"დიაგნოსტიკა უფასოა ყველა მოწყობილობისთვის. შეკეთების საბოლოო ღირებულება მომხმარებელს დასტურდება წერილობით (SMS ან ელფოსტა) დიაგნოსტიკის დასრულების შემდეგ, სამუშაოს დაწყებამდე.","terms.s2.list":"\n            <li>მოწყობილობის მიღებისას გაიცემა მიღება-ჩაბარების ქვითარი უნიკალური ნომრით</li>\n            <li>სტანდარტული შეკეთების ვადა შეადგენს 1–3 სამუშაო დღეს, გართულებული შემთხვევებისთვის — 5–7 დღეს</li>\n            <li>თუ დიაგნოსტიკის შემდეგ მომხმარებელი უარს იტყვის შეკეთებაზე, დიაგნოსტიკის საფასური არ ჩამოიჭრება</li>\n          ","terms.s3.title":"3. ანგარიშსწორება","terms.s3.body":"ანგარიშსწორება ხდება ნაღდი ან უნაღდო ფორმით, მოწყობილობის გატანისას. კორპორატიული კლიენტებისთვის შესაძლებელია განვადებით ანგარიშსწორება ხელშეკრულების საფუძველზე.","terms.s4.title":"4. მონაცემთა დაცვა","terms.s4.body":"კომპანია იცავს მომხმარებლის პირად მონაცემებსა და მოწყობილობაზე დაცულ ინფორმაციას საქართველოს კანონმდებლობის შესაბამისად. მოწყობილობის მონაცემებზე წვდომა ეზღუდება მხოლოდ დიაგნოსტიკისა და შეკეთებისთვის საჭირო პერსონალს. მომხმარებელს რეკომენდირებულია მოწყობილობის მონაცემთა სარეზერვო ასლის შექმნა შეკეთებამდე.","terms.s5.title":"5. პასუხისმგებლობა","terms.s5.body":"კომპანია პასუხისმგებელია შესრულებული სამუშაოს ხარისხზე გარანტიის ვადის განმავლობაში. კომპანია არ არის პასუხისმგებელი მონაცემთა დაკარგვაზე, თუ მომხმარებელს არ შეუქმნია სარეზერვო ასლი და დაზიანება არ იყო გამოწვეული შესრულებული სამუშაოთი.","terms.s6.title":"6. გაუქმება და დაბრუნება","terms.s6.body":"დაჯავშნილი ვიზიტის გაუქმება ან გადატანა შესაძლებელია ვიზიტამდე მინიმუმ 2 საათით ადრე, უფასოდ. შეძენილი ნაწილის დაბრუნება შესაძლებელია შეძენიდან 14 დღის განმავლობაში, თუ ნაწილი არ არის დამონტაჟებული და შენარჩუნებულია სასაქონლო სახე.","terms.s7.title":"7. კონტაქტი","contact.head.title":"საკონტაქტო ინფორმაცია","contact.head.lede":"დაგვიკავშირდით ნებისმიერი შეკითხვით ან მოგვინახულეთ უახლოეს ფილიალში.","contact.center.title":"საკონტაქტო ცენტრი","contact.center.phone":"+995 322 12 34 56 (ყოველდღე, 09:00–21:00)","contact.center.email":"info@technoline.ge","contact.corp.title":"კორპორატიული კლიენტები","contact.corp.phone":"+995 322 12 34 57","contact.corp.email":"business@technoline.ge","contact.branches.eyebrow":"ფილიალები","contact.branches.title":"9 ფილიალი, 3 ქალაქი","footer.blurb":"ციფრული ტექნიკის სერვის ცენტრების ქსელი საქართველოში — 2013 წლიდან, ორიგინალი ნაწილებითა და გამჭვირვალე მომსახურებით.","common.phone":"+995 322 12 34 56","common.email":"info@technoline.ge","footer.address":"ვაჟა-ფშაველას გამზ. 71,<br>თბილისი","footer.copyright":"© 2026 შპს „ტექნოლაინი\". ყველა უფლება დაცულია."};
+var CONTENT_ORDER = ["common.brandName","common.tagline","common.bookCta","common.catalogCta","common.navServices","common.navCatalog","common.navWarrantyService","common.navWarrantyCheck","common.navAbout","common.navContact","chatWidget.title","chatWidget.onlineLabel","chatWidget.offlineLabel","chatWidget.offlineNotice","chatWidget.gateIntro","chatWidget.gateButton","chatWidget.gateNamePlaceholder","chatWidget.gatePhonePlaceholder","chatWidget.inputPlaceholder","home.hero.eyebrow","home.hero.title","home.hero.lede","common.warrantyCheckCta","home.hero.badge1","home.hero.badge2Num","home.hero.badge2Label","home.hero.badge3Num","home.hero.badge3Label","home.stat1Num","home.stat1Label","home.stat2Num","home.stat2Label","home.stat3Num","home.stat3Label","home.stat4Num","home.stat4Label","home.services.eyebrow","home.services.title","home.services.lede","home.services.lead.title","home.services.lead.desc","home.services.card2.title","home.services.card2.desc","home.services.card3.title","home.services.card3.desc","home.services.card4.title","home.services.card4.desc","home.services.card5.title","home.services.card5.desc","home.steps.eyebrow","home.steps.title","home.steps.step1.title","home.steps.step1.desc","home.steps.step2.title","home.steps.step2.desc","home.steps.step3.title","home.steps.step3.desc","home.steps.step4.title","home.steps.step4.desc","home.craft.eyebrow","home.craft.title","home.craft.lede","home.band.title","home.band.desc","home.reviews.eyebrow","home.reviews.title","home.reviews.quote1","home.reviews.quote2","home.reviews.quote3","about.head.title","about.head.lede","about.history.eyebrow","about.history.title","about.history.p1","about.history.p2","about.stat1Num","about.stat1Label","about.stat2Num","about.stat2Label","about.stat3Num","about.stat3Label","about.stat4Num","about.stat4Label","about.principles.eyebrow","about.principles.title","about.p1.title","about.p1.desc","about.p2.title","about.p2.desc","about.p3.title","about.p3.desc","about.p4.title","about.p4.desc","about.p5.title","about.p5.desc","about.p6.title","about.p6.desc","about.band.title","about.band.desc","services.head.title","services.head.lede","services.row1.title","services.row1.desc","services.row1.price","services.row2.title","services.row2.desc","services.row2.price","services.row3.title","services.row3.desc","services.row3.price","services.row4.title","services.row4.desc","services.row4.price","services.row5.title","services.row5.desc","services.row5.price","services.row6.title","services.row6.desc","services.row6.price","catalog.head.title","catalog.head.lede","warranty-check.head.title","warranty-check.head.lede","warranty-check.side.title","warranty-check.side.desc","warranty-check.side.item1","warranty-check.side.item2","warranty-check.side.item3","booking.head.title","booking.head.lede","wservice.head.title","wservice.head.lede","wservice.s1.title","wservice.s1.desc","wservice.s1.list","wservice.s2.title","wservice.s2.desc","wservice.s2.list","wservice.s3.title","wservice.s3.desc","wservice.s4.title","wservice.s4.desc","wservice.s5.title","wservice.s5.desc","wservice.band.title","wservice.band.desc","profile.head.title","profile.head.lede","orders.head.title","orders.head.lede","terms.head.title","terms.head.date","terms.s1.title","terms.s1.body","terms.s2.title","terms.s2.body","terms.s2.list","terms.s3.title","terms.s3.body","terms.s4.title","terms.s4.body","terms.s5.title","terms.s5.body","terms.s6.title","terms.s6.body","terms.s7.title","contact.head.title","contact.head.lede","contact.center.title","contact.center.phone","contact.center.email","contact.corp.title","contact.corp.phone","contact.corp.email","contact.branches.eyebrow","contact.branches.title","footer.blurb","footer.colServicesTitle","footer.servicesLink1","footer.servicesLink2","footer.servicesLink3","footer.servicesLink4","footer.colToolsTitle","footer.colCompanyTitle","footer.colContactTitle","common.phone","common.email","footer.address","footer.copyright"];
+var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","common.tagline":"TECHNOLINE SERVICE","common.bookCta":"ვიზიტის დაჯავშნა","common.catalogCta":"კატალოგის ნახვა","common.navServices":"სერვისები","common.navCatalog":"ნაწილების<br>კატალოგი","common.navWarrantyService":"საგარანტიო მომსახურება","common.navWarrantyCheck":"საგარანტიო ვადის<br>გადამოწმება","common.navAbout":"ჩვენს<br>შესახებ","common.navContact":"კონტაქტი","home.hero.eyebrow":"<span class=\"dot\"></span>თბილისში, ბათუმსა და ქუთაისში — 9 ფილიალი","home.hero.title":"თქვენი ტექნიკა, <em>სანდო</em> ხელებში","home.hero.lede":"ტექნოლაინი აღადგენს სმარტფონებს, ლეპტოპებს, პლანშეტებსა და სხვა ციფრულ მოწყობილობებს — ორიგინალი ნაწილებით, გამჭვირვალე ფასად და საშუალოდ 48 საათში.","common.warrantyCheckCta":"საგარანტიოს შემოწმება","chatWidget.title":"დაგვისვით შეკითხვა","chatWidget.onlineLabel":"ონლაინ","chatWidget.offlineLabel":"ოფლაინ","chatWidget.offlineNotice":"ამჟამად სამუშაო საათებს გარეთ ვართ — დაწერეთ შეტყობინება და პასუხს უახლოეს სამუშაო დროს მიიღებთ.","chatWidget.gateIntro":"დაწყებამდე მიუთითეთ სახელი და ტელეფონის ნომერი, რომ პასუხი მიიღოთ.","chatWidget.gateButton":"საუბრის დაწყება","chatWidget.gateNamePlaceholder":"სახელი","chatWidget.gatePhonePlaceholder":"ტელეფონის ნომერი","chatWidget.inputPlaceholder":"დაწერეთ შეტყობინება…","home.hero.badge1":"ორიგინალი<br>ნაწილები","home.hero.badge2Num":"48სთ","home.hero.badge2Label":"საშუალო<br>შეკეთების ვადა","home.hero.badge3Num":"12","home.hero.badge3Label":"წელი<br>გამოცდილება","home.stat1Num":"45,000+","home.stat1Label":"შეკეთებული მოწყობილობა","home.stat2Num":"9","home.stat2Label":"სერვის-ცენტრი საქართველოში","home.stat3Num":"4.8/5","home.stat3Label":"მომხმარებლის შეფასება","home.stat4Num":"6 თვე","home.stat4Label":"გარანტია ყველა შეკეთებაზე","home.services.eyebrow":"სერვისები","home.services.title":"ერთი ცენტრი, ყველა მოწყობილობისთვის","home.services.lede":"დიაგნოსტიკიდან შეკეთებამდე — ჩვენი ინჟინრები მუშაობენ ყველა ძირითად ბრენდთან და მოწყობილობის ტიპთან.","home.services.lead.title":"სმარტფონების შეკეთება","home.services.lead.desc":"ეკრანი, ბატარეა, კამერა, წყლის დაზიანება — ორიგინალი ნაწილებით, უმეტესად იმავე დღეს.","home.services.card2.title":"ლეპტოპები და კომპიუტერები","home.services.card2.desc":"დედაპლატის დიაგნოსტიკა, კლავიატურის და ეკრანის შეცვლა, სისტემის აღდგენა.","home.services.card3.title":"პლანშეტები","home.services.card3.desc":"iPad და Android პლანშეტების ეკრანის, ბატარეისა და პორტების შეკეთება.","home.services.card4.title":"სმარტ-საათები","home.services.card4.desc":"ეკრანის, ღილაკებისა და დატენვის მოდულის შეკეთება ყველა ძირითადი ბრენდისთვის.","home.services.card5.title":"სათამაშო კონსოლები","home.services.card5.desc":"PlayStation, Xbox და Nintendo კონსოლების გაწმენდა, გაცხელების და HDMI პრობლემები.","home.steps.eyebrow":"როგორ მუშაობს","home.steps.title":"დიაგნოსტიკიდან გატანამდე — 4 ნაბიჯი","home.steps.step1.title":"დაჯავშნა","home.steps.step1.desc":"აირჩიეთ ფილიალი და დრო ონლაინ, ან მიუტანეთ მოწყობილობა უშუალოდ სერვის-ცენტრში.","home.steps.step2.title":"უფასო დიაგნოსტიკა","home.steps.step2.desc":"ინჟინერი ადგენს პრობლემას და გიგზავნით ფასის ზუსტ შეთავაზებას 30 წუთში.","home.steps.step3.title":"შეკეთება","home.steps.step3.desc":"დამტკიცების შემდეგ ვიწყებთ სამუშაოს ორიგინალი ან სერტიფიცირებული ნაწილებით.","home.steps.step4.title":"გატანა და გარანტია","home.steps.step4.desc":"იღებთ მზა მოწყობილობას 6-თვიანი გარანტიით და SMS შეტყობინებით.","home.craft.eyebrow":"ჩვენი ინჟინრები საქმეში","home.craft.title":"სიზუსტე, რომელიც წლების გამოცდილებით შენდება","home.craft.lede":"დედაპლატის მიკრო-შედუღებიდან ბატარეის უსაფრთხო შეცვლამდე — ყოველი შეკეთება გადის იმავე ხარისხის კონტროლს, დამოუკიდებლად მოწყობილობის ბრენდისგან.","home.band.title":"შეამოწმეთ თქვენი მოწყობილობის საგარანტიო სტატუსი 10 წამში","home.band.desc":"შეიყვანეთ სერიული ნომერი ან IMEI და გაიგეთ, ფარავს თუ არა გარანტია მიმდინარე პრობლემას.","home.reviews.eyebrow":"მომხმარებელთა გამოხმაურება","home.reviews.title":"რას ამბობენ ჩვენი კლიენტები","home.reviews.quote1":"„ეკრანი ერთ საათში შემიცვალეს iPhone-ზე, ხარისხი — თითქოს ახალი მოწყობილობა მაქვს.“","home.reviews.quote2":"„ლეპტოპს წყალი დაესხა, ფიქრობდი ჩამორეცხილი იყო — 3 დღეში სრულად აღადგინეს მონაცემებთან ერთად.“","home.reviews.quote3":"„ონლაინ დავჯავშნე ვიზიტი, რიგში არ დამიდგამს და ფასიც წინასწარ ვიცოდი — მაქსიმალურად კომფორტული სერვისი.“","about.head.title":"ტექნოლაინის შესახებ","about.head.lede":"2013 წლიდან ვაწვდით საქართველოს ბაზარს ციფრული ტექნიკის სერვისს — გამჭვირვალედ, სწრაფად და ორიგინალი ნაწილებით.","about.history.eyebrow":"ჩვენი ისტორია","about.history.title":"დაიწყო ერთი სახელოსნოთი, გაგრძელდა ქვეყნის მასშტაბით","about.history.p1":"ტექნოლაინი დაარსდა თბილისში, როგორც პატარა სახელოსნო სმარტფონების შეკეთებისთვის. დღეს ჩვენ ვართ ერთ-ერთი უმსხვილესი დამოუკიდებელი სერვის-ცენტრების ქსელი საქართველოში — 9 ფილიალით სამ ქალაქში, 60-ზე მეტი სერტიფიცირებული ინჟინრით და საკუთარი ნაწილების ლაბორატორიით.","about.history.p2":"ჩვენი მიზანია, ტექნიკის შეკეთება იყოს ისეთივე მარტივი და გასაგები, როგორც მისი შეძენა — გამჭვირვალე ფასებით, რეალურ დროში სტატუსის თვალყურის დევნებით და გარანტიით ყველა სამუშაოზე.","about.stat1Num":"2013","about.stat1Label":"დაარსების წელი","about.stat2Num":"9","about.stat2Label":"ფილიალი","about.stat3Num":"60+","about.stat3Label":"სერტიფიცირებული ინჟინერი","about.stat4Num":"45,000+","about.stat4Label":"შეკეთებული მოწყობილობა","about.principles.eyebrow":"ჩვენი პრინციპები","about.principles.title":"რატომ გვირჩევენ","about.p1.title":"ორიგინალი ნაწილები","about.p1.desc":"ვმუშაობთ მხოლოდ სერტიფიცირებულ მომწოდებლებთან და გავცემთ 6-თვიან გარანტიას ყველა ნაწილზე.","about.p2.title":"სწრაფი შესრულება","about.p2.desc":"სტანდარტული შეკეთებების 80% სრულდება იმავე ან მომდევნო სამუშაო დღეს.","about.p3.title":"მონაცემთა უსაფრთხოება","about.p3.desc":"თქვენი პირადი მონაცემები დაცულია — მუშაობის დაწყებამდე ვაფორმებთ კონფიდენციალურობის ხელშეკრულებას.","about.p4.title":"გამოცდილი ინჟინრები","about.p4.desc":"გუნდი გადის რეგულარულ ტრენინგებს მწარმოებელთა უახლეს სტანდარტებზე.","about.p5.title":"გამჭვირვალე ფასები","about.p5.desc":"ფასს ადასტურებთ დიაგნოსტიკის შემდეგ — დამალული საფასურების გარეშე.","about.p6.title":"9 ფილიალი","about.p6.desc":"თბილისში, ბათუმსა და ქუთაისში — მოწყობილობა ყოველთვის ახლოსაა.","about.band.title":"გუნდი, რომელსაც შეგიძლიათ ენდოთ","about.band.desc":"60-ზე მეტი სერტიფიცირებული ინჟინერი, საკუთარი ხარისხის კონტროლის ლაბორატორია და 12 წლიანი გამოცდილება ციფრული ტექნიკის ბაზარზე.","services.head.title":"სერვისები და ტარიფები","services.head.lede":"საორიენტაციო ფასები — საბოლოო ღირებულებას ადასტურებთ უფასო დიაგნოსტიკის შემდეგ.","services.row1.title":"სმარტფონის შეკეთება","services.row1.desc":"ეკრანი, ბატარეა, კამერა, დამტენი პორტი, წყლის დაზიანება","services.row1.price":"85 ₾ – დან","services.row2.title":"ლეპტოპისა და კომპიუტერის შეკეთება","services.row2.desc":"დედაპლატის დიაგნოსტიკა, კლავიატურა, გაცხელება, SSD/RAM განახლება","services.row2.price":"120 ₾ – დან","services.row3.title":"პლანშეტის შეკეთება","services.row3.desc":"ეკრანი, ბატარეა, დამტენი პორტი — iPad და Android","services.row3.price":"95 ₾ – დან","services.row4.title":"სმარტ-საათის შეკეთება","services.row4.desc":"ეკრანი, ღილაკები, დატენვის მოდული","services.row4.price":"70 ₾ – დან","services.row5.title":"სათამაშო კონსოლის შეკეთება","services.row5.desc":"გაწმენდა, გაცხელება, HDMI/კონტროლერის პრობლემები","services.row5.price":"90 ₾ – დან","services.row6.title":"საყოფაცხოვრებო ტექნიკა","services.row6.desc":"დიაგნოსტიკა და შეკეთება მცირე საყოფაცხოვრებო ტექნიკისთვის","services.row6.price":"60 ₾ – დან","catalog.head.title":"ნაწილების კატალოგი","catalog.head.lede":"ორიგინალი და სერტიფიცირებული სათადარიგო ნაწილები — 6-თვიანი გარანტიით.","warranty-check.head.title":"საგარანტიო პერიოდის შემოწმება","warranty-check.head.lede":"შეიყვანეთ მოწყობილობის სერიული ნომერი ან IMEI და გაიგეთ გარანტიის სტატუსი მყისიერად.","warranty-check.side.title":"როგორ მუშაობს გარანტია","warranty-check.side.desc":"ყველა შეკეთებულ მოწყობილობასა და გაყიდულ ნაწილს ახლავს 6-თვიანი გარანტია დეფექტებზე.","warranty-check.side.item1":"გარანტია ვრცელდება შეცვლილ ნაწილსა და შესრულებულ სამუშაოზე","warranty-check.side.item2":"სერიული ნომერი იძებნება მოწყობილობის პარამეტრებში ან ყუთზე","warranty-check.side.item3":"საგარანტიო შეკეთება უფასოა, თუ დაზიანება არ არის მექანიკური","booking.head.title":"ვიზიტის დაჯავშნა სერვის ცენტრში","booking.head.lede":"აირჩიეთ ფილიალი, მომსახურება და თქვენთვის მოსახერხებელი დრო — 4 მარტივი ნაბიჯი.","wservice.head.title":"საგარანტიო მომსახურება","wservice.head.lede":"რას ფარავს გარანტია, როგორ გამოვიყენოთ და რა ვადებში ხდება საგარანტიო შეკეთება.","wservice.s1.title":"რას მოიცავს გარანტია","wservice.s1.desc":"ტექნოლაინში შესრულებულ ყველა სამუშაოსა და გაყიდულ სათადარიგო ნაწილს ახლავს სტანდარტული 6-თვიანი გარანტია. გარანტია მოქმედებს შემდეგზე:","wservice.s1.list":"\n            <li>შეცვლილი ნაწილის ქარხნული დეფექტი (ეკრანი, ბატარეა, კამერა, დამტენი პორტი და სხვ.)</li>\n            <li>შესრულებული სამუშაოს ხარისხი — თუ იგივე პრობლემა განმეორდა შეკეთების შემდეგ</li>\n            <li>მონტაჟის დროს წარმოქმნილი დაზიანება</li>\n          ","wservice.s2.title":"რას არ მოიცავს გარანტია","wservice.s2.desc":"გარანტია არ ვრცელდება შემდეგ შემთხვევებზე:","wservice.s2.list":"\n            <li>ახალი მექანიკური დაზიანება გარანტიის პერიოდში (ჩავარდნა, დარტყმა, ცემა)</li>\n            <li>წყლის ან სითხის ახალი ზემოქმედება, თუ თავდაპირველი პრობლემა სხვა იყო</li>\n            <li>სხვა სერვის-ცენტრის მიერ განხორციელებული ჩარევა შეკეთების შემდეგ</li>\n            <li>პროგრამული პრობლემები, რომლებიც არ უკავშირდება შესრულებულ სამუშაოს</li>\n          ","wservice.s3.title":"როგორ გამოვიყენოთ გარანტია","wservice.s3.desc":"საგარანტიო შემთხვევის დაფიქსირებისთვის:","wservice.s4.title":"შესრულების ვადები","wservice.s4.desc":"საგარანტიო შემთხვევების უმეტესობა მოგვარდება <strong>1–3 სამუშაო დღეში</strong>. თუ საჭიროა ნაწილის დამატებითი შეკვეთა, ვადა შესაძლოა გაიზარდოს 5–7 დღემდე — ამის შესახებ წინასწარ გეცნობებათ.","wservice.s5.title":"გაფართოებული გარანტია","wservice.s5.desc":"შეკეთების დასრულებისას შეგიძლიათ შეიძინოთ გაფართოებული, 12-თვიანი გარანტიის პაკეტი, რომელიც დამატებით მოიცავს ერთჯერად უფასო დიაგნოსტიკას მომდევნო წელს.","wservice.band.title":"გინდათ გაარკვიოთ, ფარავს თუ არა გარანტია თქვენს შემთხვევას?","wservice.band.desc":"შეამოწმეთ სერიული ნომერი ონლაინ ან დაჯავშნეთ ვიზიტი უფასო დიაგნოსტიკისთვის.","profile.head.title":"ჩემი პროფილი","profile.head.lede":"მართეთ თქვენი პირადი მონაცემები და დამატებული მოწყობილობები.","orders.head.title":"ჩემი შეკვეთები","orders.head.lede":"თვალი ადევნეთ თქვენი მიმდინარე და დასრულებული შეკეთებების სტატუსს.","terms.head.title":"წესები და პირობები","terms.head.date":"ბოლო განახლება: 1 სექტემბერი, 2026","terms.s1.title":"1. ზოგადი დებულებები","terms.s1.body":"წინამდებარე დოკუმენტი არეგულირებს ურთიერთობას შპს „ტექნოლაინსა\" (შემდგომში — კომპანია) და მომხმარებელს შორის, რომელიც სარგებლობს კომპანიის ვებგვერდით ან სერვის-ცენტრების მომსახურებით. ვებგვერდით სარგებლობით მომხმარებელი ეთანხმება ქვემოთ მოცემულ პირობებს.","terms.s2.title":"2. მომსახურების პირობები","terms.s2.body":"დიაგნოსტიკა უფასოა ყველა მოწყობილობისთვის. შეკეთების საბოლოო ღირებულება მომხმარებელს დასტურდება წერილობით (SMS ან ელფოსტა) დიაგნოსტიკის დასრულების შემდეგ, სამუშაოს დაწყებამდე.","terms.s2.list":"\n            <li>მოწყობილობის მიღებისას გაიცემა მიღება-ჩაბარების ქვითარი უნიკალური ნომრით</li>\n            <li>სტანდარტული შეკეთების ვადა შეადგენს 1–3 სამუშაო დღეს, გართულებული შემთხვევებისთვის — 5–7 დღეს</li>\n            <li>თუ დიაგნოსტიკის შემდეგ მომხმარებელი უარს იტყვის შეკეთებაზე, დიაგნოსტიკის საფასური არ ჩამოიჭრება</li>\n          ","terms.s3.title":"3. ანგარიშსწორება","terms.s3.body":"ანგარიშსწორება ხდება ნაღდი ან უნაღდო ფორმით, მოწყობილობის გატანისას. კორპორატიული კლიენტებისთვის შესაძლებელია განვადებით ანგარიშსწორება ხელშეკრულების საფუძველზე.","terms.s4.title":"4. მონაცემთა დაცვა","terms.s4.body":"კომპანია იცავს მომხმარებლის პირად მონაცემებსა და მოწყობილობაზე დაცულ ინფორმაციას საქართველოს კანონმდებლობის შესაბამისად. მოწყობილობის მონაცემებზე წვდომა ეზღუდება მხოლოდ დიაგნოსტიკისა და შეკეთებისთვის საჭირო პერსონალს. მომხმარებელს რეკომენდირებულია მოწყობილობის მონაცემთა სარეზერვო ასლის შექმნა შეკეთებამდე.","terms.s5.title":"5. პასუხისმგებლობა","terms.s5.body":"კომპანია პასუხისმგებელია შესრულებული სამუშაოს ხარისხზე გარანტიის ვადის განმავლობაში. კომპანია არ არის პასუხისმგებელი მონაცემთა დაკარგვაზე, თუ მომხმარებელს არ შეუქმნია სარეზერვო ასლი და დაზიანება არ იყო გამოწვეული შესრულებული სამუშაოთი.","terms.s6.title":"6. გაუქმება და დაბრუნება","terms.s6.body":"დაჯავშნილი ვიზიტის გაუქმება ან გადატანა შესაძლებელია ვიზიტამდე მინიმუმ 2 საათით ადრე, უფასოდ. შეძენილი ნაწილის დაბრუნება შესაძლებელია შეძენიდან 14 დღის განმავლობაში, თუ ნაწილი არ არის დამონტაჟებული და შენარჩუნებულია სასაქონლო სახე.","terms.s7.title":"7. კონტაქტი","contact.head.title":"საკონტაქტო ინფორმაცია","contact.head.lede":"დაგვიკავშირდით ნებისმიერი შეკითხვით ან მოგვინახულეთ უახლოეს ფილიალში.","contact.center.title":"საკონტაქტო ცენტრი","contact.center.phone":"+995 322 12 34 56 (ყოველდღე, 09:00–21:00)","contact.center.email":"info@technoline.ge","contact.corp.title":"კორპორატიული კლიენტები","contact.corp.phone":"+995 322 12 34 57","contact.corp.email":"business@technoline.ge","contact.branches.eyebrow":"ფილიალები","contact.branches.title":"9 ფილიალი, 3 ქალაქი","footer.blurb":"ციფრული ტექნიკის სერვის ცენტრების ქსელი საქართველოში — 2013 წლიდან, ორიგინალი ნაწილებითა და გამჭვირვალე მომსახურებით.","footer.colServicesTitle":"სერვისები","footer.servicesLink1":"სმარტფონები","footer.servicesLink2":"ლეპტოპები","footer.servicesLink3":"პლანშეტები","footer.servicesLink4":"სმარტ-საათები","footer.colToolsTitle":"ხელსაწყოები","footer.colCompanyTitle":"კომპანია","footer.colContactTitle":"კონტაქტი","common.phone":"+995 322 12 34 56","common.email":"info@technoline.ge","footer.address":"ვაჟა-ფშაველას გამზ. 71,<br>თბილისი","footer.copyright":"© 2026 შპს „ტექნოლაინი\". ყველა უფლება დაცულია."};
 
   var THEME_TOKENS = [
     {key:'gold', varName:'--gold', label:'ოქროსფერი — მთავარი აქცენტი', def:'#FCBB2D'},
@@ -383,9 +407,9 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     {id:'b4', name:'ცენტრალური ფილიალი', addr:'თამარ მეფის ქ. 8', hours:'ორშ–შაბ, 10:00–19:00', phone:'+995 431 22 11 04'}
   ];
 
-  var PAGE_ORDER = ['common','home','about','services','catalog','warranty-check','booking','wservice','profile','orders','terms','contact','footer'];
+  var PAGE_ORDER = ['common','chatWidget','home','about','services','catalog','warranty-check','booking','wservice','profile','orders','terms','contact','footer'];
   var PAGE_LABELS = {
-    common:'საერთო ელემენტები', home:'მთავარი გვერდი', about:'ჩვენ შესახებ', services:'სერვისები',
+    common:'საერთო ელემენტები', chatWidget:'ლაივ ჩათის ტექსტები', home:'მთავარი გვერდი', about:'ჩვენ შესახებ', services:'სერვისები',
     catalog:'ნაწილების კატალოგი (თავსართი)', 'warranty-check':'საგარანტიოს შემოწმება', booking:'ვიზიტის დაჯავშნა',
     wservice:'საგარანტიო მომსახურება', profile:'პროფილი (თავსართი)', orders:'შეკვეთები (თავსართი)',
     terms:'წესები და პირობები', contact:'კონტაქტი', footer:'ქვედა კოლონტიტული (Footer)'
@@ -406,7 +430,15 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     badge1:'ბეჯის ტექსტი',
     navServices:'ჰედერის ბმული: სერვისები', navCatalog:'ჰედერის ბმული: ნაწილების კატალოგი',
     navWarrantyService:'ჰედერის ბმული: საგარანტიო მომსახურება', navWarrantyCheck:'ჰედერის ბმული: საგარანტიო ვადის გადამოწმება',
-    navAbout:'ჰედერის ბმული: ჩვენს შესახებ', navContact:'ჰედერის ბმული: კონტაქტი'
+    navAbout:'ჰედერის ბმული: ჩვენს შესახებ', navContact:'ჰედერის ბმული: კონტაქტი',
+    onlineLabel:'სტატუსი (ონლაინ)', offlineLabel:'სტატუსი (ოფლაინ)', offlineNotice:'შეტყობინება სამუშაო საათების გარეთ',
+    gateIntro:'შესავალი ტექსტი (სახელი/ტელეფონის ფორმის წინ)', gateButton:'ღილაკი „საუბრის დაწყება"',
+    gateNamePlaceholder:'ველის მინიშნება: სახელი', gatePhonePlaceholder:'ველის მინიშნება: ტელეფონი',
+    inputPlaceholder:'ველის მინიშნება: შეტყობინების ველი',
+    colServicesTitle:'სვეტის სათაური: „სერვისები"', colToolsTitle:'სვეტის სათაური: „ხელსაწყოები"',
+    colCompanyTitle:'სვეტის სათაური: „კომპანია"', colContactTitle:'სვეტის სათაური: „კონტაქტი"',
+    servicesLink1:'ბმული 1 (მოწყობილობის ტიპი)', servicesLink2:'ბმული 2 (მოწყობილობის ტიპი)',
+    servicesLink3:'ბმული 3 (მოწყობილობის ტიპი)', servicesLink4:'ბმული 4 (მოწყობილობის ტიპი)'
   };
 
   function parseCk(key){
@@ -584,7 +616,31 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   var TABS = [];
   var activeTab = null;
   var bookingsLoaded = false;
-  var chatState = { chats:{}, listLoaded:false, ws:null, wsReady:false, selectedId:null, reconnectTimer:null };
+  var chatState = { chats:{}, listLoaded:false, ws:null, wsReady:false, selectedId:null, reconnectTimer:null, hours:null, hoursLoaded:false, pendingAttachment:null };
+  var CHAT_ADMIN_MAX_FILE_BYTES = 5 * 1024 * 1024;
+  var CHAT_ADMIN_EMOJI_LIST = ['😀','😁','😂','🙂','😊','😍','🤔','😉','👍','👌','🙏','👏','🔥','💯','✅','❌','⏰','📱','💻','⌚','🛠️','📦','🚚','💬','❓','❗','🎉','❤️'];
+  var chatAdminMediaRecorder = null, chatAdminAudioChunks = [], chatAdminRecordTimer = null, chatAdminRecordStart = 0;
+  function openChatLightbox(src){
+    var box = document.getElementById('chat-lightbox');
+    var img = document.getElementById('chat-lightbox-img');
+    if(!box || !img) return;
+    img.src = src;
+    box.classList.add('show');
+  }
+  function closeChatLightbox(){
+    var box = document.getElementById('chat-lightbox');
+    if(box) box.classList.remove('show');
+  }
+  document.getElementById('chat-lightbox') && document.getElementById('chat-lightbox').addEventListener('click', closeChatLightbox);
+  // registered once (not per chat-thread render, which happens on every
+  // incoming message) — both elements are looked up fresh each click, so
+  // this keeps working across re-renders without stacking duplicate listeners
+  document.addEventListener('click', function(e){
+    var pop = document.getElementById('chat-emoji-popover');
+    var btn = document.getElementById('chat-reply-emoji-btn');
+    if(!pop || !pop.classList.contains('show')) return;
+    if(!pop.contains(e.target) && !(btn && btn.contains(e.target))) pop.classList.remove('show');
+  });
   var warrantyLoaded = { records:false, template:false };
   var warrantySubTab = 'records';
   // Which segment sub-tab is active per content page (e.g. "services" ->
@@ -2305,7 +2361,10 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   function chatAttachmentHtml(att){
     if(!att || !att.dataUrl) return '';
     if(/^image\//.test(att.type || '')){
-      return '<img src="' + att.dataUrl.replace(/"/g,'&quot;') + '" alt="' + escHtml(att.name || '') + '" style="max-width:220px;max-height:220px;border-radius:10px;display:block;margin-bottom:6px">';
+      return '<img class="chat-attachment-img" src="' + att.dataUrl.replace(/"/g,'&quot;') + '" alt="' + escHtml(att.name || '') + '">';
+    }
+    if(/^audio\//.test(att.type || '')){
+      return '<audio class="chat-attachment-audio" controls src="' + att.dataUrl.replace(/"/g,'&quot;') + '"></audio>';
     }
     return '<a href="' + att.dataUrl.replace(/"/g,'&quot;') + '" download="' + escHtml(att.name || 'ფაილი') + '" style="display:flex;align-items:center;gap:6px;font-size:.82rem;font-weight:700;color:var(--blue-deep);text-decoration:underline;margin-bottom:6px">📎 ' + escHtml(att.name || 'ფაილი') + '</a>';
   }
@@ -2330,6 +2389,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       wrap.innerHTML = '<div class="empty-state" style="height:100%;display:flex;align-items:center;justify-content:center"><p>აირჩიეთ საუბარი მარცხნივ</p></div>';
       return;
     }
+    chatState.pendingAttachment = null;
     var msgsHtml = (c.messages || []).map(chatMessageBubbleHtml).join('');
     wrap.innerHTML = '<div style="display:flex;flex-direction:column;height:100%">'
       + '<div style="padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">'
@@ -2337,32 +2397,163 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       + (c.status !== 'closed' ? '<button type="button" class="btn btn-ghost" id="chat-close-btn" style="font-size:.78rem;padding:7px 12px">საუბრის დახურვა</button>' : '<span style="font-size:.78rem;color:var(--ink-faint)">დახურულია</span>')
       + '</div>'
       + '<div id="chat-thread-messages" style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px">' + msgsHtml + '</div>'
-      + '<div style="padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px">'
+      + '<div id="chat-reply-status" style="padding:0 16px;font-size:.74rem;color:var(--ink-faint)"></div>'
+      + '<div id="chat-attach-preview">'
+      + '<img id="chat-attach-preview-img" alt="" style="display:none">'
+      + '<span id="chat-attach-preview-name"></span>'
+      + '<button type="button" id="chat-attach-preview-remove" aria-label="მოცილება"><svg viewBox="0 0 24 24" style="width:12px;height:12px" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:2px;padding:6px 12px 0;position:relative">'
+      + '<button type="button" class="chat-tool-btn" id="chat-reply-attach-btn" aria-label="ფაილის მიმატება"><svg><use href="#ic-paperclip"/></svg></button>'
+      + '<button type="button" class="chat-tool-btn" id="chat-reply-emoji-btn" aria-label="ემოჯი"><svg><use href="#ic-emoji"/></svg></button>'
+      + '<button type="button" class="chat-tool-btn" id="chat-reply-mic-btn" aria-label="ხმოვანი შეტყობინება"><svg><use href="#ic-mic"/></svg></button>'
+      + '<input type="file" id="chat-reply-file-input" accept="image/*,.pdf,.doc,.docx,.zip,.rar,.txt" style="display:none">'
+      + '<div id="chat-emoji-popover"></div>'
+      + '</div>'
+      + '<div style="padding:8px 16px 14px;display:flex;gap:8px;align-items:flex-end">'
       + '<input type="text" id="chat-reply-input" placeholder="უპასუხეთ…" style="flex:1;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink);font-size:.9rem">'
       + '<button type="button" class="btn btn-gold" id="chat-reply-send">გაგზავნა</button>'
       + '</div>'
       + '</div>';
     var msgsEl = document.getElementById('chat-thread-messages');
-    if(msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+    if(msgsEl){
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+      msgsEl.addEventListener('click', function(e){
+        var img = e.target.closest('.chat-attachment-img');
+        if(img) openChatLightbox(img.src);
+      });
+    }
     var closeBtn = document.getElementById('chat-close-btn');
     if(closeBtn) closeBtn.addEventListener('click', function(){
-      if(chatState.ws && chatState.wsReady) chatState.ws.send(JSON.stringify({type:'close_chat', chatId:c.id}));
+      if(!chatState.ws || !chatState.wsReady){ toast('კავშირი გაწყვეტილია — სცადეთ თავიდან'); return; }
+      chatState.ws.send(JSON.stringify({type:'close_chat', chatId:c.id}));
+      // the server intentionally skips echoing chat_status back to the admin
+      // who sent close_chat (it only tells the OTHER open admin tabs), so
+      // this tab must update itself right away or the button looks broken.
+      c.status = 'closed';
+      renderChatThreadDom();
+      renderChatListDom();
     });
+    function setReplyStatus(text){
+      var el = document.getElementById('chat-reply-status');
+      if(el) el.textContent = text || '';
+    }
+    function clearAttachPreview(){
+      chatState.pendingAttachment = null;
+      var prev = document.getElementById('chat-attach-preview');
+      var img = document.getElementById('chat-attach-preview-img');
+      if(prev) prev.classList.remove('show');
+      if(img){ img.style.display = 'none'; img.src = ''; }
+      var fi = document.getElementById('chat-reply-file-input');
+      if(fi) fi.value = '';
+    }
+    function stageAttachment(file){
+      if(!file) return;
+      if(file.size > CHAT_ADMIN_MAX_FILE_BYTES){ setReplyStatus('ფაილი ზედმეტად დიდია — მაქსიმუმ 5MB'); return; }
+      var reader = new FileReader();
+      reader.onload = function(){
+        chatState.pendingAttachment = { name: file.name || 'ფაილი', type: file.type || '', dataUrl: reader.result };
+        var prev = document.getElementById('chat-attach-preview');
+        var img = document.getElementById('chat-attach-preview-img');
+        var nameEl = document.getElementById('chat-attach-preview-name');
+        if(/^image\//.test(file.type || '') && img){ img.src = reader.result; img.style.display = 'block'; } else if(img){ img.style.display = 'none'; }
+        if(nameEl) nameEl.textContent = file.name || 'ფაილი';
+        if(prev) prev.classList.add('show');
+        setReplyStatus('');
+      };
+      reader.onerror = function(){ setReplyStatus('ფაილის წაკითხვა ვერ მოხერხდა'); };
+      reader.readAsDataURL(file);
+    }
     function sendReply(){
       var input = document.getElementById('chat-reply-input');
       var text = input.value.trim();
-      if(!text || !chatState.ws || !chatState.wsReady) return;
-      chatState.ws.send(JSON.stringify({type:'reply', chatId:c.id, text:text}));
+      var attachment = chatState.pendingAttachment;
+      if((!text && !attachment) || !chatState.ws || !chatState.wsReady) return;
+      var payload = {type:'reply', chatId:c.id, text:text};
+      if(attachment) payload.attachment = attachment;
+      chatState.ws.send(JSON.stringify(payload));
       var m = {from:'admin', text:text, at:Date.now()};
+      if(attachment) m.attachment = attachment;
       c.messages = c.messages || [];
       c.messages.push(m);
       c.lastAt = m.at;
       input.value = '';
+      clearAttachPreview();
       appendChatMessageDom(m);
       renderChatListDom();
     }
     document.getElementById('chat-reply-send').addEventListener('click', sendReply);
     document.getElementById('chat-reply-input').addEventListener('keydown', function(e){ if(e.key === 'Enter') sendReply(); });
+    document.getElementById('chat-attach-preview-remove').addEventListener('click', clearAttachPreview);
+    document.getElementById('chat-reply-attach-btn').addEventListener('click', function(){
+      document.getElementById('chat-reply-file-input').click();
+    });
+    document.getElementById('chat-reply-file-input').addEventListener('change', function(e){
+      if(e.target.files && e.target.files[0]) stageAttachment(e.target.files[0]);
+    });
+    document.getElementById('chat-reply-emoji-btn').addEventListener('click', function(){
+      var pop = document.getElementById('chat-emoji-popover');
+      if(!pop) return;
+      if(!pop.childElementCount){
+        CHAT_ADMIN_EMOJI_LIST.forEach(function(em){
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = em;
+          b.addEventListener('click', function(){
+            var inputEl = document.getElementById('chat-reply-input');
+            var start = inputEl.selectionStart || inputEl.value.length;
+            var end = inputEl.selectionEnd || inputEl.value.length;
+            inputEl.value = inputEl.value.slice(0, start) + em + inputEl.value.slice(end);
+            inputEl.focus();
+            inputEl.selectionStart = inputEl.selectionEnd = start + em.length;
+          });
+          pop.appendChild(b);
+        });
+      }
+      pop.classList.toggle('show');
+    });
+    document.getElementById('chat-reply-mic-btn').addEventListener('click', function(){
+      if(chatAdminMediaRecorder && chatAdminMediaRecorder.state === 'recording'){ chatAdminMediaRecorder.stop(); return; }
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined'){
+        setReplyStatus('თქვენი ბრაუზერი არ უჭერს მხარს ხმის ჩაწერას');
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+        chatAdminAudioChunks = [];
+        var mimeType = (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm')) ? 'audio/webm' : '';
+        chatAdminMediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
+        chatAdminMediaRecorder.ondataavailable = function(e){ if(e.data && e.data.size) chatAdminAudioChunks.push(e.data); };
+        chatAdminMediaRecorder.onstop = function(){
+          stream.getTracks().forEach(function(t){ t.stop(); });
+          clearInterval(chatAdminRecordTimer);
+          var micBtn = document.getElementById('chat-reply-mic-btn');
+          if(micBtn) micBtn.classList.remove('recording');
+          setReplyStatus('');
+          var blob = new Blob(chatAdminAudioChunks, { type: chatAdminMediaRecorder.mimeType || 'audio/webm' });
+          if(blob.size < 300 || !chatState.ws || !chatState.wsReady) return;
+          var reader = new FileReader();
+          reader.onload = function(){
+            var att = { name: 'ხმოვანი შეტყობინება.webm', type: blob.type || 'audio/webm', dataUrl: reader.result };
+            chatState.ws.send(JSON.stringify({ type: 'reply', chatId: c.id, text: '', attachment: att }));
+            var m = { from: 'admin', text: '', attachment: att, at: Date.now() };
+            c.messages = c.messages || [];
+            c.messages.push(m);
+            c.lastAt = m.at;
+            appendChatMessageDom(m);
+            renderChatListDom();
+          };
+          reader.readAsDataURL(blob);
+        };
+        chatAdminMediaRecorder.start();
+        var micBtn2 = document.getElementById('chat-reply-mic-btn');
+        if(micBtn2) micBtn2.classList.add('recording');
+        chatAdminRecordStart = Date.now();
+        chatAdminRecordTimer = setInterval(function(){
+          var sec = Math.floor((Date.now() - chatAdminRecordStart) / 1000);
+          setReplyStatus('იწერება… ' + Math.floor(sec / 60) + ':' + (sec % 60 < 10 ? '0' : '') + (sec % 60));
+        }, 500);
+      }).catch(function(){ setReplyStatus('მიკროფონზე წვდომა ვერ მოხერხდა'); });
+    });
   }
   function selectChat(id){
     chatState.selectedId = id;
@@ -2372,8 +2563,86 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     renderChatThreadDom();
     renderNav();
   }
+  var CHAT_HOURS_DAYS = [
+    {key:'mon', label:'ორშაბათი'}, {key:'tue', label:'სამშაბათი'}, {key:'wed', label:'ოთხშაბათი'},
+    {key:'thu', label:'ხუთშაბათი'}, {key:'fri', label:'პარასკევი'}, {key:'sat', label:'შაბათი'}, {key:'sun', label:'კვირა'}
+  ];
+  var CHAT_HOURS_DEFAULT = {
+    hoursEnabled:false, timezone:'Asia/Tbilisi',
+    schedule:{
+      mon:{closed:false, open:'10:00', close:'20:00'}, tue:{closed:false, open:'10:00', close:'20:00'},
+      wed:{closed:false, open:'10:00', close:'20:00'}, thu:{closed:false, open:'10:00', close:'20:00'},
+      fri:{closed:false, open:'10:00', close:'20:00'}, sat:{closed:false, open:'11:00', close:'18:00'},
+      sun:{closed:true, open:'11:00', close:'18:00'}
+    }
+  };
+  function chatHoursDayRowHtml(day){
+    var d = day;
+    return '<div class="chat-hours-row" data-day="' + d.key + '" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)">'
+      + '<span style="width:100px;font-size:.86rem;font-weight:700">' + d.label + '</span>'
+      + '<label style="display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--ink-faint)"><input type="checkbox" class="chat-hours-closed"> დღეს დაკეტილია</label>'
+      + '<span class="chat-hours-times" style="display:flex;align-items:center;gap:6px">'
+      + '<input type="time" class="chat-hours-open" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-soft);color:var(--ink);font-size:.84rem">'
+      + '<span style="color:var(--ink-faint);font-size:.82rem">—</span>'
+      + '<input type="time" class="chat-hours-close" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-soft);color:var(--ink);font-size:.84rem">'
+      + '</span></div>';
+  }
+  function renderChatHoursForm(){
+    var wrap = document.getElementById('chat-hours-days');
+    if(!wrap) return;
+    var h = chatState.hours || CHAT_HOURS_DEFAULT;
+    document.getElementById('chat-hours-enabled').checked = !!h.hoursEnabled;
+    wrap.innerHTML = CHAT_HOURS_DAYS.map(chatHoursDayRowHtml).join('');
+    CHAT_HOURS_DAYS.forEach(function(d){
+      var row = wrap.querySelector('[data-day="' + d.key + '"]');
+      var s = (h.schedule && h.schedule[d.key]) || CHAT_HOURS_DEFAULT.schedule[d.key];
+      row.querySelector('.chat-hours-closed').checked = !!s.closed;
+      row.querySelector('.chat-hours-open').value = s.open || '10:00';
+      row.querySelector('.chat-hours-close').value = s.close || '20:00';
+      row.querySelector('.chat-hours-times').style.opacity = s.closed ? .4 : 1;
+      row.querySelector('.chat-hours-closed').addEventListener('change', function(){
+        row.querySelector('.chat-hours-times').style.opacity = this.checked ? .4 : 1;
+      });
+    });
+  }
+  function collectChatHoursForm(){
+    var wrap = document.getElementById('chat-hours-days');
+    var schedule = {};
+    CHAT_HOURS_DAYS.forEach(function(d){
+      var row = wrap.querySelector('[data-day="' + d.key + '"]');
+      schedule[d.key] = {
+        closed: row.querySelector('.chat-hours-closed').checked,
+        open: row.querySelector('.chat-hours-open').value || '10:00',
+        close: row.querySelector('.chat-hours-close').value || '20:00'
+      };
+    });
+    return { hoursEnabled: document.getElementById('chat-hours-enabled').checked, timezone: (chatState.hours && chatState.hours.timezone) || 'Asia/Tbilisi', schedule: schedule };
+  }
+  function loadChatHours(){
+    if(chatState.hoursLoaded) return Promise.resolve(chatState.hours);
+    return apiGet('/api/site/chatSettings').then(function(d){
+      chatState.hours = (d && Object.keys(d).length) ? d : CHAT_HOURS_DEFAULT;
+      chatState.hoursLoaded = true;
+      return chatState.hours;
+    }).catch(function(){ chatState.hours = CHAT_HOURS_DEFAULT; chatState.hoursLoaded = true; return chatState.hours; });
+  }
+
   function renderChatPanel(main, tab){
     var html = panelHeadHtml(tab, 'რეალურ დროში საუბარი საიტის ვიზიტორებთან.');
+    html += '<div class="card" id="chat-hours-card" style="padding:16px 18px;margin-bottom:14px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'
+      + '<div><h3 style="margin:0 0 2px;font-size:.98rem">ჩათის სამუშაო საათები</h3>'
+      + '<p style="margin:0;font-size:.82rem;color:var(--ink-faint)">როცა ჩართულია, საათების გარეთ ვიზიტორი ხედავს „ოფლაინ" სტატუსს და შეტყობინებას, თუმცა შეტყობინების დატოვება მაინც შეუძლია.</p></div>'
+      + '<button type="button" class="btn btn-ghost" id="chat-hours-toggle-view">განრიგის რედაქტირება</button>'
+      + '</div>'
+      + '<div id="chat-hours-form" style="display:none;margin-top:14px">'
+      + '<label style="display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:700;margin-bottom:10px"><input type="checkbox" id="chat-hours-enabled"> სამუშაო საათების გათვალისწინება ჩართულია</label>'
+      + '<div id="chat-hours-days"></div>'
+      + '<div style="margin-top:14px;display:flex;gap:12px;align-items:center">'
+      + '<button type="button" class="btn btn-gold" id="chat-hours-save">შენახვა</button>'
+      + '<span id="chat-hours-status" style="font-size:.82rem;color:var(--ink-faint)"></span>'
+      + '</div></div>'
+      + '</div>';
     html += '<div class="card" style="display:grid;grid-template-columns:280px 1fr;gap:0;min-height:520px;max-height:640px;overflow:hidden;padding:0">'
       + '<div id="chat-list" style="border-right:1px solid var(--line);overflow-y:auto"></div>'
       + '<div id="chat-thread-wrap" style="overflow:hidden"></div>'
@@ -2384,6 +2653,30 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       var btn = e.target.closest('[data-chat-id]');
       if(!btn) return;
       selectChat(btn.getAttribute('data-chat-id'));
+    });
+
+    document.getElementById('chat-hours-toggle-view').addEventListener('click', function(){
+      var form = document.getElementById('chat-hours-form');
+      var opening = form.style.display === 'none';
+      if(opening){
+        loadChatHours().then(renderChatHoursForm);
+      }
+      form.style.display = opening ? 'block' : 'none';
+      this.textContent = opening ? 'დამალვა' : 'განრიგის რედაქტირება';
+    });
+    document.getElementById('chat-hours-save').addEventListener('click', function(){
+      var payload = collectChatHoursForm();
+      var statusEl = document.getElementById('chat-hours-status');
+      statusEl.textContent = 'ინახება…';
+      apiPut('/api/site/chatSettings', payload).then(function(){
+        chatState.hours = payload;
+        statusEl.textContent = 'შენახულია ✓';
+        toast('ჩათის სამუშაო საათები შენახულია');
+        setTimeout(function(){ statusEl.textContent = ''; }, 2500);
+      }).catch(function(){
+        statusEl.textContent = '';
+        toast('ვერ შეინახა — სცადეთ თავიდან');
+      });
     });
 
     renderChatListDom();

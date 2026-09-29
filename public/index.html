@@ -647,6 +647,9 @@
   #chat-panel.collapsed #chat-panel-collapse svg{transform:rotate(180deg)}
   #chat-gate{padding:20px 18px;display:flex;flex-direction:column;gap:11px;flex:1;justify-content:center}
   #chat-gate p{font-size:.86rem;color:var(--ink-soft);margin:0 0 4px;line-height:1.5}
+  #chat-offline-notice{font-size:.8rem;color:#8a5a12;background:rgba(255,181,71,.16);border:1px solid rgba(255,181,71,.32);border-radius:10px;padding:9px 11px;line-height:1.45}
+  #chat-panel-head-title span.offline::before{background:#D08A2A;box-shadow:0 0 0 2px rgba(208,138,42,.25)}
+  #chat-status-line.offline-note{color:#B14526}
   #chat-gate input{padding:11px 14px;border:1.5px solid var(--line);border-radius:11px;background:var(--surface-alt);color:var(--ink);font-size:.9rem;font-family:inherit}
   #chat-gate button{padding:12px;border:none;border-radius:11px;background:var(--gold);color:#241A00;font-weight:800;font-size:.88rem;cursor:pointer}
   #chat-gate-err{color:var(--danger,#B14526);font-size:.8rem;display:none}
@@ -690,7 +693,7 @@
   #chat-input{flex:1;resize:none;max-height:120px;padding:11px 14px;border:1.5px solid var(--line);border-radius:16px;background:var(--surface-alt);color:var(--ink);font-size:.88rem;font-family:inherit;line-height:1.4}
   #chat-input-row button#chat-send{width:42px;height:42px;border-radius:50%;border:none;background:var(--blue-deep);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
   #chat-input-row button#chat-send svg{width:18px;height:18px}
-  @media (max-width:480px){ #chat-widget{right:14px;bottom:78px} #chat-panel{right:-6px} }
+  @media (max-width:600px){ #chat-widget{right:14px;bottom:78px} #chat-panel{position:fixed;left:50%;right:auto;bottom:134px;transform:translateX(-50%);width:calc(100vw - 24px);max-width:420px} }
   #chat-lightbox{position:fixed;inset:0;background:rgba(4,10,18,.88);z-index:400;display:none;align-items:center;justify-content:center;padding:30px;cursor:zoom-out}
   #chat-lightbox.show{display:flex}
   #chat-lightbox img{max-width:min(880px,92vw);max-height:88vh;border-radius:10px;box-shadow:var(--shadow-3)}
@@ -987,7 +990,7 @@
   </button>
   <div id="chat-panel">
     <div id="chat-panel-head">
-      <div id="chat-panel-head-title"><b>დაგვისვით შეკითხვა</b><span>ონლაინ</span></div>
+      <div id="chat-panel-head-title"><b data-ck="chatWidget.title">დაგვისვით შეკითხვა</b><span id="chat-status-label" data-ck="chatWidget.onlineLabel">ონლაინ</span></div>
       <div id="chat-panel-head-actions">
         <button type="button" id="chat-clear-btn" aria-label="ისტორიის წაშლა" title="საუბრის ისტორიის წაშლა"><svg><use href="#ic-trash"/></svg></button>
         <button type="button" id="chat-panel-collapse" aria-label="ჩაკეცვა"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
@@ -995,10 +998,11 @@
       </div>
     </div>
     <div id="chat-gate">
-      <p>დაწყებამდე მიუთითეთ სახელი და ტელეფონის ნომერი, რომ პასუხი მიიღოთ.</p>
-      <input type="text" id="chat-gate-name" placeholder="სახელი" maxlength="80">
-      <input type="tel" id="chat-gate-phone" placeholder="ტელეფონის ნომერი" maxlength="30">
-      <button type="button" id="chat-gate-start">საუბრის დაწყება</button>
+      <div id="chat-offline-notice" data-ck="chatWidget.offlineNotice" style="display:none">ამჟამად სამუშაო საათებს გარეთ ვართ — დაწერეთ შეტყობინება და პასუხს უახლოეს სამუშაო დროს მიიღებთ.</div>
+      <p data-ck="chatWidget.gateIntro">დაწყებამდე მიუთითეთ სახელი და ტელეფონის ნომერი, რომ პასუხი მიიღოთ.</p>
+      <input type="text" id="chat-gate-name" data-ck-placeholder="chatWidget.gateNamePlaceholder" placeholder="სახელი" maxlength="80">
+      <input type="tel" id="chat-gate-phone" data-ck-placeholder="chatWidget.gatePhonePlaceholder" placeholder="ტელეფონის ნომერი" maxlength="30">
+      <button type="button" id="chat-gate-start" data-ck="chatWidget.gateButton">საუბრის დაწყება</button>
       <div id="chat-gate-err"></div>
     </div>
     <div id="chat-body" style="display:none">
@@ -1025,7 +1029,7 @@
         <div id="chat-emoji-popover"></div>
       </div>
       <div id="chat-input-row">
-        <textarea id="chat-input" rows="1" placeholder="დაწერეთ შეტყობინება…" maxlength="2000"></textarea>
+        <textarea id="chat-input" rows="1" data-ck-placeholder="chatWidget.inputPlaceholder" placeholder="დაწერეთ შეტყობინება…" maxlength="2000"></textarea>
         <button type="button" id="chat-send" aria-label="გაგზავნა"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
       </div>
     </div>
@@ -1911,16 +1915,16 @@
         </div>
       </div>
       <div class="foot-col">
-        <h5>სერვისები</h5>
+        <h5 data-ck="footer.colServicesTitle">სერვისები</h5>
         <ul>
-          <li><a href="#services" data-route="services">სმარტფონები</a></li>
-          <li><a href="#services" data-route="services">ლეპტოპები</a></li>
-          <li><a href="#services" data-route="services">პლანშეტები</a></li>
-          <li><a href="#services" data-route="services">სმარტ-საათები</a></li>
+          <li><a href="#services" data-route="services" data-ck="footer.servicesLink1">სმარტფონები</a></li>
+          <li><a href="#services" data-route="services" data-ck="footer.servicesLink2">ლეპტოპები</a></li>
+          <li><a href="#services" data-route="services" data-ck="footer.servicesLink3">პლანშეტები</a></li>
+          <li><a href="#services" data-route="services" data-ck="footer.servicesLink4">სმარტ-საათები</a></li>
         </ul>
       </div>
       <div class="foot-col">
-        <h5>ხელსაწყოები</h5>
+        <h5 data-ck="footer.colToolsTitle">ხელსაწყოები</h5>
         <ul>
           <li><a href="#warranty-check" data-route="warranty-check"><span data-ck="common.navWarrantyCheck">საგარანტიო ვადის გადამოწმება</span></a></li>
           <li><a href="#booking" data-route="booking" data-ck="common.bookCta">ვიზიტის დაჯავშნა</a></li>
@@ -1929,7 +1933,7 @@
         </ul>
       </div>
       <div class="foot-col">
-        <h5>კომპანია</h5>
+        <h5 data-ck="footer.colCompanyTitle">კომპანია</h5>
         <ul>
           <li><a href="#about" data-route="about"><span data-ck="common.navAbout">ჩვენს შესახებ</span></a></li>
           <li><a href="#warranty-service" data-route="warranty-service"><span data-ck="common.navWarrantyService">საგარანტიო მომსახურება</span></a></li>
@@ -1938,7 +1942,7 @@
         </ul>
       </div>
       <div class="foot-col">
-        <h5>კონტაქტი</h5>
+        <h5 data-ck="footer.colContactTitle">კონტაქტი</h5>
         <ul>
           <li><a class="tel-link" data-ck="common.phone" data-tel>+995 322 12 34 56</a></li>
           <li data-ck="common.email">info@technoline.ge</li>
@@ -3057,6 +3061,16 @@
     var k = el.getAttribute('data-ck-img');
     if(!Object.prototype.hasOwnProperty.call(CONTENT_DEFAULTS, k)){ CONTENT_DEFAULTS[k] = ''; CONTENT_ORDER.push(k); }
   });
+  // placeholder-text fields (form inputs have no visible innerHTML to seed
+  // from) — same admin-editable content map, applied to .placeholder
+  document.querySelectorAll('[data-ck-placeholder]').forEach(function(el){
+    var k = el.getAttribute('data-ck-placeholder');
+    if(!Object.prototype.hasOwnProperty.call(CONTENT_DEFAULTS, k)){ CONTENT_DEFAULTS[k] = el.getAttribute('placeholder') || ''; CONTENT_ORDER.push(k); }
+  });
+  // virtual key: the chat status span shows only one of these two labels at
+  // a time (toggled by business-hours logic), so the offline one has no
+  // DOM element of its own to seed a default from — register it by hand.
+  if(!Object.prototype.hasOwnProperty.call(CONTENT_DEFAULTS,'chatWidget.offlineLabel')){ CONTENT_DEFAULTS['chatWidget.offlineLabel']='ოფლაინ'; CONTENT_ORDER.push('chatWidget.offlineLabel'); }
 
   var THEME_TOKENS = [
     {key:'gold', varName:'--gold'}, {key:'goldDeep', varName:'--gold-deep'}, {key:'goldSoft', varName:'--gold-soft'},
@@ -3140,7 +3154,50 @@
   var PARTS_DEFAULTS = PARTS_BASE.map(function(p){ return {id:p.id, name:p.name, price:p.price, stock:p.stock, brand:p.brand, cat:p.cat, device:p.device, compat:p.compat}; });
   var BRANCHES_DEFAULTS = BRANCHES.map(function(b){ return {id:b.id, name:b.name, addr:b.addr, hours:b.hours, phone:b.phone}; });
 
-  var siteContent = { content:{}, theme:{}, parts:{}, branches:{} };
+  var siteContent = { content:{}, theme:{}, parts:{}, branches:{}, chatSettings:{} };
+
+  // Chat business-hours: compares the current time in the configured IANA
+  // timezone against a per-weekday {closed, open, close} schedule, entirely
+  // with Intl (no date library needed). Falls back to "always online" when
+  // hours aren't enabled or the schedule/timezone data is missing/invalid.
+  var CHAT_DOW_KEYS = ['sun','mon','tue','wed','thu','fri','sat'];
+  function isWithinChatHours(settings){
+    if(!settings || !settings.hoursEnabled) return true;
+    var sched = settings.schedule || {};
+    var tz = settings.timezone || 'Asia/Tbilisi';
+    try{
+      var parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz, hour12: false, weekday: 'short', hour: '2-digit', minute: '2-digit'
+      }).formatToParts(new Date());
+      var map = {};
+      parts.forEach(function(p){ map[p.type] = p.value; });
+      var dowShort = (map.weekday || '').slice(0,3).toLowerCase();
+      var idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(dowShort);
+      var key = idx > -1 ? CHAT_DOW_KEYS[idx] : null;
+      var day = key ? sched[key] : null;
+      if(!day || day.closed) return false;
+      var nowMinutes = (parseInt(map.hour,10) || 0) * 60 + (parseInt(map.minute,10) || 0);
+      var toMinutes = function(s){
+        var m = String(s || '').match(/^(\d{1,2}):(\d{2})$/);
+        return m ? (parseInt(m[1],10) * 60 + parseInt(m[2],10)) : null;
+      };
+      var openM = toMinutes(day.open), closeM = toMinutes(day.close);
+      if(openM == null || closeM == null) return true;
+      return nowMinutes >= openM && nowMinutes < closeM;
+    }catch(e){ return true; /* bad timezone/schedule data — never block chat */ }
+  }
+  function refreshChatHoursStatus(){
+    var label = document.getElementById('chat-status-label');
+    var notice = document.getElementById('chat-offline-notice');
+    var online = isWithinChatHours(siteContent.chatSettings);
+    if(label){
+      label.classList.toggle('offline', !online);
+      var k = online ? 'chatWidget.onlineLabel' : 'chatWidget.offlineLabel';
+      var v = Object.prototype.hasOwnProperty.call(siteContent.content, k) ? siteContent.content[k] : CONTENT_DEFAULTS[k];
+      label.textContent = v || (online ? 'ონლაინ' : 'ოფლაინ');
+    }
+    if(notice) notice.style.display = online ? 'none' : 'block';
+  }
 
   // Phone numbers are shown with admin-editable extra text (opening hours,
   // etc.), so the tel: link is derived from whatever digits are currently
@@ -3184,6 +3241,13 @@
         }
       }
     });
+    document.querySelectorAll('[data-ck-placeholder]').forEach(function(el){
+      var k = el.getAttribute('data-ck-placeholder');
+      var v = Object.prototype.hasOwnProperty.call(siteContent.content, k) ? siteContent.content[k] : CONTENT_DEFAULTS[k];
+      if(v == null) v = '';
+      el.setAttribute('placeholder', v);
+    });
+    refreshChatHoursStatus();
   }
   // Exposed so content loaded later (admin-panel text/photos arriving from
   // the API, which can take a few seconds — Render's free tier cold-starts)
@@ -3765,6 +3829,11 @@
         connect(savedName, savedPhone);
       }
     }catch(e){}
+
+    // re-evaluate the online/offline status while the tab stays open, so a
+    // chat left open across a business-hours boundary doesn't show a stale
+    // label
+    setInterval(refreshChatHoursStatus, 60000);
   }
 
   function loadSiteContent(){
@@ -3786,6 +3855,7 @@
       siteContent.theme = data.theme || {};
       siteContent.parts = data.parts || {};
       siteContent.branches = data.branches || {};
+      siteContent.chatSettings = data.chatSettings || {};
       applyListContentOverrides();
       applyContentOverrides();
       applyThemeOverrides();
@@ -3841,6 +3911,10 @@
   renderProfileView();
   render();
   wireSvcRail();
+  // Make phone numbers clickable immediately from the page's built-in
+  // defaults, so a slow/unreachable content API (e.g. a cold Render
+  // instance) never leaves "tel:" links missing their href.
+  refreshTelLinks();
   loadSiteContent();
   loadFeaturedReviews();
   initChatWidget();
