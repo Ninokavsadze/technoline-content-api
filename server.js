@@ -99,6 +99,19 @@ const DEFAULT_DB = {
     'TL-550012-GE': { customerName: 'დავით ლომიძე', device: 'Redmi Note 12', cat: 'სმარტფონი — ბატარეის შეცვლა', purchase: '2026-03-25', end: '2026-09-25' }
   },
   'content/warranty-template': {},
+  'content/chat-settings': {
+    hoursEnabled: false,
+    timezone: 'Asia/Tbilisi',
+    schedule: {
+      mon: { closed: false, open: '10:00', close: '20:00' },
+      tue: { closed: false, open: '10:00', close: '20:00' },
+      wed: { closed: false, open: '10:00', close: '20:00' },
+      thu: { closed: false, open: '10:00', close: '20:00' },
+      fri: { closed: false, open: '10:00', close: '20:00' },
+      sat: { closed: false, open: '11:00', close: '18:00' },
+      sun: { closed: true, open: '11:00', close: '18:00' }
+    }
+  },
   bookings: [],
   users: {},
   feedback: [],
@@ -193,7 +206,8 @@ const SITE_DOC_KEYS = {
   'content-parts': 'content/parts',
   'content-branches': 'content/branches',
   'warranty': 'content/warranty',
-  'warranty-template': 'content/warranty-template'
+  'warranty-template': 'content/warranty-template',
+  'chatSettings': 'content/chat-settings'
 };
 
 app.get('/api/site/:doc', async function (req, res) {
@@ -223,7 +237,8 @@ app.get('/api/site', async function (req, res) {
       content: db['content/site'] || {},
       theme: db['theme/site'] || {},
       parts: db['content/parts'] || {},
-      branches: db['content/branches'] || {}
+      branches: db['content/branches'] || {},
+      chatSettings: db['content/chat-settings'] || {}
     });
   } catch (e) {
     res.status(500).json({ error: 'server_error' });
@@ -1031,13 +1046,15 @@ wssAdminChat.on('connection', function (ws, req) {
 
     if (msg.type === 'reply' && msg.chatId) {
       const text = String(msg.text || '').trim().slice(0, 2000);
-      if (!text) return;
+      const attachment = chatAttachmentFromMsg(msg);
+      if (!text && !attachment) return;
       try {
         const db = await readDb();
         db.chats = db.chats || [];
         const chat = db.chats.find(function (c) { return c.id === msg.chatId; });
         if (!chat) return;
         const m = { from: 'admin', text: text, at: Date.now() };
+        if (attachment) m.attachment = attachment;
         chat.messages.push(m);
         chat.lastAt = m.at;
         await writeDb(db);
