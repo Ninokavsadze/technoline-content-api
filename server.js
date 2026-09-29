@@ -24,6 +24,8 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const http = require('http');
+const WebSocket = require('ws');
 const nodemailer = require('nodemailer');
 const { buildWarrantyCardPdf } = require('./warranty-pdf');
 const { fillWarrantyTemplate, extractTemplatePage } = require('./warranty-template-pdf');
@@ -33,6 +35,9 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'technoline2026';
 const DATA_FILE = path.join(__dirname, 'data.json');
 
 const app = express();
+// wraps app so the live-chat WebSocket servers (near the bottom of this
+// file) can attach to the same HTTP server/port Express already listens on
+const server = http.createServer(app);
 // 25mb: content/parts can now carry several admin-uploaded part photos
 // (each resized client-side, but many of them together add up)
 app.use(express.json({ limit: '25mb' }));
@@ -96,7 +101,8 @@ const DEFAULT_DB = {
   'content/warranty-template': {},
   bookings: [],
   users: {},
-  feedback: []
+  feedback: [],
+  chats: []
 };
 const UPSTASH_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
@@ -123,7 +129,7 @@ async function readDb() {
     try {
       const values = await Promise.all(DB_KEYS.map(upstashGet));
       const db = {};
-      DB_KEYS.forEach(function (k, i) { db[k] = values[i] != null ? values[i] : ((k === 'bookings' || k === 'feedback') ? [] : {}); });
+      DB_KEYS.forEach(function (k, i) { db[k] = values[i] != null ? values[i] : ((k === 'bookings' || k === 'feedback' || k === 'chats') ? [] : {}); });
       return db;
     } catch (e) {
       console.error('Upstash read failed:', e.message);
@@ -912,11 +918,160 @@ app.post('/api/catalog/search-ai', async function (req, res) {
   }
 });
 
+// --- Live chat (WebSocket) ------------------------------------------------
+// Two upgrade paths on the same HTTP server: /ws/chat for site visitors,
+// /ws/admin-chat for staff in the admin panel. A browser WebSocket can't
+// send custom headers on the handshake, so the admin side authenticates via
+// a ?token= query param instead of the usual Authorization header.
+const chatCustomerSockets = new Map(); // chatId -> ws
+const chatAdminSockets = new Set();
+
+function chatBroadcastToAdmins(payload, exceptWs) {
+  const data = JSON.stringify(payload);
+  chatAdminSockets.forEach(function (s) {
+    if (s !== exceptWs && s.readyState === WebSocket.OPEN) s.send(data);
+  });
+}
+
+// noServer + a manual 'upgrade' router below (rather than each server's own
+// {server, path} option) — the query string on /ws/admin-chat?token=... was
+// tripping up path matching when attached directly.
+const wssChat = new WebSocket.Server({ noServer: true });
+wssChat.on('connection', function (ws) {
+  ws.chatId = null;
+  ws.on('message', async function (raw) {
+    let msg;
+    try { msg = JSON.parse(raw); } catch (e) { return; }
+
+    if (msg.type === 'join') {
+      const name = String(msg.name || '').trim().slice(0, 80);
+      const phone = String(msg.phone || '').trim().slice(0, 30);
+      if (!name || !phone) { ws.send(JSON.stringify({ type: 'error', error: 'name_phone_required' })); return; }
+      try {
+        const db = await readDb();
+        db.chats = db.chats || [];
+        let chat = msg.chatId ? db.chats.find(function (c) { return c.id === msg.chatId; }) : null;
+        if (!chat) {
+          chat = {
+            id: 'ch_' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex'),
+            name: name, phone: phone, messages: [], status: 'open',
+            createdAt: Date.now(), lastAt: Date.now()
+          };
+          db.chats.push(chat);
+          await writeDb(db);
+          chatBroadcastToAdmins({ type: 'chat_new', chat: chat });
+        } else {
+          chat.name = name; // keep current in case they retyped it on a return visit
+          chat.phone = phone;
+        }
+        ws.chatId = chat.id;
+        chatCustomerSockets.set(chat.id, ws);
+        ws.send(JSON.stringify({ type: 'joined', chatId: chat.id, messages: chat.messages, status: chat.status }));
+      } catch (e) {
+        ws.send(JSON.stringify({ type: 'error', error: 'server_error' }));
+      }
+      return;
+    }
+
+    if (msg.type === 'message' && ws.chatId) {
+      const text = String(msg.text || '').trim().slice(0, 2000);
+      if (!text) return;
+      try {
+        const db = await readDb();
+        db.chats = db.chats || [];
+        const chat = db.chats.find(function (c) { return c.id === ws.chatId; });
+        if (!chat) return;
+        const m = { from: 'customer', text: text, at: Date.now() };
+        chat.messages.push(m);
+        chat.lastAt = m.at;
+        chat.status = 'open';
+        await writeDb(db);
+        chatBroadcastToAdmins({
+          type: 'message', chatId: chat.id, message: m,
+          chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt }
+        });
+      } catch (e) { /* drop silently — customer keeps typing, no hard failure surfaced to them */ }
+    }
+  });
+  ws.on('close', function () {
+    if (ws.chatId && chatCustomerSockets.get(ws.chatId) === ws) chatCustomerSockets.delete(ws.chatId);
+  });
+});
+
+const wssAdminChat = new WebSocket.Server({ noServer: true });
+wssAdminChat.on('connection', function (ws, req) {
+  const url = new URL(req.url, 'http://internal');
+  const token = url.searchParams.get('token') || '';
+  const expiry = tokens.get(token);
+  if (!expiry || expiry < Date.now()) { ws.close(4001, 'unauthorized'); return; }
+  chatAdminSockets.add(ws);
+
+  ws.on('message', async function (raw) {
+    let msg;
+    try { msg = JSON.parse(raw); } catch (e) { return; }
+
+    if (msg.type === 'reply' && msg.chatId) {
+      const text = String(msg.text || '').trim().slice(0, 2000);
+      if (!text) return;
+      try {
+        const db = await readDb();
+        db.chats = db.chats || [];
+        const chat = db.chats.find(function (c) { return c.id === msg.chatId; });
+        if (!chat) return;
+        const m = { from: 'admin', text: text, at: Date.now() };
+        chat.messages.push(m);
+        chat.lastAt = m.at;
+        await writeDb(db);
+        const custWs = chatCustomerSockets.get(chat.id);
+        if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: m }));
+        chatBroadcastToAdmins({
+          type: 'message', chatId: chat.id, message: m,
+          chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt }
+        }, ws);
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (msg.type === 'close_chat' && msg.chatId) {
+      try {
+        const db = await readDb();
+        db.chats = db.chats || [];
+        const chat = db.chats.find(function (c) { return c.id === msg.chatId; });
+        if (!chat) return;
+        chat.status = 'closed';
+        await writeDb(db);
+        chatBroadcastToAdmins({ type: 'chat_status', chatId: chat.id, status: 'closed' }, ws);
+      } catch (e) { /* ignore */ }
+    }
+  });
+  ws.on('close', function () { chatAdminSockets.delete(ws); });
+});
+
+server.on('upgrade', function (req, socket, head) {
+  const pathname = new URL(req.url, 'http://internal').pathname;
+  if (pathname === '/ws/chat') {
+    wssChat.handleUpgrade(req, socket, head, function (ws) { wssChat.emit('connection', ws, req); });
+  } else if (pathname === '/ws/admin-chat') {
+    wssAdminChat.handleUpgrade(req, socket, head, function (ws) { wssAdminChat.emit('connection', ws, req); });
+  } else {
+    socket.destroy();
+  }
+});
+
+app.get('/api/chats', requireAuth, async function (req, res) {
+  try {
+    const db = await readDb();
+    res.json((db.chats || []).slice().sort(function (a, b) { return (b.lastAt || 0) - (a.lastAt || 0); }));
+  } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
 app.get('/api/health', function (req, res) {
   res.json({ ok: true, time: new Date().toISOString() });
 });
 
-app.listen(PORT, function () {
+server.listen(PORT, function () {
   console.log('technoline.ge content+booking test API running on http://localhost:' + PORT);
   console.log('Admin password: ' + ADMIN_PASSWORD + ' (set ADMIN_PASSWORD env var to change it)');
 });
