@@ -1,3 +1,6 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Technoline სერვისი</title>
 <style>
   /* ============ TOKENS ============ */
@@ -674,10 +677,10 @@
   .chat-tool-btn svg{width:19px;height:19px}
   .chat-tool-btn.recording{background:var(--danger,#B14526);color:#fff;animation:chatRecPulse 1.2s ease-in-out infinite}
   @keyframes chatRecPulse{0%,100%{box-shadow:0 0 0 0 rgba(177,69,38,.45)}50%{box-shadow:0 0 0 6px rgba(177,69,38,0)}}
-  #chat-emoji-popover{position:absolute;bottom:calc(100% + 4px);left:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-3);padding:8px;display:none;grid-template-columns:repeat(7,1fr);gap:2px;width:246px;z-index:2}
+  #chat-emoji-popover{position:absolute;bottom:calc(100% + 4px);left:8px;background:var(--surface-alt);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-3);padding:8px;display:none;grid-template-columns:repeat(7,1fr);gap:2px;width:246px;z-index:2}
   #chat-emoji-popover.show{display:grid}
-  #chat-emoji-popover button{border:none;background:none;font-size:1.15rem;padding:4px;border-radius:7px;cursor:pointer;line-height:1}
-  #chat-emoji-popover button:hover{background:var(--surface-alt)}
+  #chat-emoji-popover button{border:none;background:none;font-size:1.15rem;padding:4px;border-radius:7px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}
+  #chat-emoji-popover button:hover{background:var(--surface)}
   #chat-attach-preview{display:none;align-items:center;gap:8px;padding:8px 14px 0;flex:none}
   #chat-attach-preview.show{display:flex}
   #chat-attach-preview img{width:38px;height:38px;object-fit:cover;border-radius:8px}
@@ -986,6 +989,7 @@
     <div id="chat-panel-head">
       <div id="chat-panel-head-title"><b>დაგვისვით შეკითხვა</b><span>ონლაინ</span></div>
       <div id="chat-panel-head-actions">
+        <button type="button" id="chat-clear-btn" aria-label="ისტორიის წაშლა" title="საუბრის ისტორიის წაშლა"><svg><use href="#ic-trash"/></svg></button>
         <button type="button" id="chat-panel-collapse" aria-label="ჩაკეცვა"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
         <button type="button" id="chat-panel-close" aria-label="დახურვა"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       </div>
@@ -3549,6 +3553,32 @@
       document.getElementById('chat-body').style.display = 'flex';
       connect(name, phone);
     }
+    function clearChatHistory(){
+      if(!window.confirm('წავშალო ამ საუბრის ისტორია? დაიწყება ახალი საუბარი.')) return;
+      try{ if(ws) ws.close(); }catch(e){}
+      clearTimeout(reconnectTimer);
+      joined = false;
+      wsReady = false;
+      chatId = null;
+      try{
+        localStorage.removeItem(CK_ID);
+        localStorage.removeItem(CK_NAME);
+        localStorage.removeItem(CK_PHONE);
+      }catch(e){}
+      var box = document.getElementById('chat-messages');
+      if(box) box.innerHTML = '';
+      clearAttachPreview();
+      setStatus('');
+      document.getElementById('chat-body').style.display = 'none';
+      document.getElementById('chat-gate').style.display = 'flex';
+      var nameEl = document.getElementById('chat-gate-name');
+      var phoneEl = document.getElementById('chat-gate-phone');
+      if(nameEl) nameEl.value = '';
+      if(phoneEl) phoneEl.value = '';
+      var errEl = document.getElementById('chat-gate-err');
+      if(errEl) errEl.classList.remove('show');
+      document.getElementById('chat-panel').classList.remove('collapsed');
+    }
     function clearAttachPreview(){
       pendingAttachment = null;
       var prev = document.getElementById('chat-attach-preview');
@@ -3685,6 +3715,7 @@
     document.getElementById('chat-panel-collapse').addEventListener('click', function(){
       document.getElementById('chat-panel').classList.toggle('collapsed');
     });
+    document.getElementById('chat-clear-btn').addEventListener('click', clearChatHistory);
     document.getElementById('chat-mic-btn').addEventListener('click', toggleVoiceRecording);
     document.getElementById('chat-messages').addEventListener('click', function(e){
       var img = e.target.closest('.chat-attachment-img');
