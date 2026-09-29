@@ -217,6 +217,7 @@
   <symbol id="ic-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="ic-inbox" viewBox="0 0 24 24"><path d="M3 12h5l1.6 3h4.8L16 12h5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 12v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6L18 5a2 2 0 0 0-1.8-1H7.8A2 2 0 0 0 6 5L3 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
   <symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.3-3.8 4.3-5.8 7.5-5.8s6.2 2 7.5 5.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="ic-star" viewBox="0 0 24 24"><path d="M12 3.2l2.6 5.6 6 .7-4.4 4.2 1.1 6-5.3-3-5.3 3 1.1-6-4.4-4.2 6-.7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
 </svg>
 
 <!-- ============ LOGIN ============ -->
@@ -602,10 +603,11 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     TABS.push({id:'branches', label:'ფილიალები', kind:'branches', group:'other'});
     TABS.push({id:'warranty', label:'საგარანტიო ბარათი', kind:'warranty', group:'other'});
     TABS.push({id:'bookings', label:'ვიზიტების ჯავშნები', kind:'bookings', group:'other'});
+    TABS.push({id:'feedback', label:'მომხმარებელთა უკუკავშირი', kind:'feedback', group:'other'});
     TABS.push({id:'users', label:'მომხმარებლები', kind:'users', group:'other'});
   }
 
-  var TAB_ICONS = { content:'ic-inbox', pages:'ic-menu', colors:'ic-palette', typography:'ic-palette', parts:'ic-box', branches:'ic-pin', warranty:'ic-lock', bookings:'ic-calendar', users:'ic-user' };
+  var TAB_ICONS = { content:'ic-inbox', pages:'ic-menu', colors:'ic-palette', typography:'ic-palette', parts:'ic-box', branches:'ic-pin', warranty:'ic-lock', bookings:'ic-calendar', feedback:'ic-star', users:'ic-user' };
 
   function renderNav(){
     var nav = document.getElementById('side-nav');
@@ -653,7 +655,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   }
 
   function statusChipHtml(tab){
-    if(!tab || tab.kind === 'bookings' || tab.kind === 'warranty') return '';
+    if(!tab || tab.kind === 'bookings' || tab.kind === 'warranty' || tab.kind === 'feedback') return '';
     var d = isDirty(tab);
     return '<span class="status-chip ' + (d?'dirty':'saved') + '" id="status-chip">' + (d?'ცვლილება არ არის შენახული':'შენახულია') + '</span>';
   }
@@ -683,6 +685,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(tab.kind === 'branches') return renderBranchesPanel(main, tab);
     if(tab.kind === 'warranty') return renderWarrantyPanel(main, tab);
     if(tab.kind === 'bookings') return renderBookingsPanel(main, tab);
+    if(tab.kind === 'feedback') return renderFeedbackPanel(main, tab);
     if(tab.kind === 'users') return renderUsersPanel(main, tab);
   }
 
@@ -2173,7 +2176,8 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       // SMS was sent, even though the booking itself was received fine here.
       var qlogicHtml = b.qlogicId
         ? '<span style="color:var(--good,#237A4C)">✓ Q-Logic-თან დასინქრონდა'+(b.qlogicVerifyCode?' ('+escHtml(b.qlogicVerifyCode)+')':'')+'</span>'
-        : '<span style="color:var(--bad,#B3261E)">✗ Q-Logic სინქრონი ვერ მოხერხდა — SMS არ გაუვა</span>';
+        : '<span style="color:var(--bad,#B3261E)">✗ Q-Logic სინქრონი ვერ მოხერხდა — SMS არ გაუვა'
+          + (b.qlogicError ? '<br><span style="font-weight:400;opacity:.85">(' + escHtml(b.qlogicError) + ')</span>' : '') + '</span>';
       return '<div class="booking-row">'
         + '<div class="bcode">'+escHtml(b.confirmationCode)+'</div>'
         + '<div><div class="bname">'+escHtml(b.name)+'</div><div class="bmeta">'+escHtml(b.phone)+' · '+escHtml(b.serviceType||b.issue||'')+'</div></div>'
@@ -2210,6 +2214,98 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     }).catch(function(){
       var card = document.getElementById('bookings-card');
       if(card) card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ჯავშნების ჩატვირთვა ვერ მოხერხდა — შეამოწმეთ სერვერთან კავშირი.</p></div>';
+    });
+  }
+
+  function renderFeedbackPanel(main, tab){
+    var html = panelHeadHtml(tab, 'Smart Q-Logic-დან ავტომატურად მიღებული მომხმარებელთა შეფასებები.');
+    html += '<div class="card" style="padding:14px 18px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">'
+      + '<input type="text" id="feedback-search" placeholder="ძებნა: კომენტარი, შეკვეთის კოდი, ფილიალი…" style="flex:1;min-width:220px;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink);font-size:.9rem">'
+      + '<label style="display:flex;align-items:center;gap:7px;font-size:.84rem;color:var(--ink-faint);white-space:nowrap"><input type="checkbox" id="feedback-show-test"> სატესტოც</label>'
+      + '</div>';
+    html += '<div class="card" id="feedback-card"><div class="empty-state"><p>იტვირთება…</p></div></div>';
+    main.innerHTML = html;
+
+    var allFeedback = [];
+    function starsHtml(score){
+      var n = Math.max(0, Math.min(5, Math.round(Number(score) || 0)));
+      return '<span style="color:var(--gold,#C9A227);letter-spacing:1px">' + '★'.repeat(n) + '</span>'
+        + '<span style="color:var(--line)">' + '★'.repeat(5 - n) + '</span>';
+    }
+    function feedbackRowHtml(f){
+      var criteriaLine = (f.criteria || []).map(function(c){ return escHtml(c.label || c.id) + ': ' + escHtml(c.value); }).join(' · ');
+      // rating.test entries can't be featured on the public site — they're
+      // Smart Q-Logic's own "send a test message" button, not a real customer.
+      var featureBtn = f.isTest
+        ? '<span style="color:var(--ink-faint);font-size:.78rem">—</span>'
+        : '<button type="button" class="btn ' + (f.featured ? 'btn-gold' : 'btn-ghost') + '" data-feature-id="' + escHtml(f.id) + '" data-feature-on="' + (f.featured ? '0' : '1') + '" style="font-size:.76rem;padding:7px 11px;white-space:nowrap">'
+          + (f.featured ? '✓ საიტზეა' : 'საჩვენებლად') + '</button>';
+      return '<div class="booking-row" style="grid-template-columns:120px 1fr 140px 90px 120px">'
+        + '<div class="bcode">' + starsHtml(f.score) + ' <span style="font-size:.78rem;color:var(--ink-faint)">' + escHtml(f.score) + '</span>'
+          + (f.isTest ? '<div style="color:var(--bad,#B3261E);font-size:.72rem;font-weight:800">სატესტო</div>' : '') + '</div>'
+        + '<div><div class="bname" style="white-space:normal">' + (f.comment ? escHtml(f.comment) : '<span style="color:var(--ink-faint)">კომენტარის გარეშე</span>') + '</div>'
+          + (criteriaLine ? '<div class="bmeta">' + criteriaLine + '</div>' : '') + '</div>'
+        + '<div class="bmeta">' + (f.orderCode ? escHtml(f.orderCode) : 'Walk-in') + '<br>ფილიალი #' + escHtml(f.branchId != null ? f.branchId : '—') + '</div>'
+        + '<div class="bmeta" style="font-size:.78rem">' + escHtml(fmtDate(f.createdAt)) + '</div>'
+        + '<div>' + featureBtn + '</div>'
+        + '</div>';
+    }
+    function renderFeedbackList(q, showTest){
+      var card = document.getElementById('feedback-card');
+      if(!card) return;
+      var list = showTest ? allFeedback : allFeedback.filter(function(f){ return !f.isTest; });
+      var filtered = !q ? list : list.filter(function(f){
+        return [f.comment, f.orderCode, f.branchId].some(function(v){
+          return String(v || '').toLowerCase().indexOf(q) !== -1;
+        });
+      });
+      card.innerHTML = filtered.length
+        ? filtered.map(feedbackRowHtml).join('')
+        : '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ვერაფერი მოიძებნა.</p></div>';
+    }
+
+    apiGet('/api/feedback').then(function(list){
+      allFeedback = list || [];
+      var card = document.getElementById('feedback-card');
+      if(!card) return;
+      if(!allFeedback.length){
+        card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ჯერ არცერთი შეფასება არ მიღებულა.</p></div>';
+        return;
+      }
+      renderFeedbackList('', false);
+      document.getElementById('feedback-search').addEventListener('input', function(){
+        renderFeedbackList(this.value.trim().toLowerCase(), document.getElementById('feedback-show-test').checked);
+      });
+      document.getElementById('feedback-show-test').addEventListener('change', function(){
+        renderFeedbackList(document.getElementById('feedback-search').value.trim().toLowerCase(), this.checked);
+      });
+      // delegated (not per-row) since rows get replaced on every filter re-render
+      card.addEventListener('click', function(e){
+        var btn = e.target.closest('[data-feature-id]');
+        if(!btn) return;
+        var id = btn.getAttribute('data-feature-id');
+        var makeFeatured = btn.getAttribute('data-feature-on') === '1';
+        btn.disabled = true;
+        apiPut('/api/feedback/' + encodeURIComponent(id) + '/feature', { featured: makeFeatured }).then(function(){
+          var item = allFeedback.find(function(f){ return f.id === id; });
+          if(item) item.featured = makeFeatured;
+          renderFeedbackList(document.getElementById('feedback-search').value.trim().toLowerCase(), document.getElementById('feedback-show-test').checked);
+          toast(makeFeatured ? 'შეფასება გამოჩნდება მთავარ გვერდზე' : 'შეფასება მოიხსნა მთავარი გვერდიდან');
+        }).catch(function(err){
+          btn.disabled = false;
+          if(err && err.status === 401){ toast('ავტორიზაცია ვადაგასულია — გთხოვთ თავიდან შეხვიდეთ'); document.getElementById('logout-btn').click(); return; }
+          toast('ვერ მოხერხდა — სცადეთ თავიდან');
+        });
+      });
+    }).catch(function(err){
+      var card = document.getElementById('feedback-card');
+      if(!card) return;
+      if(err && err.status === 401){
+        card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ავტორიზაცია ვადაგასულია — გთხოვთ თავიდან შეხვიდეთ.</p></div>';
+        document.getElementById('logout-btn').click();
+        return;
+      }
+      card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>შეფასებების ჩატვირთვა ვერ მოხერხდა — შეამოწმეთ სერვერთან კავშირი.</p></div>';
     });
   }
 
