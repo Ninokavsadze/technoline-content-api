@@ -2078,7 +2078,9 @@
   // Smart Q-Logic (the one currently wired up only pushes a confirmed
   // booking to Q-Logic — it doesn't ask it what's free). Once that endpoint
   // exists, this list should come from GET /api/qlogic/slots?branch=&date=.
-  var TIME_SLOTS = ['10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00'];
+  // Q-Logic-ის ფილიალის რეალური სამუშაო საათებია 10:00–18:00 — 19:00 აქ რჩებოდა და
+  // საიტზე ჯავშნადი გამოდიოდა, თუმცა Q-Logic ყოველთვის უარყოფდა ასეთ ჯავშანს.
+  var TIME_SLOTS = ['10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'];
   var FULL_SLOTS = ['12:00','16:00'];
 
   /* =====================================================
@@ -3527,6 +3529,22 @@
     var CHAT_MAX_FILE_BYTES = 5 * 1024 * 1024;
     var EMOJI_LIST = ['😀','😁','😂','🙂','😊','😍','🤔','😉','👍','👌','🙏','👏','🔥','💯','✅','❌','⏰','📱','💻','⌚','🛠️','📦','🚚','💬','❓','❗','🎉','❤️'];
 
+    // ტექსტური "სმაილიკები" (<3, :) და ა.შ) ავტომატურად გადავყავართ ნამდვილ ემოჯებზე,
+    // რომ ტექსტში დაწერილი "<3" გულად გამოჩნდეს ჩატში
+    function emoticonsToEmoji(text){
+      if(!text) return text;
+      return String(text)
+        .replace(/<3/g, '❤️')
+        .replace(/:-?\)/g, '🙂')
+        .replace(/:-?\(/g, '🙁')
+        .replace(/:-?D/g, '😄')
+        .replace(/;-?\)/g, '😉')
+        .replace(/:-?[pP]/g, '😛')
+        .replace(/:-?[oO]/g, '😮')
+        .replace(/[xX]D/g, '😂')
+        .replace(/:-?\|/g, '😐');
+    }
+
     function wsUrl(){
       return API_BASE.replace(/^https/, 'wss').replace(/^http:/, 'ws:') + '/ws/chat';
     }
@@ -3569,7 +3587,7 @@
         if(m.text){
           var t = document.createElement('div');
           t.className = 'chat-msg-text';
-          t.textContent = m.text;
+          t.textContent = emoticonsToEmoji(m.text);
           div.appendChild(t);
         }
         box.appendChild(div);
