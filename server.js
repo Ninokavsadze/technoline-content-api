@@ -283,12 +283,15 @@ async function sendToQLogic(booking) {
     const data = await res.json().catch(function () { return null; });
     if (!res.ok) {
       console.error('Smart Q-Logic booking failed:', res.status, data);
-      return null;
+      // surfaced on the booking record (qlogicError) so a rotated API key
+      // (401), an IP-allowlist/geo-block (spec §162 §7), or a rate limit
+      // (429) is visible in the admin panel instead of only in server logs.
+      return { ok: false, error: 'http_' + res.status + (data && data.error ? ': ' + data.error : '') };
     }
-    return data; // { ok, booking:{ id, verify_code, ... }, space }
+    return { ok: true, booking: data.booking, space: data.space }; // { ok, booking:{ id, verify_code, ... }, space }
   } catch (e) {
     console.error('Smart Q-Logic request error:', e.message);
-    return null;
+    return { ok: false, error: 'network_error: ' + e.message };
   } finally {
     clearTimeout(timeout);
   }
@@ -320,7 +323,8 @@ app.post('/api/bookings', async function (req, res) {
       notes: b.notes || null,
       qlogicId: null,
       qlogicVerifyCode: null,
-      qlogicSpace: null
+      qlogicSpace: null,
+      qlogicError: null
     };
     db.bookings.push(booking);
     await writeDb(db);
@@ -329,15 +333,22 @@ app.post('/api/bookings', async function (req, res) {
   }
   res.status(201).json(booking); // respond right away — the site shouldn't wait on Q-Logic
 
-  // fire the Q-Logic sync after responding; update the saved record if it succeeds
+  // fire the Q-Logic sync after responding; update the saved record either way,
+  // so a failure (bad/rotated API key, IP not allowlisted, rate limit, etc.)
+  // is recorded and visible in the admin panel, not just silently dropped
   sendToQLogic(booking).then(async function (result) {
-    if (!result || !result.booking) return;
+    if (!result) return; // integration not configured on this deploy — nothing to record
     const db2 = await readDb();
     const idx = db2.bookings.findIndex(function (x) { return x.id === booking.id; });
     if (idx === -1) return;
-    db2.bookings[idx].qlogicId = result.booking.id;
-    db2.bookings[idx].qlogicVerifyCode = result.booking.verify_code || null;
-    db2.bookings[idx].qlogicSpace = result.space ? result.space.name : null;
+    if (result.ok && result.booking) {
+      db2.bookings[idx].qlogicId = result.booking.id;
+      db2.bookings[idx].qlogicVerifyCode = result.booking.verify_code || null;
+      db2.bookings[idx].qlogicSpace = result.space ? result.space.name : null;
+      db2.bookings[idx].qlogicError = null;
+    } else {
+      db2.bookings[idx].qlogicError = (result && result.error) || 'unknown_error';
+    }
     await writeDb(db2);
   }).catch(function (e) { console.error('post-booking qlogic sync error:', e.message); });
 });
@@ -430,7 +441,8 @@ app.post('/api/qlogic-feedback', async function (req, res) {
       comment: b.comment || '',
       orderCode: b.order_code != null ? b.order_code : null, // links back to our own booking's confirmationCode when set from our booking-API's external_ref; null for walk-ins
       createdAt: b.created_at != null ? b.created_at : Date.now(),
-      receivedAt: new Date().toISOString()
+      receivedAt: new Date().toISOString(),
+      featured: false // staff picks which real reviews show on the public homepage — see /api/feedback/:id/feature
     });
     await writeDb(db);
     res.json({ ok: true });
@@ -445,6 +457,44 @@ app.get('/api/feedback', requireAuth, async function (req, res) {
   try {
     const db = await readDb();
     res.json((db.feedback || []).slice(-500).reverse());
+  } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// staff-only: mark/unmark one real review to show on the public homepage
+// "რას ამბობენ ჩვენზე?" section — deliberately staff-curated rather than
+// auto-published, since a real customer comment goes public here.
+app.put('/api/feedback/:id/feature', requireAuth, async function (req, res) {
+  try {
+    const db = await readDb();
+    db.feedback = db.feedback || [];
+    const idx = db.feedback.findIndex(function (x) { return x.id === req.params.id; });
+    if (idx === -1) return res.status(404).json({ error: 'not_found' });
+    db.feedback[idx].featured = !!(req.body && req.body.featured);
+    await writeDb(db);
+    res.json({ ok: true, feedback: db.feedback[idx] });
+  } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// public, unauthenticated: the staff-featured real reviews, for the site's
+// own homepage "რას ამბობენ ჩვენზე?" section. Sanitized on purpose — no
+// customer name/phone ever existed on this record to begin with (Smart
+// Q-Logic never sends one), and rating.test entries never qualify.
+app.get('/api/feedback/public', async function (req, res) {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  try {
+    const db = await readDb();
+    const list = (db.feedback || [])
+      .filter(function (f) { return f.featured && !f.isTest; })
+      .sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); })
+      .slice(0, 12)
+      .map(function (f) {
+        return { score: f.score, comment: f.comment || '', criteria: f.criteria || [], createdAt: f.createdAt };
+      });
+    res.json(list);
   } catch (e) {
     res.status(500).json({ error: 'server_error' });
   }
