@@ -115,6 +115,7 @@ const DEFAULT_DB = {
     // hours form and these fields — see the admin panel's chat-ai-save handler).
     aiEnabled: false,
     aiName: '',
+    aiRole: '',
     aiAvatar: ''
   },
   // Knowledge base the AI agent answers customers from — object-wrapped
