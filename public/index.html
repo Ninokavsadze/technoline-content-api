@@ -630,6 +630,10 @@
   #chat-widget{position:fixed;right:20px;bottom:86px;z-index:150}
   #chat-fab{width:56px;height:56px;border-radius:50%;background:var(--blue-deep);color:#fff;border:none;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-2);cursor:pointer;position:relative}
   #chat-fab svg{width:24px;height:24px}
+  #chat-fab-avatar-img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover;display:none}
+  #chat-fab-dot{position:absolute;right:1px;bottom:1px;width:14px;height:14px;border-radius:50%;background:#3FCF7A;border:2px solid var(--surface,#fff);display:none}
+  #chat-fab-dot.show{display:block}
+  #chat-fab-dot.offline{background:#D08A2A}
   #chat-fab-badge{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:var(--danger,#B14526);color:#fff;font-size:.68rem;font-weight:800;align-items:center;justify-content:center;line-height:1;display:none}
   #chat-fab-badge.show{display:flex}
   #chat-panel{position:absolute;right:0;bottom:56px;width:min(392px,calc(100vw - 32px));height:min(480px,calc(100vh - 230px));background:color-mix(in srgb, var(--surface) 80%, transparent);backdrop-filter:saturate(1.6) blur(22px);-webkit-backdrop-filter:saturate(1.6) blur(22px);border:1px solid rgba(255,255,255,.16);border-radius:20px;box-shadow:var(--shadow-3);display:none;flex-direction:column;overflow:hidden;transition:height .2s ease}
@@ -637,10 +641,18 @@
   #chat-panel.collapsed{height:auto}
   #chat-panel.collapsed #chat-gate,#chat-panel.collapsed #chat-body{display:none !important}
   #chat-panel-head{padding:16px 18px;background:linear-gradient(135deg,rgba(10,58,105,.88),rgba(8,43,78,.88));backdrop-filter:blur(10px);color:#fff;display:flex;justify-content:space-between;align-items:center;flex:none;position:relative;overflow:hidden}
-  #chat-panel-head-title{display:flex;flex-direction:column;gap:2px;position:relative;z-index:1}
+  #chat-panel-head-title{display:flex;align-items:center;gap:10px;position:relative;z-index:1}
+  #chat-head-text{display:flex;flex-direction:column;gap:2px;min-width:0}
   #chat-panel-head-title b{font-size:.94rem;font-weight:800}
   #chat-panel-head-title span{font-size:.72rem;color:rgba(255,255,255,.72);display:flex;align-items:center;gap:5px}
-  #chat-panel-head-title span::before{content:'';width:7px;height:7px;border-radius:50%;background:#3FCF7A;box-shadow:0 0 0 2px rgba(63,207,122,.25);display:inline-block}
+  #chat-status-label::before{content:'';width:7px;height:7px;border-radius:50%;background:#3FCF7A;box-shadow:0 0 0 2px rgba(63,207,122,.25);display:inline-block}
+  #chat-head-avatar{position:relative;width:34px;height:34px;border-radius:50%;flex:none;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,.16)}
+  #chat-head-avatar.show{display:flex}
+  #chat-head-avatar-img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:none}
+  #chat-head-avatar-emoji{font-size:16px}
+  #chat-head-dot{position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;background:#3FCF7A;border:2px solid rgba(9,45,80,.95)}
+  #chat-head-dot.offline{background:#D08A2A}
+  #chat-panel-head-title #chat-head-role{display:none}
   #chat-panel-head-actions{display:flex;gap:6px;position:relative;z-index:1}
   #chat-panel-head button{background:rgba(255,255,255,.12);border:none;color:#fff;cursor:pointer;display:flex;padding:6px;border-radius:8px}
   #chat-panel-head button svg{width:16px;height:16px;transition:transform .2s ease}
@@ -648,7 +660,7 @@
   #chat-gate{padding:20px 18px;display:flex;flex-direction:column;gap:11px;flex:1;justify-content:center}
   #chat-gate p{font-size:.86rem;color:var(--ink-soft);margin:0 0 4px;line-height:1.5}
   #chat-offline-notice{font-size:.8rem;color:#8a5a12;background:rgba(255,181,71,.16);border:1px solid rgba(255,181,71,.32);border-radius:10px;padding:9px 11px;line-height:1.45}
-  #chat-panel-head-title span.offline::before{background:#D08A2A;box-shadow:0 0 0 2px rgba(208,138,42,.25)}
+  #chat-status-label.offline::before{background:#D08A2A;box-shadow:0 0 0 2px rgba(208,138,42,.25)}
   #chat-status-line.offline-note{color:#B14526}
   #chat-gate input{padding:11px 14px;border:1.5px solid var(--line);border-radius:11px;background:var(--surface-alt);color:var(--ink);font-size:.9rem;font-family:inherit}
   #chat-gate button{padding:12px;border:none;border-radius:11px;background:var(--gold);color:#241A00;font-weight:800;font-size:.88rem;cursor:pointer}
@@ -670,6 +682,14 @@
   .chat-ai-content{display:flex;flex-direction:column;gap:2px;min-width:0}
   .chat-ai-name{font-size:.7rem;font-weight:800;color:var(--blue-deep)}
   .chat-msg-text{white-space:pre-wrap;word-break:break-word}
+  .chat-msg-system{align-self:center;max-width:90%;text-align:center;font-size:.72rem;color:var(--ink-faint);background:var(--surface-alt);border-radius:999px;padding:5px 14px;margin:2px 0}
+  .chat-typing{align-self:flex-start;display:flex;flex-direction:column;gap:4px;max-width:82%}
+  .chat-typing-dots{display:flex;align-items:center;gap:4px;background:var(--blue-soft,#E7F0FB);border-radius:15px;border-bottom-left-radius:4px;padding:10px 14px;width:fit-content}
+  .chat-typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--blue-deep);opacity:.4;animation:chatTypingBounce 1.2s infinite ease-in-out}
+  .chat-typing-dots span:nth-child(2){animation-delay:.15s}
+  .chat-typing-dots span:nth-child(3){animation-delay:.3s}
+  @keyframes chatTypingBounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:.9}}
+  .chat-typing-label{font-size:.68rem;color:var(--ink-faint);opacity:.55;padding-left:4px}
   .chat-attachment-img{max-width:100%;max-height:220px;border-radius:10px;display:block;cursor:pointer}
   .chat-attachment-img + .chat-msg-text{margin-top:7px}
   .chat-attachment-file{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.06);text-decoration:none;color:inherit;font-size:.82rem;font-weight:700}
@@ -679,7 +699,7 @@
   .chat-attachment-audio{display:block;max-width:230px;height:36px}
   .chat-attachment-audio + .chat-msg-text{margin-top:7px}
   #chat-status-line{padding:0 16px 6px;font-size:.74rem;color:var(--ink-faint);flex:none}
-  #chat-ai-badge{display:none;align-items:center;gap:6px;padding:6px 16px;font-size:.72rem;font-weight:700;color:var(--blue-deep);background:var(--blue-soft,#E7F0FB);flex:none;border-top:1px solid var(--line)}
+  #chat-ai-badge{display:none;align-items:center;justify-content:center;gap:6px;padding:6px 16px;font-size:.68rem;font-weight:500;color:var(--ink-faint);opacity:.65;background:transparent;flex:none;border-top:1px solid var(--line);text-align:center}
   #chat-ai-badge.show{display:flex}
   #chat-toolbar{display:flex;align-items:center;gap:2px;padding:6px 10px 0;flex:none;position:relative}
   .chat-tool-btn{width:34px;height:34px;border-radius:9px;border:none;background:none;color:var(--ink-faint);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
@@ -995,11 +1015,24 @@
 <div id="chat-widget">
   <button id="chat-fab" type="button" aria-label="ლაივ ჩატი" title="ლაივ ჩატი">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+    <img id="chat-fab-avatar-img" alt="">
+    <span id="chat-fab-dot"></span>
     <span id="chat-fab-badge"></span>
   </button>
   <div id="chat-panel">
     <div id="chat-panel-head">
-      <div id="chat-panel-head-title"><b data-ck="chatWidget.title">დაგვისვით შეკითხვა</b><span id="chat-status-label" data-ck="chatWidget.onlineLabel">ონლაინ</span></div>
+      <div id="chat-panel-head-title">
+        <div id="chat-head-avatar">
+          <img id="chat-head-avatar-img" alt="">
+          <span id="chat-head-avatar-emoji">🤖</span>
+          <span id="chat-head-dot"></span>
+        </div>
+        <div id="chat-head-text">
+          <b data-ck="chatWidget.title">დაგვისვით შეკითხვა</b>
+          <span id="chat-status-label" data-ck="chatWidget.onlineLabel">ონლაინ</span>
+          <span id="chat-head-role"></span>
+        </div>
+      </div>
       <div id="chat-panel-head-actions">
         <button type="button" id="chat-clear-btn" aria-label="ისტორიის წაშლა" title="საუბრის ისტორიის წაშლა"><svg><use href="#ic-trash"/></svg></button>
         <button type="button" id="chat-panel-collapse" aria-label="ჩაკეცვა"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
@@ -1025,7 +1058,7 @@
         <div id="chat-messages"></div>
       </div>
       <div id="chat-status-line"></div>
-      <div id="chat-ai-badge">🤖 <span data-ck="chatWidget.aiBadgeLabel">გესაუბრებათ AI-აგენტი</span><span id="chat-ai-badge-name"></span></div>
+      <div id="chat-ai-badge"><span data-ck="chatWidget.aiBadgeLabel">თქვენ გესაუბრებათ AI აგენტი — საჭიროების შემთხვევაში გადაამოწმეთ ინფორმაცია.</span></div>
       <div id="chat-attach-preview">
         <img id="chat-attach-preview-img" alt="" style="display:none">
         <span id="chat-attach-preview-name"></span>
@@ -3383,11 +3416,51 @@
   function refreshChatAiBadge(){
     var badge = document.getElementById('chat-ai-badge');
     if(!badge) return;
+    // pure passthrough of the admin-authored chatWidget.aiBadgeLabel text —
+    // no icon/name is auto-appended here; the admin writes the exact wording
     badge.classList.toggle('show', !!(siteContent.chatSettings && siteContent.chatSettings.aiEnabled));
-    var nameEl = document.getElementById('chat-ai-badge-name');
-    if(nameEl){
-      var name = siteContent.chatSettings && siteContent.chatSettings.aiName;
-      nameEl.textContent = name ? (' — ' + name) : '';
+  }
+  // When the AI agent is on, the chat launcher (FAB) and the panel header
+  // show its avatar/name/role instead of the generic chat icon and title —
+  // this must re-run any time chatSettings or business hours change.
+  function refreshChatHeaderAvatar(){
+    var settings = siteContent.chatSettings || {};
+    var aiOn = !!settings.aiEnabled;
+    var avatarUrl = settings.aiAvatar || '';
+    var online = isWithinChatHours(settings);
+
+    var headAvatar = document.getElementById('chat-head-avatar');
+    var headImg = document.getElementById('chat-head-avatar-img');
+    var headEmoji = document.getElementById('chat-head-avatar-emoji');
+    var headDot = document.getElementById('chat-head-dot');
+    var titleEl = document.querySelector('#chat-panel-head-title b[data-ck="chatWidget.title"]');
+    var statusEl = document.getElementById('chat-status-label');
+    var roleEl = document.getElementById('chat-head-role');
+
+    if(headAvatar) headAvatar.classList.toggle('show', aiOn);
+    if(headDot) headDot.classList.toggle('offline', !online);
+    if(headImg && headEmoji){
+      if(avatarUrl){ headImg.src = avatarUrl; headImg.style.display = 'block'; headEmoji.style.display = 'none'; }
+      else { headImg.style.display = 'none'; headEmoji.style.display = 'flex'; }
+    }
+    if(titleEl && aiOn) titleEl.textContent = settings.aiName || 'AI აგენტი';
+    if(statusEl) statusEl.style.display = aiOn ? 'none' : '';
+    if(roleEl){
+      roleEl.style.display = aiOn ? 'flex' : 'none';
+      roleEl.textContent = settings.aiRole || 'AI ექსპერტი';
+    }
+
+    var fabImg = document.getElementById('chat-fab-avatar-img');
+    var fabSvg = document.querySelector('#chat-fab > svg');
+    var fabDot = document.getElementById('chat-fab-dot');
+    var showFabAvatar = aiOn && !!avatarUrl;
+    if(fabImg && fabSvg){
+      if(showFabAvatar){ fabImg.src = avatarUrl; fabImg.style.display = 'block'; fabSvg.style.display = 'none'; }
+      else { fabImg.style.display = 'none'; fabSvg.style.display = ''; }
+    }
+    if(fabDot){
+      fabDot.classList.toggle('show', showFabAvatar);
+      fabDot.classList.toggle('offline', !online);
     }
   }
 
@@ -3441,6 +3514,7 @@
     });
     refreshChatHoursStatus();
     refreshChatAiBadge();
+    refreshChatHeaderAvatar();
   }
   // Exposed so content loaded later (admin-panel text/photos arriving from
   // the API, which can take a few seconds — Render's free tier cold-starts)
@@ -3761,6 +3835,14 @@
       try{
         var box = document.getElementById('chat-messages');
         if(!box || !m) return;
+        if(m.from === 'system'){
+          var sdiv = document.createElement('div');
+          sdiv.className = 'chat-msg-system';
+          sdiv.textContent = m.text || '';
+          box.appendChild(sdiv);
+          box.scrollTop = box.scrollHeight;
+          return;
+        }
         var div = document.createElement('div');
         div.className = 'chat-msg ' + (m.from === 'admin' ? 'from-admin' : (m.from === 'ai' ? 'from-ai' : 'from-customer'));
         if(m.from === 'ai'){
@@ -3807,6 +3889,27 @@
         console.error('chat message render failed:', e);
       }
     }
+    var chatTypingTimeout = null;
+    function showChatTypingIndicator(){
+      var box = document.getElementById('chat-messages');
+      if(!box) return;
+      hideChatTypingIndicator();
+      var wrap = document.createElement('div');
+      wrap.className = 'chat-typing';
+      wrap.id = 'chat-typing-indicator';
+      wrap.innerHTML = '<div class="chat-typing-dots"><span></span><span></span><span></span></div><div class="chat-typing-label">მიმდინარეობს პასუხის დამუშავება</div>';
+      box.appendChild(wrap);
+      box.scrollTop = box.scrollHeight;
+      // safety net: if the stop signal is ever lost (dropped connection, server
+      // error before the finally block runs), never leave the indicator stuck
+      clearTimeout(chatTypingTimeout);
+      chatTypingTimeout = setTimeout(hideChatTypingIndicator, 20000);
+    }
+    function hideChatTypingIndicator(){
+      clearTimeout(chatTypingTimeout);
+      var el = document.getElementById('chat-typing-indicator');
+      if(el && el.parentNode) el.parentNode.removeChild(el);
+    }
     function setStatus(text){
       var el = document.getElementById('chat-status-line');
       if(el) el.textContent = text || '';
@@ -3837,12 +3940,17 @@
           }
           setStatus(msg.status === 'closed' ? 'საუბარი დახურულია' : '');
         } else if(msg.type === 'message'){
+          hideChatTypingIndicator();
           appendMsg(msg.message);
           var panel = document.getElementById('chat-panel');
           if((msg.message.from === 'admin' || msg.message.from === 'ai') && panel && !panel.classList.contains('open')){
             var b = document.getElementById('chat-fab-badge');
             if(b){ b.textContent = '1'; b.classList.add('show'); }
           }
+        } else if(msg.type === 'ai_typing'){
+          showChatTypingIndicator();
+        } else if(msg.type === 'ai_typing_stop'){
+          hideChatTypingIndicator();
         } else if(msg.type === 'error'){
           setStatus('შეცდომა — სცადეთ თავიდან');
         }
