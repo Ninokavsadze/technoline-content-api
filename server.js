@@ -1323,6 +1323,22 @@ wssChat.on('connection', function (ws) {
   });
 });
 
+// Shared by the explicit "Join Conversation" action and by a reply sent
+// without joining first (some admins will just type straight away) — marks
+// the hand-off exactly once and returns the deterministic system notice to
+// broadcast, or null if this chat already has an operator attached.
+function markOperatorJoined(chat, operatorName) {
+  if (chat.operatorJoined) return null;
+  const name = String(operatorName || '').trim().slice(0, 60);
+  chat.operatorJoined = true;
+  chat.assignedOperator = name || 'ოპერატორი';
+  return {
+    from: 'system',
+    text: (name ? name : 'ოპერატორი') + ' შემოუერთდა საუბარს.',
+    at: Date.now()
+  };
+}
+
 const wssAdminChat = new WebSocket.Server({ noServer: true, maxPayload: 8 * 1024 * 1024 });
 wssAdminChat.on('connection', function (ws, req) {
   const url = new URL(req.url, 'http://internal');
@@ -1334,6 +1350,31 @@ wssAdminChat.on('connection', function (ws, req) {
   ws.on('message', async function (raw) {
     let msg;
     try { msg = JSON.parse(raw); } catch (e) { return; }
+
+    if (msg.type === 'join_chat' && msg.chatId) {
+      try {
+        const db = await readDb();
+        db.chats = db.chats || [];
+        const chat = db.chats.find(function (c) { return c.id === msg.chatId; });
+        if (!chat) return;
+        const sysMsg = markOperatorJoined(chat, msg.operatorName);
+        if (!sysMsg) return; // someone already joined — nothing new to announce
+        chat.aiPaused = true; // joining always takes the chat off AI auto-reply
+        chat.messages.push(sysMsg);
+        chat.lastAt = sysMsg.at;
+        await writeDb(db);
+        const custWs = chatCustomerSockets.get(chat.id);
+        if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: sysMsg }));
+        const payload = {
+          type: 'message', chatId: chat.id, message: sysMsg,
+          chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt, aiPaused: chat.aiPaused, operatorJoined: chat.operatorJoined, assignedOperator: chat.assignedOperator }
+        };
+        // the joining admin's own tab renders this optimistically (see the
+        // "join" button handler client-side), so exclude only that socket
+        chatBroadcastToAdmins(payload, ws);
+      } catch (e) { /* ignore */ }
+      return;
+    }
 
     if (msg.type === 'reply' && msg.chatId) {
       const text = String(msg.text || '').trim().slice(0, 2000);
@@ -1347,11 +1388,9 @@ wssAdminChat.on('connection', function (ws, req) {
         const custWs = chatCustomerSockets.get(chat.id);
         const outbox = [];
         // one-time "operator joined" notice — fires the first time ANY admin
-        // replies in this chat, regardless of how many admins participate after
-        if (!chat.operatorJoined) {
-          chat.operatorJoined = true;
-          outbox.push({ from: 'system', text: 'ოპერატორი შემოუერთდა საუბარს.', at: Date.now() });
-        }
+        // replies in this chat without having clicked "Join" first
+        const sysMsg = markOperatorJoined(chat, msg.operatorName);
+        if (sysMsg) outbox.push(sysMsg);
         const m = { from: 'admin', text: text, at: Date.now() };
         if (attachment) m.attachment = attachment;
         outbox.push(m);
@@ -1363,7 +1402,7 @@ wssAdminChat.on('connection', function (ws, req) {
           if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: om }));
           const payload = {
             type: 'message', chatId: chat.id, message: om,
-            chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt, aiPaused: chat.aiPaused }
+            chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt, aiPaused: chat.aiPaused, operatorJoined: chat.operatorJoined, assignedOperator: chat.assignedOperator }
           };
           // the sending admin's own tab already rendered their own reply
           // optimistically (see sendReply() client-side), so exclude them only
