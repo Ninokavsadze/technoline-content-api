@@ -1268,9 +1268,13 @@ wssChat.on('connection', function (ws) {
         // the customer's own message is already saved/broadcast, so a slow
         // or failed Gemini call never delays or breaks message delivery.
         if (!chat.aiPaused) {
-          try {
-            const settings = db['content/chat-settings'] || {};
-            if (settings.aiEnabled) {
+          const settings = db['content/chat-settings'] || {};
+          if (settings.aiEnabled) {
+            // let the widget show a "thinking" indicator for as long as the
+            // Gemini call takes — ai_typing_stop always fires (finally), even
+            // on failure, so the indicator never gets stuck on the customer's screen
+            if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ai_typing', chatId: ws.chatId }));
+            try {
               const kb = db['content/chat-kb'] || { entries: [] };
               const history = chat.messages.slice(0, -1);
               const aiResult = await askChatAi(kb, history, text, settings.aiName);
@@ -1284,18 +1288,32 @@ wssChat.on('connection', function (ws) {
                   const aiMsg = { from: 'ai', text: aiResult.reply, at: Date.now() };
                   chat2.messages.push(aiMsg);
                   chat2.lastAt = aiMsg.at;
-                  if (aiResult.escalate) chat2.aiPaused = true;
+                  const outbox = [aiMsg];
+                  if (aiResult.escalate) {
+                    chat2.aiPaused = true;
+                    // guaranteed, deterministic hand-off notice — never relies on
+                    // the model itself having phrased this correctly in aiMsg.text
+                    const escMsg = { from: 'system', text: 'გადაგამისამართებთ ოპერატორესთან — გთხოვთ, მოითმინოთ.', at: Date.now() };
+                    chat2.messages.push(escMsg);
+                    outbox.push(escMsg);
+                  }
                   await writeDb(db2);
                   const custWs = chatCustomerSockets.get(chat2.id);
-                  if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: aiMsg }));
-                  chatBroadcastToAdmins({
-                    type: 'message', chatId: chat2.id, message: aiMsg,
-                    chatSummary: { id: chat2.id, name: chat2.name, phone: chat2.phone, status: chat2.status, lastAt: chat2.lastAt, aiPaused: chat2.aiPaused }
+                  outbox.forEach(function (om) {
+                    if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: om }));
+                    chatBroadcastToAdmins({
+                      type: 'message', chatId: chat2.id, message: om,
+                      chatSummary: { id: chat2.id, name: chat2.name, phone: chat2.phone, status: chat2.status, lastAt: chat2.lastAt, aiPaused: chat2.aiPaused }
+                    });
                   });
                 }
               }
+            } catch (e) {
+              console.error('chat AI auto-reply failed:', e.message);
+            } finally {
+              if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ai_typing_stop', chatId: ws.chatId }));
             }
-          } catch (e) { console.error('chat AI auto-reply failed:', e.message); }
+          }
         }
       } catch (e) { /* drop silently — customer keeps typing, no hard failure surfaced to them */ }
     }
@@ -1326,18 +1344,34 @@ wssAdminChat.on('connection', function (ws, req) {
         db.chats = db.chats || [];
         const chat = db.chats.find(function (c) { return c.id === msg.chatId; });
         if (!chat) return;
+        const custWs = chatCustomerSockets.get(chat.id);
+        const outbox = [];
+        // one-time "operator joined" notice — fires the first time ANY admin
+        // replies in this chat, regardless of how many admins participate after
+        if (!chat.operatorJoined) {
+          chat.operatorJoined = true;
+          outbox.push({ from: 'system', text: 'ოპერატორი შემოუერთდა საუბარს.', at: Date.now() });
+        }
         const m = { from: 'admin', text: text, at: Date.now() };
         if (attachment) m.attachment = attachment;
-        chat.messages.push(m);
+        outbox.push(m);
+        outbox.forEach(function (om) { chat.messages.push(om); });
         chat.lastAt = m.at;
         chat.aiPaused = true; // a human took over — the AI must never talk over them again in this chat
         await writeDb(db);
-        const custWs = chatCustomerSockets.get(chat.id);
-        if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: m }));
-        chatBroadcastToAdmins({
-          type: 'message', chatId: chat.id, message: m,
-          chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt, aiPaused: chat.aiPaused }
-        }, ws);
+        outbox.forEach(function (om) {
+          if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: om }));
+          const payload = {
+            type: 'message', chatId: chat.id, message: om,
+            chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt, aiPaused: chat.aiPaused }
+          };
+          // the sending admin's own tab already rendered their own reply
+          // optimistically (see sendReply() client-side), so exclude them only
+          // for that message — but the "operator joined" system notice was
+          // never rendered locally by anyone, so every admin (sender included)
+          // must receive it over the socket or their own thread misses it
+          chatBroadcastToAdmins(payload, om.from === 'admin' ? ws : null);
+        });
       } catch (e) { /* ignore */ }
       return;
     }
