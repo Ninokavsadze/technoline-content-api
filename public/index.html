@@ -682,6 +682,7 @@
   .chat-ai-content{display:flex;flex-direction:column;gap:2px;min-width:0}
   .chat-ai-name{font-size:.7rem;font-weight:800;color:var(--blue-deep)}
   .chat-msg-text{white-space:pre-wrap;word-break:break-word}
+  .chat-tel-link{color:var(--blue-deep);font-weight:800;text-decoration:underline;text-underline-offset:2px}
   .chat-msg-system{align-self:center;max-width:90%;text-align:center;font-size:.72rem;color:var(--ink-faint);background:var(--surface-alt);border-radius:999px;padding:5px 14px;margin:2px 0}
   .chat-typing{align-self:flex-start;display:flex;flex-direction:column;gap:4px;max-width:82%}
   .chat-typing-dots{display:flex;align-items:center;gap:4px;background:var(--blue-soft,#E7F0FB);border-radius:15px;border-bottom-left-radius:4px;padding:10px 14px;width:fit-content}
@@ -3798,6 +3799,35 @@
         .replace(/[xX]D/g, '😂')
         .replace(/:-?\|/g, '😐');
     }
+    function chatEscHtml(text){
+      return String(text == null ? '' : text)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    // Turns any phone-number-looking run of digits in the AI's reply into a
+    // tap-to-call tel: link, so the customer never has to copy/retype a
+    // number the AI quoted from the knowledge base. Everything else in the
+    // text is still HTML-escaped as plain text — this never trusts the AI's
+    // output as markup.
+    function linkifyPhoneNumbers(text){
+      var raw = String(text == null ? '' : text);
+      var re = /(\+?\d[\d\s\-().]{6,}\d)/g;
+      var out = '', lastIndex = 0, match;
+      while((match = re.exec(raw))){
+        out += chatEscHtml(raw.slice(lastIndex, match.index));
+        var candidate = match[0];
+        var digits = candidate.replace(/\D/g, '');
+        if(digits.length >= 9 && digits.length <= 15){
+          var tel = candidate.replace(/[^\d+]/g, '');
+          out += '<a class="tel-link chat-tel-link" href="tel:' + tel + '">' + chatEscHtml(candidate) + '</a>';
+        } else {
+          out += chatEscHtml(candidate);
+        }
+        lastIndex = match.index + candidate.length;
+      }
+      out += chatEscHtml(raw.slice(lastIndex));
+      return out;
+    }
 
     function wsUrl(){
       return API_BASE.replace(/^https/, 'wss').replace(/^http:/, 'ws:') + '/ws/chat';
@@ -3867,7 +3897,7 @@
           if(m.text){
             var t1 = document.createElement('div');
             t1.className = 'chat-msg-text';
-            t1.textContent = emoticonsToEmoji(m.text);
+            t1.innerHTML = linkifyPhoneNumbers(emoticonsToEmoji(m.text));
             content.appendChild(t1);
           }
           div.appendChild(content);
