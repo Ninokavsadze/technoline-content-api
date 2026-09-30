@@ -608,7 +608,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     try{ sessionStorage.removeItem('tl_admin_token'); }catch(e){}
     if(chatState.ws){ try{ chatState.ws.close(); }catch(e){} }
     clearTimeout(chatState.reconnectTimer);
-    chatState = { chats:{}, listLoaded:false, ws:null, wsReady:false, selectedId:null, reconnectTimer:null };
+    chatState = { chats:{}, listLoaded:false, ws:null, wsReady:false, selectedId:null, reconnectTimer:null, searchQuery:'', filterStatus:'all', filterOperator:'all', filterDate:'all' };
     document.getElementById('app').classList.remove('is-active');
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('login-password').value = '';
@@ -620,7 +620,15 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   var TABS = [];
   var activeTab = null;
   var bookingsLoaded = false;
-  var chatState = { chats:{}, listLoaded:false, ws:null, wsReady:false, selectedId:null, reconnectTimer:null, hours:null, hoursLoaded:false, pendingAttachment:null, kb:null, kbLoaded:false, searchQuery:'' };
+  var chatState = { chats:{}, listLoaded:false, ws:null, wsReady:false, selectedId:null, reconnectTimer:null, hours:null, hoursLoaded:false, pendingAttachment:null, kb:null, kbLoaded:false, searchQuery:'', filterStatus:'all', filterOperator:'all', filterDate:'all' };
+  function chatOperatorName(){
+    var n = '';
+    try{ n = localStorage.getItem('tl_operator_name') || ''; }catch(e){}
+    return n;
+  }
+  function setChatOperatorName(n){
+    try{ localStorage.setItem('tl_operator_name', n || ''); }catch(e){}
+  }
   var CHAT_ADMIN_MAX_FILE_BYTES = 5 * 1024 * 1024;
   var CHAT_ADMIN_EMOJI_LIST = ['😀','😁','😂','🙂','😊','😍','🤔','😉','👍','👌','🙏','👏','🔥','💯','✅','❌','⏰','📱','💻','⌚','🛠️','📦','🚚','💬','❓','❗','🎉','❤️'];
   var chatAdminMediaRecorder = null, chatAdminAudioChunks = [], chatAdminRecordTimer = null, chatAdminRecordStart = 0;
@@ -2341,7 +2349,12 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       if(!c) c = chatState.chats[msg.chatId] = { id: msg.chatId, messages: [] };
       c.messages = c.messages || [];
       c.messages.push(msg.message);
-      if(msg.chatSummary){ c.name = msg.chatSummary.name; c.phone = msg.chatSummary.phone; c.status = msg.chatSummary.status; c.lastAt = msg.chatSummary.lastAt; if(msg.chatSummary.aiPaused) c.aiPaused = true; }
+      if(msg.chatSummary){
+        c.name = msg.chatSummary.name; c.phone = msg.chatSummary.phone; c.status = msg.chatSummary.status; c.lastAt = msg.chatSummary.lastAt;
+        if(msg.chatSummary.aiPaused) c.aiPaused = true;
+        if(msg.chatSummary.operatorJoined) c.operatorJoined = true;
+        if(msg.chatSummary.assignedOperator) c.assignedOperator = msg.chatSummary.assignedOperator;
+      }
       if(msg.message.from === 'customer' && chatState.selectedId !== msg.chatId) c.unread = true;
     } else if(msg.type === 'chat_status'){
       var cs = chatState.chats[msg.chatId];
@@ -2361,18 +2374,64 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       .sort(function(a, b){ return (b.lastAt || 0) - (a.lastAt || 0); });
   }
   function chatAiTagHtml(c){
-    if(c.aiPaused) return '<span style="font-size:.66rem;font-weight:700;color:var(--blue-deep);background:var(--blue-soft,#E7F0FB);padding:1px 6px;border-radius:999px;white-space:nowrap">👤 ოператоресთან</span>';
+    if(c.aiPaused && !c.operatorJoined) return '<span style="font-size:.66rem;font-weight:700;color:#fff;background:var(--bad,#B3261E);padding:1px 6px;border-radius:999px;white-space:nowrap">⏳ ოპერატორის მოლოდინში</span>';
+    if(c.operatorJoined) return '<span style="font-size:.66rem;font-weight:700;color:var(--blue-deep);background:var(--blue-soft,#E7F0FB);padding:1px 6px;border-radius:999px;white-space:nowrap">👤 ' + escHtml(c.assignedOperator || 'ოპერატორთან') + '</span>';
     var hasAiMsg = (c.messages || []).some(function(m){ return m.from === 'ai'; });
     if(hasAiMsg) return '<span style="font-size:.66rem;font-weight:700;color:#fff;background:var(--blue-deep);padding:1px 6px;border-radius:999px;white-space:nowrap">🤖 AI</span>';
     return '';
   }
+  // "status" bucket used by the chat-list filter dropdown — kept separate from
+  // chatAiTagHtml's display string since the filter needs stable keys, not text
+  function chatStatusBucket(c){
+    if(c.status === 'closed') return 'closed';
+    if(c.aiPaused && !c.operatorJoined) return 'waiting';
+    if(c.operatorJoined) return 'joined';
+    return 'ai';
+  }
+  function chatDateFilterMatch(c, key){
+    if(!key || key === 'all') return true;
+    var at = c.lastAt || 0;
+    if(!at) return false;
+    var now = Date.now();
+    var day = 24 * 60 * 60 * 1000;
+    if(key === 'today'){
+      var d1 = new Date(at), d2 = new Date(now);
+      return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+    }
+    if(key === 'week') return (now - at) <= 7 * day;
+    if(key === 'month') return (now - at) <= 30 * day;
+    return true;
+  }
+  function chatKnownOperators(){
+    var names = {};
+    chatSortedList().forEach(function(c){ if(c.assignedOperator) names[c.assignedOperator] = true; });
+    return Object.keys(names).sort();
+  }
+  function refreshChatOperatorFilterOptions(){
+    var sel = document.getElementById('chat-filter-operator');
+    if(!sel) return;
+    var names = chatKnownOperators();
+    var current = chatState.filterOperator || 'all';
+    if(current !== 'all' && names.indexOf(current) === -1) names.push(current);
+    sel.innerHTML = '<option value="all">ყველა ოპერატორი</option>' + names.map(function(n){
+      return '<option value="' + escHtml(n) + '"' + (n === current ? ' selected' : '') + '>' + escHtml(n) + '</option>';
+    }).join('');
+    sel.value = current;
+  }
   function renderChatListDom(){
     var listEl = document.getElementById('chat-list');
     if(!listEl) return;
+    refreshChatOperatorFilterOptions();
     var q = (chatState.searchQuery || '').toLowerCase();
+    var statusFilter = chatState.filterStatus || 'all';
+    var operatorFilter = chatState.filterOperator || 'all';
+    var dateFilter = chatState.filterDate || 'all';
     var items = chatSortedList().filter(function(c){
-      if(!q) return true;
-      return (c.name || '').toLowerCase().indexOf(q) !== -1 || (c.phone || '').toLowerCase().indexOf(q) !== -1;
+      if(q && (c.name || '').toLowerCase().indexOf(q) === -1 && (c.phone || '').toLowerCase().indexOf(q) === -1) return false;
+      if(statusFilter !== 'all' && chatStatusBucket(c) !== statusFilter) return false;
+      if(operatorFilter !== 'all' && c.assignedOperator !== operatorFilter) return false;
+      if(!chatDateFilterMatch(c, dateFilter)) return false;
+      return true;
     });
     listEl.innerHTML = items.length ? items.map(function(c){
       var lastMsg = c.messages && c.messages.length ? c.messages[c.messages.length - 1] : null;
@@ -2388,7 +2447,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         + '</div>'
         + '<div style="font-size:.8rem;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px">' + escHtml(preview) + '</div>'
         + '</button>';
-    }).join('') : ('<div class="empty-state" style="padding:24px 14px"><p>' + (q ? 'ვერაფერი მოიძებნა.' : 'ჯერ არცერთი საუბარი არ დაწყებულა.') + '</p></div>');
+    }).join('') : ('<div class="empty-state" style="padding:24px 14px"><p>' + ((q || statusFilter !== 'all' || operatorFilter !== 'all' || dateFilter !== 'all') ? 'ვერაფერი მოიძებნა ამ ფილტრით.' : 'ჯერ არცერთი საუბარი არ დაწყებულა.') + '</p></div>');
   }
   function chatAttachmentHtml(att){
     if(!att || !att.dataUrl) return '';
@@ -2429,13 +2488,18 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       return;
     }
     chatState.pendingAttachment = null;
+    var needsJoin = !!c.aiPaused && !c.operatorJoined && c.status !== 'closed';
+    var headerBadge = needsJoin
+      ? ' <span style="font-size:.7rem;font-weight:700;color:#fff;background:var(--bad,#B3261E);padding:2px 7px;border-radius:999px;margin-left:4px">⏳ ოპერატორის მოლოდინში</span>'
+      : (c.operatorJoined ? ' <span style="font-size:.7rem;font-weight:700;color:var(--blue-deep);background:var(--blue-soft,#E7F0FB);padding:2px 7px;border-radius:999px;margin-left:4px">👤 ' + escHtml(c.assignedOperator || 'ოპერატორთან') + '</span>' : '');
     var msgsHtml = (c.messages || []).map(chatMessageBubbleHtml).join('');
     wrap.innerHTML = '<div style="display:flex;flex-direction:column;height:100%">'
       + '<div style="padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">'
-      + '<div><div style="font-weight:800">' + escHtml(c.name || '—') + (c.aiPaused ? ' <span style="font-size:.7rem;font-weight:700;color:var(--blue-deep);background:var(--blue-soft,#E7F0FB);padding:2px 7px;border-radius:999px;margin-left:4px">გადაცემულია ოპერატორზე</span>' : '') + '</div><div style="font-size:.8rem;color:var(--ink-faint)">' + escHtml(c.phone || '') + '</div></div>'
+      + '<div><div style="font-weight:800">' + escHtml(c.name || '—') + headerBadge + '</div><div style="font-size:.8rem;color:var(--ink-faint)">' + escHtml(c.phone || '') + '</div></div>'
       + (c.status !== 'closed' ? '<button type="button" class="btn btn-ghost" id="chat-close-btn" style="font-size:.78rem;padding:7px 12px">საუბრის დახურვა</button>' : '<span style="font-size:.78rem;color:var(--ink-faint)">დახურულია</span>')
       + '</div>'
       + '<div id="chat-thread-messages" style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px">' + msgsHtml + '</div>'
+      + (needsJoin ? '<div style="padding:12px 16px 0"><button type="button" class="btn btn-gold" id="chat-join-btn" style="width:100%;font-size:.9rem">→ საუბარში შემოერთება</button></div>' : '')
       + '<div id="chat-reply-status" style="padding:0 16px;font-size:.74rem;color:var(--ink-faint)"></div>'
       + '<div id="chat-attach-preview">'
       + '<img id="chat-attach-preview-img" alt="" style="display:none">'
@@ -2462,6 +2526,22 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         if(img) openChatLightbox(img.src);
       });
     }
+    var joinBtn = document.getElementById('chat-join-btn');
+    if(joinBtn) joinBtn.addEventListener('click', function(){
+      if(!chatState.ws || !chatState.wsReady){ toast('კავშირი გაწყვეტილია — სცადეთ თავიდან'); return; }
+      var opName = chatOperatorName() || 'ოპერატორი';
+      joinBtn.disabled = true;
+      joinBtn.textContent = 'უერთდება…';
+      chatState.ws.send(JSON.stringify({type:'join_chat', chatId:c.id, operatorName:opName}));
+      c.operatorJoined = true;
+      c.assignedOperator = opName;
+      var sysMsg = {from:'system', text: opName + ' შემოუერთდა საუბარს.', at: Date.now()};
+      c.messages = c.messages || [];
+      c.messages.push(sysMsg);
+      c.lastAt = sysMsg.at;
+      renderChatThreadDom();
+      renderChatListDom();
+    });
     var closeBtn = document.getElementById('chat-close-btn');
     if(closeBtn) closeBtn.addEventListener('click', function(){
       if(!chatState.ws || !chatState.wsReady){ toast('კავშირი გაწყვეტილია — სცადეთ თავიდან'); return; }
@@ -2508,7 +2588,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       var text = input.value.trim();
       var attachment = chatState.pendingAttachment;
       if((!text && !attachment) || !chatState.ws || !chatState.wsReady) return;
-      var payload = {type:'reply', chatId:c.id, text:text};
+      var payload = {type:'reply', chatId:c.id, text:text, operatorName: chatOperatorName() || 'ოპერატორი'};
       if(attachment) payload.attachment = attachment;
       chatState.ws.send(JSON.stringify(payload));
       var m = {from:'admin', text:text, at:Date.now()};
@@ -2573,7 +2653,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
           var reader = new FileReader();
           reader.onload = function(){
             var att = { name: 'ხმოვანი შეტყობინება.webm', type: blob.type || 'audio/webm', dataUrl: reader.result };
-            chatState.ws.send(JSON.stringify({ type: 'reply', chatId: c.id, text: '', attachment: att }));
+            chatState.ws.send(JSON.stringify({ type: 'reply', chatId: c.id, text: '', attachment: att, operatorName: chatOperatorName() || 'ოპერატორი' }));
             var m = { from: 'admin', text: '', attachment: att, at: Date.now() };
             c.messages = c.messages || [];
             c.messages.push(m);
@@ -2818,10 +2898,27 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       + '</div>'
       + '</div>'
       + '</div>';
-    html += '<div class="card" style="display:grid;grid-template-columns:280px 1fr;gap:0;min-height:520px;max-height:640px;overflow:hidden;padding:0">'
+    html += '<div class="card" style="display:grid;grid-template-columns:280px 1fr;grid-template-rows:1fr;gap:0;min-height:520px;max-height:640px;overflow:hidden;padding:0">'
       + '<div style="border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0">'
-        + '<div style="padding:10px 12px;border-bottom:1px solid var(--line);flex:none">'
+        + '<div style="padding:10px 12px;border-bottom:1px solid var(--line);flex:none;display:flex;flex-direction:column;gap:6px">'
           + '<input type="text" id="chat-search" placeholder="ძებნა: სახელი, ტელეფონი…" style="width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-soft);color:var(--ink);font-size:.82rem;box-sizing:border-box">'
+          + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+            + '<select id="chat-filter-status" style="width:100%;padding:6px 6px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-soft);color:var(--ink);font-size:.74rem;box-sizing:border-box">'
+              + '<option value="all">ყველა სტატუსი</option>'
+              + '<option value="ai">🤖 AI პასუხობს</option>'
+              + '<option value="waiting">⏳ ლოდინშია</option>'
+              + '<option value="joined">👤 ოპერატორთან</option>'
+              + '<option value="closed">დახურული</option>'
+            + '</select>'
+            + '<select id="chat-filter-date" style="width:100%;padding:6px 6px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-soft);color:var(--ink);font-size:.74rem;box-sizing:border-box">'
+              + '<option value="all">ყველა დრო</option>'
+              + '<option value="today">დღეს</option>'
+              + '<option value="week">ბოლო 7 დღე</option>'
+              + '<option value="month">ბოლო 30 დღე</option>'
+            + '</select>'
+          + '</div>'
+          + '<select id="chat-filter-operator" style="width:100%;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-soft);color:var(--ink);font-size:.74rem;box-sizing:border-box"><option value="all">ყველა ოპერატორი</option></select>'
+          + '<input type="text" id="chat-operator-name" placeholder="თქვენი სახელი (მომხმარებელი ხედავს)" style="width:100%;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-soft);color:var(--ink);font-size:.74rem;box-sizing:border-box">'
         + '</div>'
         + '<div id="chat-list" style="overflow-y:auto;flex:1;min-height:0"></div>'
       + '</div>'
@@ -2834,6 +2931,28 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     chatSearchEl.addEventListener('input', function(){
       chatState.searchQuery = this.value;
       renderChatListDom();
+    });
+
+    var chatFilterStatusEl = document.getElementById('chat-filter-status');
+    chatFilterStatusEl.value = chatState.filterStatus || 'all';
+    chatFilterStatusEl.addEventListener('change', function(){
+      chatState.filterStatus = this.value;
+      renderChatListDom();
+    });
+    var chatFilterDateEl = document.getElementById('chat-filter-date');
+    chatFilterDateEl.value = chatState.filterDate || 'all';
+    chatFilterDateEl.addEventListener('change', function(){
+      chatState.filterDate = this.value;
+      renderChatListDom();
+    });
+    document.getElementById('chat-filter-operator').addEventListener('change', function(){
+      chatState.filterOperator = this.value;
+      renderChatListDom();
+    });
+    var chatOperatorNameEl = document.getElementById('chat-operator-name');
+    chatOperatorNameEl.value = chatOperatorName();
+    chatOperatorNameEl.addEventListener('change', function(){
+      setChatOperatorName(this.value.trim());
     });
 
     document.getElementById('chat-list').addEventListener('click', function(e){
