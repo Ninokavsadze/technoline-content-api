@@ -110,8 +110,15 @@ const DEFAULT_DB = {
       fri: { closed: false, open: '10:00', close: '20:00' },
       sat: { closed: false, open: '11:00', close: '18:00' },
       sun: { closed: true, open: '11:00', close: '18:00' }
-    }
+    },
+    // AI chat-agent settings live on this same doc (one PUT saves both the
+    // hours form and these fields — see the admin panel's chat-ai-save handler).
+    aiEnabled: false,
+    aiAvatar: ''
   },
+  // Knowledge base the AI agent answers customers from — object-wrapped
+  // (not a bare array) because PUT /api/site/:doc rejects array bodies.
+  'content/chat-kb': { entries: [] },
   bookings: [],
   users: {},
   feedback: [],
@@ -207,7 +214,8 @@ const SITE_DOC_KEYS = {
   'content-branches': 'content/branches',
   'warranty': 'content/warranty',
   'warranty-template': 'content/warranty-template',
-  'chatSettings': 'content/chat-settings'
+  'chatSettings': 'content/chat-settings',
+  'chatKb': 'content/chat-kb'
 };
 
 app.get('/api/site/:doc', async function (req, res) {
@@ -1009,6 +1017,144 @@ app.post('/api/catalog/search-ai', async function (req, res) {
   }
 });
 
+// --- AI chat agent (live chat, Google Gemini) ----------------------------
+// Answers customers from the admin-authored knowledge base (content/chat-kb)
+// and hands off to a real operator (sets chat.aiPaused, see the WS handlers
+// below) whenever it can't answer from the KB or the customer asks for a
+// human — one Gemini call per customer message returns both decisions at
+// once as structured JSON, so there's no separate "detect a human request"
+// step to keep in sync.
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+const CHAT_AI_CONFIGURED = !!GEMINI_API_KEY;
+
+function chatKbToPromptText(kb) {
+  const entries = (kb && Array.isArray(kb.entries)) ? kb.entries : [];
+  if (!entries.length) return '(ცოდნის ბაზა ჯერ ცარიელია)';
+  return entries.map(function (e) {
+    return '### ' + String(e.title || '').trim() + '\n' + String(e.body || '').trim();
+  }).join('\n\n');
+}
+
+// history: chat.messages BEFORE the new customer message, already filtered
+// to only 'customer'/'ai' turns by the caller (admin messages never appear —
+// once a human replies, chat.aiPaused is set and the AI is never called again).
+async function askChatAi(kb, history, userText) {
+  if (!CHAT_AI_CONFIGURED) return null;
+  const systemInstruction = {
+    parts: [{
+      text: 'შენ ხარ technoline.ge-ის საიტის ლაივ ჩატის დამხმარე AI აგენტი. უპასუხე მომხმარებელს მხოლოდ ქვემოთ მოცემული ცოდნის ბაზის მიხედვით, ქართულ ენაზე, თავაზიანად და მოკლედ.\n\n'
+        + 'ცოდნის ბაზა:\n' + chatKbToPromptText(kb) + '\n\n'
+        + 'წესები:\n'
+        + '- უპასუხე მხოლოდ იმაზე, რაც ცოდნის ბაზაშია. არასდროს გამოიგონო ინფორმაცია.\n'
+        + '- თუ პასუხი ცოდნის ბაზაში არ მოიძებნება, ან მომხმარებელი პირდაპირ ითხოვს რეალურ ოპერატორთან საუბარს, დააბრუნე escalate:true და reply-ში თავაზიანად აცნობე, რომ გადასცემ საუბარს ოპერატორს.\n'
+        + '- ყველა სხვა შემთხვევაში დააბრუნე escalate:false და დასვი პასუხი reply ველში.\n'
+        + '- უპასუხე მხოლოდ JSON ობიექტით, მითითებული სქემის მიხედვით — არაფერი სხვა.'
+    }]
+  };
+  const contents = [];
+  (history || []).forEach(function (m) {
+    if (m.from === 'customer' && m.text) contents.push({ role: 'user', parts: [{ text: String(m.text).slice(0, 2000) }] });
+    else if (m.from === 'ai' && m.text) contents.push({ role: 'model', parts: [{ text: String(m.text).slice(0, 2000) }] });
+  });
+  contents.push({ role: 'user', parts: [{ text: userText }] });
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(function () { controller.abort(); }, 12000);
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
+      body: JSON.stringify({
+        contents: contents,
+        systemInstruction: systemInstruction,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'object',
+            properties: { escalate: { type: 'boolean' }, reply: { type: 'string' } },
+            required: ['escalate', 'reply']
+          }
+        }
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    const data = await r.json().catch(function () { return null; });
+    if (!r.ok || !data) { console.error('Gemini chat-ai upstream error:', r.status, data); return null; }
+    const cand = data.candidates && data.candidates[0];
+    const text = cand && cand.content && cand.content.parts && cand.content.parts[0] && cand.content.parts[0].text;
+    if (!text) { console.error('Gemini chat-ai: no candidate text', data.promptFeedback || data); return null; }
+    let parsed;
+    try { parsed = JSON.parse(text); } catch (e) { return null; }
+    return { escalate: !!parsed.escalate, reply: String(parsed.reply || '').trim().slice(0, 2000) };
+  } catch (e) {
+    console.error('Gemini chat-ai failed:', e.message);
+    return null;
+  }
+}
+
+// Admin panel: paste one document, get it back auto-split into KB entries
+// for staging (not saved here — the admin panel saves via PUT /api/site/chatKb
+// once the staff member reviews/edits the split result, same as everywhere
+// else in the panel).
+app.post('/api/chat-kb/parse-document', requireAuth, async function (req, res) {
+  if (!CHAT_AI_CONFIGURED) return res.status(503).json({ error: 'ai_not_configured' });
+  const text = String((req.body && req.body.text) || '').trim().slice(0, 20000);
+  if (!text) return res.status(400).json({ error: 'missing_text' });
+
+  const systemInstruction = {
+    parts: [{
+      text: 'დაეხმარე ადმინისტრატორს ტექსტური დოკუმენტის საკითხებად (თემებად) დაყოფაში, რომელიც შემდეგ AI ჩატის აგენტის ცოდნის ბაზად იქნება გამოყენებული. დაყავი ტექსტი ლოგიკურ საკითხებად, თითოეულს მიეცი მოკლე სათაური და დეტალური ტექსტი (body). არაფერი გამოიგონო — მხოლოდ მოცემული ტექსტიდან. უპასუხე მხოლოდ JSON ობიექტით, მითითებული სქემის მიხედვით.'
+    }]
+  };
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(function () { controller.abort(); }, 20000);
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: text }] }],
+        systemInstruction: systemInstruction,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'object',
+            properties: {
+              entries: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: { title: { type: 'string' }, body: { type: 'string' } },
+                  required: ['title', 'body']
+                }
+              }
+            },
+            required: ['entries']
+          }
+        }
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    const data = await r.json().catch(function () { return null; });
+    if (!r.ok || !data) { console.error('chat-kb parse upstream error:', r.status, data); return res.status(502).json({ error: 'ai_upstream_error' }); }
+    const cand = data.candidates && data.candidates[0];
+    const outText = cand && cand.content && cand.content.parts && cand.content.parts[0] && cand.content.parts[0].text;
+    if (!outText) return res.status(502).json({ error: 'ai_upstream_error' });
+    let parsed;
+    try { parsed = JSON.parse(outText); } catch (e) { return res.status(502).json({ error: 'ai_bad_response' }); }
+    const entries = Array.isArray(parsed.entries) ? parsed.entries.map(function (e) {
+      return { title: String(e.title || '').trim().slice(0, 200), body: String(e.body || '').trim().slice(0, 4000) };
+    }).filter(function (e) { return e.title || e.body; }) : [];
+    res.json({ entries: entries });
+  } catch (e) {
+    console.error('chat-kb parse failed:', e.message);
+    res.status(504).json({ error: 'ai_search_timeout' });
+  }
+});
+
 // --- Live chat (WebSocket) ------------------------------------------------
 // Two upgrade paths on the same HTTP server: /ws/chat for site visitors,
 // /ws/admin-chat for staff in the admin panel. A browser WebSocket can't
@@ -1100,6 +1246,41 @@ wssChat.on('connection', function (ws) {
           type: 'message', chatId: chat.id, message: m,
           chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt }
         });
+
+        // AI-agent auto-reply — only while no human has taken over this chat
+        // (chat.aiPaused) and the admin panel's AI toggle is on. Runs after
+        // the customer's own message is already saved/broadcast, so a slow
+        // or failed Gemini call never delays or breaks message delivery.
+        if (!chat.aiPaused) {
+          try {
+            const settings = db['content/chat-settings'] || {};
+            if (settings.aiEnabled) {
+              const kb = db['content/chat-kb'] || { entries: [] };
+              const history = chat.messages.slice(0, -1);
+              const aiResult = await askChatAi(kb, history, text);
+              if (aiResult && aiResult.reply) {
+                const db2 = await readDb();
+                db2.chats = db2.chats || [];
+                const chat2 = db2.chats.find(function (c) { return c.id === ws.chatId; });
+                // re-check aiPaused: a human admin may have jumped in while
+                // the Gemini call was in flight — the AI must never talk over them
+                if (chat2 && !chat2.aiPaused) {
+                  const aiMsg = { from: 'ai', text: aiResult.reply, at: Date.now() };
+                  chat2.messages.push(aiMsg);
+                  chat2.lastAt = aiMsg.at;
+                  if (aiResult.escalate) chat2.aiPaused = true;
+                  await writeDb(db2);
+                  const custWs = chatCustomerSockets.get(chat2.id);
+                  if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: aiMsg }));
+                  chatBroadcastToAdmins({
+                    type: 'message', chatId: chat2.id, message: aiMsg,
+                    chatSummary: { id: chat2.id, name: chat2.name, phone: chat2.phone, status: chat2.status, lastAt: chat2.lastAt, aiPaused: chat2.aiPaused }
+                  });
+                }
+              }
+            }
+          } catch (e) { console.error('chat AI auto-reply failed:', e.message); }
+        }
       } catch (e) { /* drop silently — customer keeps typing, no hard failure surfaced to them */ }
     }
   });
@@ -1133,12 +1314,13 @@ wssAdminChat.on('connection', function (ws, req) {
         if (attachment) m.attachment = attachment;
         chat.messages.push(m);
         chat.lastAt = m.at;
+        chat.aiPaused = true; // a human took over — the AI must never talk over them again in this chat
         await writeDb(db);
         const custWs = chatCustomerSockets.get(chat.id);
         if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: m }));
         chatBroadcastToAdmins({
           type: 'message', chatId: chat.id, message: m,
-          chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt }
+          chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt, aiPaused: chat.aiPaused }
         }, ws);
       } catch (e) { /* ignore */ }
       return;
