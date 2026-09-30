@@ -636,7 +636,7 @@
   #chat-fab-dot.offline{background:#D08A2A}
   #chat-fab-badge{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:var(--danger,#B14526);color:#fff;font-size:.68rem;font-weight:800;align-items:center;justify-content:center;line-height:1;display:none}
   #chat-fab-badge.show{display:flex}
-  #chat-panel{position:absolute;right:0;bottom:56px;width:min(392px,calc(100vw - 32px));height:min(680px,calc(100vh - 166px));background:color-mix(in srgb, var(--surface) 80%, transparent);backdrop-filter:saturate(1.6) blur(22px);-webkit-backdrop-filter:saturate(1.6) blur(22px);border:1px solid rgba(255,255,255,.16);border-radius:20px;box-shadow:var(--shadow-3);display:none;flex-direction:column;overflow:hidden;transition:height .2s ease}
+  #chat-panel{position:absolute;right:0;bottom:56px;width:min(392px,calc(100vw - 32px));height:min(680px,calc(100vh - 234px));background:color-mix(in srgb, var(--surface) 80%, transparent);backdrop-filter:saturate(1.6) blur(22px);-webkit-backdrop-filter:saturate(1.6) blur(22px);border:1px solid rgba(255,255,255,.16);border-radius:20px;box-shadow:var(--shadow-3);display:none;flex-direction:column;overflow:hidden;transition:height .2s ease}
   #chat-panel.open{display:flex}
   #chat-panel.collapsed{height:auto}
   #chat-panel.collapsed #chat-gate,#chat-panel.collapsed #chat-body{display:none !important}
@@ -4155,18 +4155,22 @@
     function fitChatPanelHeight(){
       var panel = document.getElementById('chat-panel');
       if(!panel) return;
-      if(window.matchMedia && window.matchMedia('(max-width:600px)').matches){
-        panel.style.height = ''; // mobile layout uses its own fixed positioning
-        return;
-      }
       var vh = window.innerHeight || document.documentElement.clientHeight || 800;
-      // 142px is the panel's real fixed distance from the viewport bottom
-      // (#chat-widget's own bottom:86px + #chat-panel's bottom:56px within
-      // it) — miscounting this as ~110px is what let the panel's computed
-      // top edge go negative (rendering clipped above the viewport) on
-      // common laptop screen heights; the extra 24px leaves a visible gap
-      // at the top instead of flush against the browser's edge
-      var h = Math.max(320, Math.min(680, vh - 166));
+      // Reserve real space at the top for the sticky site header (measured
+      // live, so it stays correct even if the header's height ever changes)
+      // plus a small gap — the panel's height must never let its top edge
+      // ride up under the header.
+      var headerEl = document.getElementById('site-header');
+      var headerH = (headerEl && headerEl.getBoundingClientRect().height) || 76;
+      var topReserve = headerH + 16;
+      // The panel's fixed distance from the viewport bottom differs between
+      // layouts: on mobile #chat-panel switches to position:fixed with its
+      // own bottom:134px measured straight from the viewport; on desktop
+      // it's position:absolute inside #chat-widget, so its 142px is
+      // #chat-widget's own bottom:86px + #chat-panel's bottom:56px within it.
+      var isMobile = window.matchMedia && window.matchMedia('(max-width:600px)').matches;
+      var bottomReserve = isMobile ? 134 : 142;
+      var h = Math.max(320, Math.min(680, vh - topReserve - bottomReserve));
       panel.style.height = h + 'px';
     }
     function openPanel(){
