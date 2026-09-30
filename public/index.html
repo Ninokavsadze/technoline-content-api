@@ -636,7 +636,7 @@
   #chat-fab-dot.offline{background:#D08A2A}
   #chat-fab-badge{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:var(--danger,#B14526);color:#fff;font-size:.68rem;font-weight:800;align-items:center;justify-content:center;line-height:1;display:none}
   #chat-fab-badge.show{display:flex}
-  #chat-panel{position:absolute;right:0;bottom:56px;width:min(392px,calc(100vw - 32px));height:min(680px,calc(100vh - 110px));background:color-mix(in srgb, var(--surface) 80%, transparent);backdrop-filter:saturate(1.6) blur(22px);-webkit-backdrop-filter:saturate(1.6) blur(22px);border:1px solid rgba(255,255,255,.16);border-radius:20px;box-shadow:var(--shadow-3);display:none;flex-direction:column;overflow:hidden;transition:height .2s ease}
+  #chat-panel{position:absolute;right:0;bottom:56px;width:min(392px,calc(100vw - 32px));height:min(680px,calc(100vh - 166px));background:color-mix(in srgb, var(--surface) 80%, transparent);backdrop-filter:saturate(1.6) blur(22px);-webkit-backdrop-filter:saturate(1.6) blur(22px);border:1px solid rgba(255,255,255,.16);border-radius:20px;box-shadow:var(--shadow-3);display:none;flex-direction:column;overflow:hidden;transition:height .2s ease}
   #chat-panel.open{display:flex}
   #chat-panel.collapsed{height:auto}
   #chat-panel.collapsed #chat-gate,#chat-panel.collapsed #chat-body{display:none !important}
@@ -4146,8 +4146,32 @@
       var box = document.getElementById('chat-lightbox');
       if(box) box.classList.remove('show');
     }
+    // Sets the panel's height in real pixels from window.innerHeight instead
+    // of relying on the CSS 100vh unit — on some browsers/zoom levels/screens
+    // 100vh does not equal the actual visible viewport height, which pushed
+    // the panel's computed top edge above the visible area (it looked like
+    // the panel "jumped" to the top of the page). Inline style always wins
+    // over the CSS rule, and re-runs on resize so it stays correct.
+    function fitChatPanelHeight(){
+      var panel = document.getElementById('chat-panel');
+      if(!panel) return;
+      if(window.matchMedia && window.matchMedia('(max-width:600px)').matches){
+        panel.style.height = ''; // mobile layout uses its own fixed positioning
+        return;
+      }
+      var vh = window.innerHeight || document.documentElement.clientHeight || 800;
+      // 142px is the panel's real fixed distance from the viewport bottom
+      // (#chat-widget's own bottom:86px + #chat-panel's bottom:56px within
+      // it) — miscounting this as ~110px is what let the panel's computed
+      // top edge go negative (rendering clipped above the viewport) on
+      // common laptop screen heights; the extra 24px leaves a visible gap
+      // at the top instead of flush against the browser's edge
+      var h = Math.max(320, Math.min(680, vh - 166));
+      panel.style.height = h + 'px';
+    }
     function openPanel(){
       document.getElementById('chat-panel').classList.add('open');
+      fitChatPanelHeight();
       var b = document.getElementById('chat-fab-badge');
       if(b){ b.classList.remove('show'); b.textContent = ''; }
     }
@@ -4156,6 +4180,10 @@
       var pop = document.getElementById('chat-emoji-popover');
       if(pop) pop.classList.remove('show');
     }
+    window.addEventListener('resize', function(){
+      var panel = document.getElementById('chat-panel');
+      if(panel && panel.classList.contains('open')) fitChatPanelHeight();
+    });
 
     document.getElementById('chat-fab').addEventListener('click', function(){
       var panel = document.getElementById('chat-panel');
@@ -4163,7 +4191,13 @@
     });
     document.getElementById('chat-panel-close').addEventListener('click', closePanel);
     document.getElementById('chat-panel-collapse').addEventListener('click', function(){
-      document.getElementById('chat-panel').classList.toggle('collapsed');
+      var panel = document.getElementById('chat-panel');
+      var nowCollapsed = panel.classList.toggle('collapsed');
+      // the inline pixel height from fitChatPanelHeight() would otherwise
+      // fight with #chat-panel.collapsed{height:auto} (inline style always
+      // wins) — clear it while collapsed, restore it when expanded again
+      if(nowCollapsed) panel.style.height = '';
+      else fitChatPanelHeight();
     });
     document.getElementById('chat-clear-btn').addEventListener('click', clearChatHistory);
     document.getElementById('chat-mic-btn').addEventListener('click', toggleVoiceRecording);
