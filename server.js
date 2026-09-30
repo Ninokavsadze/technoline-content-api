@@ -374,6 +374,46 @@ app.post('/api/bookings', async function (req, res) {
   }).catch(function (e) { console.error('post-booking qlogic sync error:', e.message); });
 });
 
+// Public — no personal data, just which time slots are already taken for a
+// branch+date, so the booking page can grey them out before the customer
+// picks one. Registered BEFORE /api/bookings/:id so it isn't swallowed by
+// that param route (Express matches route order, and :id would otherwise
+// match the literal word "busy" too).
+app.get('/api/bookings/busy', async function (req, res) {
+  try {
+    const branchId = String(req.query.branchId || '');
+    const date = String(req.query.date || '');
+    if (!branchId || !date) return res.status(400).json({ error: 'missing_params' });
+    const db = await readDb();
+    const slots = (db.bookings || [])
+      .filter(function (b) { return b.branchId === branchId && b.date === date; })
+      .map(function (b) { return b.timeSlot; });
+    res.json({ slots: slots });
+  } catch (e) {
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// "ვიზიტის ჯავშნები" (site account cabinet) — same trust model as
+// /api/warranty/by-customer above: the account is already phone-verified
+// via /api/otp/verify at login, so this just filters by that phone.
+// Registered before /api/bookings/:id for the same route-order reason as
+// /api/bookings/busy above.
+app.get('/api/bookings/mine', async function (req, res) {
+  try {
+    const phone = normalizePhone(req.query.phone);
+    if (!phone) return res.status(400).json({ error: 'missing_params' });
+    const db = await readDb();
+    const mine = (db.bookings || [])
+      .filter(function (b) { return normalizePhone(b.phone) === phone; })
+      .sort(function (a, b) { return (b.createdAt || '').localeCompare(a.createdAt || ''); });
+    res.json(mine);
+  } catch (e) {
+    console.error('bookings mine lookup failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
 app.get('/api/bookings/:id', async function (req, res) {
   try {
     const db = await readDb();
@@ -669,6 +709,42 @@ function warrantyStatus(rec) {
     remainingLabel: active ? (remaining + ' დღე') : (Math.abs(remaining) + ' დღის წინ')
   };
 }
+
+// "ჩემი საგარანტიო ბარათები" (site account cabinet) — pulls every warranty
+// record that matches BOTH the phone number AND the personal ID number the
+// customer has saved in their profile. The account itself was already
+// phone-verified via /api/otp/verify at login, so this doesn't re-run its
+// own OTP step — it trusts the already-logged-in phone, same as the other
+// account cabinet tabs (devices, orders). Records staff never gave a
+// personalId to simply never match here (they still work fine on the
+// single-serial warranty-check page).
+// Registered BEFORE /api/warranty/:serial so it isn't swallowed by that
+// param route (Express matches route order, and :serial would otherwise
+// match the literal word "by-customer" too — same fix as /api/bookings/busy).
+app.get('/api/warranty/by-customer', async function (req, res) {
+  try {
+    const phone = normalizePhone(req.query.phone);
+    const personalId = String(req.query.personalId || '').trim();
+    if (!phone || !personalId) return res.status(400).json({ error: 'missing_params' });
+    const db = await readDb();
+    const all = db['content/warranty'] || {};
+    const cards = Object.keys(all)
+      .filter(function (serial) {
+        const rec = all[serial];
+        return rec && rec.phone && rec.personalId
+          && normalizePhone(rec.phone) === phone
+          && String(rec.personalId).trim() === personalId;
+      })
+      .map(function (serial) {
+        const rec = all[serial];
+        return Object.assign({ serial: serial }, rec, warrantyStatus(rec));
+      });
+    res.json({ cards: cards });
+  } catch (e) {
+    console.error('warranty by-customer lookup failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
 
 // A record only requires phone verification once staff have put a phone
 // number on it from the admin panel — older/demo records with no phone on
