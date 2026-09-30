@@ -664,6 +664,10 @@
   .chat-msg{max-width:82%;padding:10px 14px;border-radius:15px;font-size:.87rem;line-height:1.45}
   .chat-msg.from-customer{align-self:flex-end;background:var(--gold-ghost,#FFEAC5);color:var(--ink);border-bottom-right-radius:4px}
   .chat-msg.from-admin{align-self:flex-start;background:var(--surface-alt);color:var(--ink);border-bottom-left-radius:4px}
+  .chat-msg.from-ai{align-self:flex-start;background:var(--blue-soft,#E7F0FB);color:var(--ink);border-bottom-left-radius:4px;display:flex;gap:8px;align-items:flex-start}
+  .chat-ai-avatar{width:22px;height:22px;border-radius:50%;overflow:hidden;flex:none;display:flex;align-items:center;justify-content:center;background:var(--blue-deep);color:#fff;font-size:12px;margin-top:1px}
+  .chat-ai-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+  .chat-ai-content{display:flex;flex-direction:column;gap:2px;min-width:0}
   .chat-msg-text{white-space:pre-wrap;word-break:break-word}
   .chat-attachment-img{max-width:100%;max-height:220px;border-radius:10px;display:block;cursor:pointer}
   .chat-attachment-img + .chat-msg-text{margin-top:7px}
@@ -674,6 +678,8 @@
   .chat-attachment-audio{display:block;max-width:230px;height:36px}
   .chat-attachment-audio + .chat-msg-text{margin-top:7px}
   #chat-status-line{padding:0 16px 6px;font-size:.74rem;color:var(--ink-faint);flex:none}
+  #chat-ai-badge{display:none;align-items:center;gap:6px;padding:6px 16px;font-size:.72rem;font-weight:700;color:var(--blue-deep);background:var(--blue-soft,#E7F0FB);flex:none;border-top:1px solid var(--line)}
+  #chat-ai-badge.show{display:flex}
   #chat-toolbar{display:flex;align-items:center;gap:2px;padding:6px 10px 0;flex:none;position:relative}
   .chat-tool-btn{width:34px;height:34px;border-radius:9px;border:none;background:none;color:var(--ink-faint);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
   .chat-tool-btn:hover{background:var(--surface-alt);color:var(--blue-deep)}
@@ -1018,6 +1024,7 @@
         <div id="chat-messages"></div>
       </div>
       <div id="chat-status-line"></div>
+      <div id="chat-ai-badge">🤖 <span data-ck="chatWidget.aiBadgeLabel">გესაუბრებათ AI-აგენტი</span></div>
       <div id="chat-attach-preview">
         <img id="chat-attach-preview-img" alt="" style="display:none">
         <span id="chat-attach-preview-name"></span>
@@ -3133,16 +3140,53 @@
       .then(function(data){
         var cards = (data && data.cards) || [];
         if(!cards.length){ host.innerHTML = '<p class="field-hint">თქვენს მონაცემებზე საგარანტიო ბარათი ვერ მოიძებნა.</p>'; return; }
+        // თითოეულ ბარათს — PDF ჩამოტვირთვა + მეილზე/SMS-ით გაგზავნა, ისევე
+        // როგორც სერიული ნომრით შემოწმების გვერდზეა; საკუთარი ანგარიშის
+        // მეილი/ტელეფონი წინასწარაა ჩაწერილი, შეგიძლიათ სხვაზეც შეცვალოთ.
         host.innerHTML = cards.map(function(c){
-          return '<div class="device-row">'
+          var pdfUrl = API_BASE + '/api/warranty/' + encodeURIComponent(c.serial) + '/card';
+          return '<div style="padding:16px 0;border-bottom:1px solid var(--line)">'
+            + '<div class="device-row" style="padding:0;border:none">'
             + '<div><div class="dname">' + escReviewHtml(c.device||'—') + '</div>'
             + '<div class="dmeta">სერიული: ' + escReviewHtml(c.serial) + ' · შეძენა: ' + escReviewHtml(c.purchase||'—') + ' · ვადა: ' + escReviewHtml(c.end||'—') + '</div></div>'
             + '<span class="badge ' + (c.active?'received':'done') + '">' + (c.active ? 'აქტიური · ' + escReviewHtml(c.remainingLabel) : 'დასრულებული') + '</span>'
-            + '</div>';
+            + '</div>'
+            + '<div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;align-items:flex-end">'
+            + '<div class="field" style="flex:1 1 140px"><a href="' + pdfUrl + '" download class="btn btn-ghost btn-sm" style="display:block;text-align:center">PDF ჩამოტვირთვა</a></div>'
+            + '<div class="field" style="flex:2 1 220px"><label>მეილზე გაგზავნა</label><div style="display:flex;gap:6px">'
+            + '<input type="email" class="my-w-email" value="' + escReviewHtml(user.email||'') + '" style="flex:1">'
+            + '<button type="button" class="btn btn-blue btn-sm my-w-send-email" data-serial="' + escReviewHtml(c.serial) + '">გაგზავნა</button>'
+            + '</div></div>'
+            + '<div class="field" style="flex:2 1 220px"><label>SMS-ით გაგზავნა</label><div style="display:flex;gap:6px">'
+            + '<input type="tel" class="my-w-phone" value="' + escReviewHtml(user.phone||'') + '" style="flex:1">'
+            + '<button type="button" class="btn btn-ghost btn-sm my-w-send-sms" data-serial="' + escReviewHtml(c.serial) + '">გაგზავნა</button>'
+            + '</div></div>'
+            + '</div></div>';
         }).join('');
       })
       .catch(function(){ host.innerHTML = '<p class="field-hint">ჩატვირთვა ვერ მოხერხდა — სცადეთ მოგვიანებით.</p>'; });
   }
+  document.getElementById('my-warranty-list').addEventListener('click', function(e){
+    var emailBtn = e.target.closest('.my-w-send-email');
+    var smsBtn = e.target.closest('.my-w-send-sms');
+    if(!emailBtn && !smsBtn) return;
+    var btn = emailBtn || smsBtn;
+    var serial = btn.getAttribute('data-serial');
+    var inputEl = btn.closest('.field').querySelector(emailBtn ? '.my-w-email' : '.my-w-phone');
+    var method = emailBtn ? 'email' : 'sms';
+    var destination = inputEl ? inputEl.value.trim() : '';
+    if(!destination){ toast(emailBtn ? 'შეიყვანეთ მეილის მისამართი' : 'შეიყვანეთ ტელეფონის ნომერი'); return; }
+    btn.disabled = true;
+    fetch(API_BASE + '/api/warranty/' + encodeURIComponent(serial) + '/send', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({method: method, destination: destination})
+    }).then(function(res){
+      if(res.ok){ toast(method === 'email' ? 'საგარანტიო ბარათი გამოგზავნილია მეილზე' : 'საგარანტიო ბარათი გამოგზავნილია SMS-ით'); }
+      else if(res.status === 503){ toast((method === 'email' ? 'მეილის' : 'SMS') + ' გაგზავნის სერვისი ჯერ არ არის მოწყობილი'); }
+      else { toast('ვერ გაიგზავნა — სცადეთ თავიდან'); }
+    }).catch(function(){ toast('ვერ გაიგზავნა — შეამოწმეთ ინტერნეტი'); })
+      .then(function(){ btn.disabled = false; });
+  });
 
   /* =====================================================
      ORDERS
@@ -3335,6 +3379,11 @@
     }
     if(notice) notice.style.display = online ? 'none' : 'block';
   }
+  function refreshChatAiBadge(){
+    var badge = document.getElementById('chat-ai-badge');
+    if(!badge) return;
+    badge.classList.toggle('show', !!(siteContent.chatSettings && siteContent.chatSettings.aiEnabled));
+  }
 
   // Phone numbers are shown with admin-editable extra text (opening hours,
   // etc.), so the tel: link is derived from whatever digits are currently
@@ -3385,6 +3434,7 @@
       el.setAttribute('placeholder', v);
     });
     refreshChatHoursStatus();
+    refreshChatAiBadge();
   }
   // Exposed so content loaded later (admin-panel text/photos arriving from
   // the API, which can take a few seconds — Render's free tier cold-starts)
@@ -3706,13 +3756,37 @@
         var box = document.getElementById('chat-messages');
         if(!box || !m) return;
         var div = document.createElement('div');
-        div.className = 'chat-msg ' + (m.from === 'admin' ? 'from-admin' : 'from-customer');
-        if(m.attachment) div.appendChild(attachmentBubbleHtml(m.attachment));
-        if(m.text){
-          var t = document.createElement('div');
-          t.className = 'chat-msg-text';
-          t.textContent = emoticonsToEmoji(m.text);
-          div.appendChild(t);
+        div.className = 'chat-msg ' + (m.from === 'admin' ? 'from-admin' : (m.from === 'ai' ? 'from-ai' : 'from-customer'));
+        if(m.from === 'ai'){
+          var avWrap = document.createElement('div');
+          avWrap.className = 'chat-ai-avatar';
+          var avatarUrl = siteContent.chatSettings && siteContent.chatSettings.aiAvatar;
+          if(avatarUrl){
+            var avImg = document.createElement('img');
+            avImg.src = avatarUrl; avImg.alt = 'AI';
+            avWrap.appendChild(avImg);
+          } else {
+            avWrap.textContent = '🤖';
+          }
+          div.appendChild(avWrap);
+          var content = document.createElement('div');
+          content.className = 'chat-ai-content';
+          if(m.attachment) content.appendChild(attachmentBubbleHtml(m.attachment));
+          if(m.text){
+            var t1 = document.createElement('div');
+            t1.className = 'chat-msg-text';
+            t1.textContent = emoticonsToEmoji(m.text);
+            content.appendChild(t1);
+          }
+          div.appendChild(content);
+        } else {
+          if(m.attachment) div.appendChild(attachmentBubbleHtml(m.attachment));
+          if(m.text){
+            var t = document.createElement('div');
+            t.className = 'chat-msg-text';
+            t.textContent = emoticonsToEmoji(m.text);
+            div.appendChild(t);
+          }
         }
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
@@ -3755,7 +3829,7 @@
         } else if(msg.type === 'message'){
           appendMsg(msg.message);
           var panel = document.getElementById('chat-panel');
-          if(msg.message.from === 'admin' && panel && !panel.classList.contains('open')){
+          if((msg.message.from === 'admin' || msg.message.from === 'ai') && panel && !panel.classList.contains('open')){
             var b = document.getElementById('chat-fab-badge');
             if(b){ b.textContent = '1'; b.classList.add('show'); }
           }
