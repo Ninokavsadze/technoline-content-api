@@ -721,7 +721,15 @@
   #chat-input{flex:1;resize:none;max-height:120px;padding:11px 14px;border:1.5px solid var(--line);border-radius:16px;background:var(--surface-alt);color:var(--ink);font-size:.88rem;font-family:inherit;line-height:1.4}
   #chat-input-row button#chat-send{width:42px;height:42px;border-radius:50%;border:none;background:var(--blue-deep);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
   #chat-input-row button#chat-send svg{width:18px;height:18px}
-  @media (max-width:600px){ #chat-widget{right:14px;bottom:78px} #chat-panel{position:fixed;left:50%;right:auto;bottom:134px;transform:translateX(-50%);width:calc(100vw - 24px);max-width:420px} }
+  @media (max-width:600px){
+    #chat-widget{right:14px;bottom:78px}
+    #chat-panel{position:fixed;left:50%;right:auto;bottom:134px;transform:translateX(-50%);width:calc(100vw - 24px);max-width:420px}
+    /* iOS Safari auto-zooms the whole page in when a focused input's
+       computed font-size is under 16px — that zoom is what was cutting off
+       content on the right (nothing was actually overflowing/scrolling).
+       Forcing 16px here on every chat text field prevents the zoom entirely. */
+    #chat-input,#chat-gate input{font-size:16px}
+  }
   #chat-lightbox{position:fixed;inset:0;background:rgba(4,10,18,.88);z-index:400;display:none;align-items:center;justify-content:center;padding:30px;cursor:zoom-out}
   #chat-lightbox.show{display:flex}
   #chat-lightbox img{max-width:min(880px,92vw);max-height:88vh;border-radius:10px;box-shadow:var(--shadow-3)}
