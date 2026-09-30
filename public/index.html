@@ -4146,32 +4146,55 @@
       var box = document.getElementById('chat-lightbox');
       if(box) box.classList.remove('show');
     }
-    // Sets the panel's height in real pixels from window.innerHeight instead
-    // of relying on the CSS 100vh unit — on some browsers/zoom levels/screens
-    // 100vh does not equal the actual visible viewport height, which pushed
-    // the panel's computed top edge above the visible area (it looked like
-    // the panel "jumped" to the top of the page). Inline style always wins
-    // over the CSS rule, and re-runs on resize so it stays correct.
+    // Sets the panel's size/position in real pixels instead of relying on
+    // the CSS 100vh unit or position:fixed's `bottom` offset — on some
+    // browsers/zoom levels 100vh does not equal the actual visible viewport
+    // height, and on mobile, opening the on-screen keyboard shrinks the
+    // VISUAL viewport without necessarily changing window.innerHeight or
+    // reliably moving a `bottom:Xpx` fixed element with it. window.visualViewport
+    // (widely supported on mobile) reports the real visible area, so on
+    // mobile we switch the panel to an explicit computed `top` derived from
+    // it — this is what keeps the panel pinned above the keyboard and below
+    // the header no matter what the keyboard does. Inline style always wins
+    // over the CSS rule, and this re-runs on resize/scroll so it stays correct.
     function fitChatPanelHeight(){
       var panel = document.getElementById('chat-panel');
       if(!panel) return;
-      var vh = window.innerHeight || document.documentElement.clientHeight || 800;
       // Reserve real space at the top for the sticky site header (measured
       // live, so it stays correct even if the header's height ever changes)
-      // plus a small gap — the panel's height must never let its top edge
-      // ride up under the header.
+      // plus a small gap — the panel must never let its top edge ride up
+      // under the header.
       var headerEl = document.getElementById('site-header');
       var headerH = (headerEl && headerEl.getBoundingClientRect().height) || 76;
       var topReserve = headerH + 16;
-      // The panel's fixed distance from the viewport bottom differs between
-      // layouts: on mobile #chat-panel switches to position:fixed with its
-      // own bottom:134px measured straight from the viewport; on desktop
-      // it's position:absolute inside #chat-widget, so its 142px is
-      // #chat-widget's own bottom:86px + #chat-panel's bottom:56px within it.
       var isMobile = window.matchMedia && window.matchMedia('(max-width:600px)').matches;
-      var bottomReserve = isMobile ? 134 : 142;
-      var h = Math.max(320, Math.min(680, vh - topReserve - bottomReserve));
-      panel.style.height = h + 'px';
+
+      if(isMobile){
+        var vv = window.visualViewport;
+        var vh = (vv && vv.height) || window.innerHeight || document.documentElement.clientHeight || 700;
+        var vTop = (vv && vv.offsetTop) || 0;
+        var bottomGap = 16;
+        // A low floor on purpose: with the keyboard open there is sometimes
+        // very little space left above it, and letting the panel shrink to
+        // fit that space is far better than forcing a "nicer" minimum height
+        // that pushes the input row down behind the keyboard, unreachable.
+        var h = Math.max(160, Math.min(680, vh - topReserve - bottomGap));
+        var top = vTop + vh - bottomGap - h;
+        if(top < vTop + topReserve) top = vTop + topReserve;
+        panel.style.position = 'fixed';
+        panel.style.top = top + 'px';
+        panel.style.bottom = 'auto';
+        panel.style.height = h + 'px';
+      } else {
+        panel.style.position = '';
+        panel.style.top = '';
+        panel.style.bottom = '';
+        var vh2 = window.innerHeight || document.documentElement.clientHeight || 800;
+        // #chat-widget's own bottom:86px + #chat-panel's bottom:56px within it
+        var bottomReserve = 142;
+        var h2 = Math.max(320, Math.min(680, vh2 - topReserve - bottomReserve));
+        panel.style.height = h2 + 'px';
+      }
     }
     function openPanel(){
       document.getElementById('chat-panel').classList.add('open');
@@ -4188,6 +4211,18 @@
       var panel = document.getElementById('chat-panel');
       if(panel && panel.classList.contains('open')) fitChatPanelHeight();
     });
+    // window resize alone does not reliably fire when a mobile keyboard
+    // opens/closes — visualViewport's own events do.
+    if(window.visualViewport){
+      window.visualViewport.addEventListener('resize', function(){
+        var panel = document.getElementById('chat-panel');
+        if(panel && panel.classList.contains('open')) fitChatPanelHeight();
+      });
+      window.visualViewport.addEventListener('scroll', function(){
+        var panel = document.getElementById('chat-panel');
+        if(panel && panel.classList.contains('open')) fitChatPanelHeight();
+      });
+    }
 
     document.getElementById('chat-fab').addEventListener('click', function(){
       var panel = document.getElementById('chat-panel');
@@ -4200,8 +4235,14 @@
       // the inline pixel height from fitChatPanelHeight() would otherwise
       // fight with #chat-panel.collapsed{height:auto} (inline style always
       // wins) — clear it while collapsed, restore it when expanded again
-      if(nowCollapsed) panel.style.height = '';
-      else fitChatPanelHeight();
+      // (on mobile fitChatPanelHeight() also sets top/position/bottom, so
+      // those get cleared too)
+      if(nowCollapsed){
+        panel.style.height = '';
+        panel.style.top = '';
+        panel.style.position = '';
+        panel.style.bottom = '';
+      } else fitChatPanelHeight();
     });
     document.getElementById('chat-clear-btn').addEventListener('click', clearChatHistory);
     document.getElementById('chat-mic-btn').addEventListener('click', toggleVoiceRecording);
