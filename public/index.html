@@ -843,11 +843,11 @@
             </div>
             <div class="mega-col">
               <h4>მომსახურების ტიპი</h4>
-              <a href="#services" data-route="services"><svg><use href="#ic-screen"/></svg>ეკრანის შეცვლა</a>
-              <a href="#services" data-route="services"><svg><use href="#ic-battery"/></svg>ბატარეის შეცვლა</a>
-              <a href="#services" data-route="services"><svg><use href="#ic-drop"/></svg>წყლის დაზიანება</a>
-              <a href="#services" data-route="services"><svg><use href="#ic-chip"/></svg>დედაპლატის დიაგნოსტიკა</a>
-              <a href="#services" data-route="services"><svg><use href="#ic-data"/></svg>მონაცემთა აღდგენა</a>
+              <a href="#services" data-route="services"><svg><use href="#ic-screen"/></svg><span data-ck="common.megaSvcTypeScreen">ეკრანის შეცვლა</span></a>
+              <a href="#services" data-route="services"><svg><use href="#ic-battery"/></svg><span data-ck="common.megaSvcTypeBattery">ბატარეის შეცვლა</span></a>
+              <a href="#services" data-route="services"><svg><use href="#ic-drop"/></svg><span data-ck="common.megaSvcTypeWater">წყლის დაზიანება</span></a>
+              <a href="#services" data-route="services"><svg><use href="#ic-chip"/></svg><span data-ck="common.megaSvcTypeBoard">დედაპლატის დიაგნოსტიკა</span></a>
+              <a href="#services" data-route="services"><svg><use href="#ic-data"/></svg><span data-ck="common.megaSvcTypeData">მონაცემთა აღდგენა</span></a>
               <a href="#warranty-service" data-route="warranty-service" data-navitem="warranty-service"><svg><use href="#ic-shield"/></svg><span data-ck="common.navWarrantyService">საგარანტიო მომსახურება</span></a>
             </div>
             <div class="mega-promo">
@@ -1740,6 +1740,8 @@
         <nav class="acct-nav">
           <a class="is-active" data-acct-tab="info"><svg><use href="#ic-user"/></svg>პირადი მონაცემები</a>
           <a data-acct-tab="devices"><svg><use href="#ic-phone"/></svg>ჩემი მოწყობილობები</a>
+          <a data-acct-tab="bookings"><svg><use href="#ic-calendar"/></svg>ვიზიტის ჯავშნები</a>
+          <a data-acct-tab="warranty"><svg><use href="#ic-shield"/></svg>ჩემი საგარანტიო ბარათები</a>
           <a data-route="orders" href="#orders"><svg><use href="#ic-truck"/></svg>ჩემი შეკვეთები</a>
           <a id="logout-btn" class="js-logout" style="color:var(--danger)"><svg><use href="#ic-close"/></svg>გასვლა</a>
         </nav>
@@ -1762,6 +1764,14 @@
                 <select id="p-city"><option>თბილისი</option><option>ბათუმი</option><option>ქუთაისი</option></select>
               </div>
             </div>
+            <div class="field-row" style="margin-top:16px">
+              <div class="field">
+                <label for="p-personal-id">პირადი ნომერი</label>
+                <input type="text" id="p-personal-id" placeholder="01234567890" inputmode="numeric">
+                <span class="field-hint">საჭიროა „ჩემი საგარანტიო ბარათები" ჩანართისთვის — ემთხვევა უნდა ტელეფონის ნომერსაც</span>
+              </div>
+              <div class="field"></div>
+            </div>
             <button class="btn btn-blue" id="profile-save" style="margin-top:20px">ცვლილებების შენახვა</button>
           </div>
 
@@ -1775,6 +1785,16 @@
               <div><div class="dname">MacBook Air M1</div><div class="dmeta">სერიული: TL-118820-GE · დამატებულია 04.11.2023</div></div>
               <span class="badge done">გარანტია ამოწურულია</span>
             </div>
+          </div>
+
+          <div class="acct-card" data-acct-panel="bookings" hidden>
+            <h3>ვიზიტის ჯავშნები</h3>
+            <div id="my-bookings-list"><p class="field-hint">იტვირთება…</p></div>
+          </div>
+
+          <div class="acct-card" data-acct-panel="warranty" hidden>
+            <h3>ჩემი საგარანტიო ბარათები</h3>
+            <div id="my-warranty-list"><p class="field-hint">იტვირთება…</p></div>
           </div>
         </div>
       </div>
@@ -2723,6 +2743,7 @@
     booking.branch = BRANCHES.find(function(b){ return b.id === e.target.value; });
     branchPick.querySelectorAll('.branch-opt').forEach(function(o){ o.classList.toggle('picked', o.getAttribute('data-branch') === booking.branch.id); });
     branchPick.closest('.booking-step').querySelector('[data-next]').disabled = false;
+    refreshBookingBusySlots();
   });
 
   /* ---------- contact page branch cards (rendered from BRANCHES, single source of truth) ---------- */
@@ -2799,14 +2820,42 @@
   var todayStr = localDateStr(new Date());
   dateInput.min = todayStr;
   dateInput.value = todayStr;
+  // საიტზევე უკვე დაჯავშნილი დროები — რეალურ დროში მოდის სერვერიდან
+  // (GET /api/bookings/busy), რომ იმავე დღეს იმავე საათზე ორჯერ ვერავინ
+  // დაჯავშნოს. ეს მხოლოდ საიტის მხარეს გაკეთებულ ჯავშნებს ხედავს — Q-Logic-ში
+  // პირდაპირ (საიტის გვერდის ავლით) შექმნილი ვიზიტები ცალკე თემაა.
+  var bookingBusySlots = [];
+  var bookingBusyReqId = 0;
   function renderSlots(){
     slotGrid.innerHTML = TIME_SLOTS.map(function(t){
-      var full = FULL_SLOTS.indexOf(t) !== -1;
+      var full = FULL_SLOTS.indexOf(t) !== -1 || bookingBusySlots.indexOf(t) !== -1;
       return '<div class="slot' + (full?' full':'') + '" data-time="'+t+'">'+t+'</div>';
     }).join('');
   }
+  function refreshBookingBusySlots(){
+    if(!booking.branch || !dateInput.value){ bookingBusySlots = []; renderSlots(); return; }
+    var reqId = ++bookingBusyReqId;
+    fetch(API_BASE + '/api/bookings/busy?branchId=' + encodeURIComponent(booking.branch.id) + '&date=' + encodeURIComponent(dateInput.value), {cache:'no-store'})
+      .then(function(res){ return res.ok ? res.json() : {slots:[]}; })
+      .then(function(data){
+        if(reqId !== bookingBusyReqId) return; // date/branch changed again before this reply arrived
+        bookingBusySlots = (data && data.slots) || [];
+        var pickedTime = booking.time;
+        renderSlots();
+        if(pickedTime && bookingBusySlots.indexOf(pickedTime) !== -1){
+          // already-picked slot just got taken by someone else — clear it
+          booking.time = '';
+          checkStep3();
+        } else if(pickedTime){
+          var picked = slotGrid.querySelector('[data-time="'+pickedTime+'"]');
+          if(picked) picked.classList.add('picked');
+        }
+      })
+      .catch(function(){ /* API unreachable — leave demo FULL_SLOTS-only rendering in place */ });
+  }
   renderSlots();
-  dateInput.addEventListener('change', function(){ booking.date = dateInput.value; booking.time=''; renderSlots(); checkStep3(); });
+  refreshBookingBusySlots();
+  dateInput.addEventListener('change', function(){ booking.date = dateInput.value; booking.time=''; renderSlots(); checkStep3(); refreshBookingBusySlots(); });
   slotGrid.addEventListener('click', function(e){
     var s = e.target.closest('.slot');
     if(!s || s.classList.contains('full')) return;
@@ -3016,14 +3065,19 @@
     document.getElementById('p-email').value = user.email;
     document.getElementById('p-phone').value = user.phone;
     document.getElementById('p-city').value = user.city || 'თბილისი';
+    document.getElementById('p-personal-id').value = user.personalId || '';
   }
   document.getElementById('profile-save').addEventListener('click', function(){
     user.name = document.getElementById('p-name').value.trim();
     user.email = document.getElementById('p-email').value.trim();
     user.phone = document.getElementById('p-phone').value.trim();
     user.city = document.getElementById('p-city').value;
+    user.personalId = document.getElementById('p-personal-id').value.trim();
     store.set('tl_user', user);
     renderProfileView();
+    // საგარანტიო ბარათების ჩანართი პირად ნომერზეა დამოკიდებული — თუ ის
+    // ახლახან შეავსო/შეცვალა, საჭიროა თავიდან მოთხოვნა
+    myWarrantyLoaded = false;
     toast('ცვლილებები შენახულია');
   });
   document.querySelectorAll('.acct-nav a[data-acct-tab]').forEach(function(tab){
@@ -3032,8 +3086,63 @@
       tab.classList.add('is-active');
       var target = tab.getAttribute('data-acct-tab');
       document.querySelectorAll('[data-acct-panel]').forEach(function(p){ p.hidden = p.getAttribute('data-acct-panel') !== target; });
+      if(target === 'bookings' && !myBookingsLoaded){ myBookingsLoaded = true; renderMyBookings(); }
+      if(target === 'warranty' && !myWarrantyLoaded){ myWarrantyLoaded = true; renderMyWarranty(); }
     });
   });
+
+  // ---- „ვიზიტის ჯავშნები" და „ჩემი საგარანტიო ბარათები" (ანგარიშის კაბინეტი) ----
+  // ორივე იყენებს უკვე-შესულ (ლოგინისას SMS-კოდით დადასტურებულ) ტელეფონის
+  // ნომერს — ცალკე ვერიფიკაციას აქ აღარ ითხოვს, ისევე როგორც კაბინეტის სხვა
+  // ჩანართები (მოწყობილობები, შეკვეთები).
+  var myBookingsLoaded = false, myWarrantyLoaded = false;
+  document.querySelectorAll('.js-logout').forEach(function(btn){
+    btn.addEventListener('click', function(){ myBookingsLoaded = false; myWarrantyLoaded = false; });
+  });
+  function renderMyBookings(){
+    var host = document.getElementById('my-bookings-list');
+    if(!host || !user) return;
+    host.innerHTML = '<p class="field-hint">იტვირთება…</p>';
+    fetch(API_BASE + '/api/bookings/mine?phone=' + encodeURIComponent(user.phone), {cache:'no-store'})
+      .then(function(res){ return res.ok ? res.json() : []; })
+      .then(function(list){
+        if(!list || !list.length){ host.innerHTML = '<p class="field-hint">ჯავშნები არ მოიძებნა.</p>'; return; }
+        host.innerHTML = list.map(function(b){
+          var branch = BRANCHES.find(function(x){ return x.id === b.branchId; });
+          return '<div class="device-row">'
+            + '<div><div class="dname">' + escReviewHtml(b.date) + ' · ' + escReviewHtml(b.timeSlot) + '</div>'
+            + '<div class="dmeta">' + escReviewHtml(branch ? branch.name : (b.branchId||'—'))
+              + (b.deviceType ? ' · ' + escReviewHtml(b.deviceType) : '')
+              + (b.issue ? ' · ' + escReviewHtml(b.issue) : '') + '</div></div>'
+            + '<span class="badge received">' + escReviewHtml(b.confirmationCode||'') + '</span>'
+            + '</div>';
+        }).join('');
+      })
+      .catch(function(){ host.innerHTML = '<p class="field-hint">ჩატვირთვა ვერ მოხერხდა — სცადეთ მოგვიანებით.</p>'; });
+  }
+  function renderMyWarranty(){
+    var host = document.getElementById('my-warranty-list');
+    if(!host || !user) return;
+    if(!user.personalId){
+      host.innerHTML = '<p class="field-hint">დაამატეთ პირადი ნომერი „პირადი მონაცემები" ჩანართში, რომ თქვენი საგარანტიო ბარათები გამოჩნდეს.</p>';
+      return;
+    }
+    host.innerHTML = '<p class="field-hint">იტვირთება…</p>';
+    fetch(API_BASE + '/api/warranty/by-customer?phone=' + encodeURIComponent(user.phone) + '&personalId=' + encodeURIComponent(user.personalId), {cache:'no-store'})
+      .then(function(res){ return res.ok ? res.json() : {cards:[]}; })
+      .then(function(data){
+        var cards = (data && data.cards) || [];
+        if(!cards.length){ host.innerHTML = '<p class="field-hint">თქვენს მონაცემებზე საგარანტიო ბარათი ვერ მოიძებნა.</p>'; return; }
+        host.innerHTML = cards.map(function(c){
+          return '<div class="device-row">'
+            + '<div><div class="dname">' + escReviewHtml(c.device||'—') + '</div>'
+            + '<div class="dmeta">სერიული: ' + escReviewHtml(c.serial) + ' · შეძენა: ' + escReviewHtml(c.purchase||'—') + ' · ვადა: ' + escReviewHtml(c.end||'—') + '</div></div>'
+            + '<span class="badge ' + (c.active?'received':'done') + '">' + (c.active ? 'აქტიური · ' + escReviewHtml(c.remainingLabel) : 'დასრულებული') + '</span>'
+            + '</div>';
+        }).join('');
+      })
+      .catch(function(){ host.innerHTML = '<p class="field-hint">ჩატვირთვა ვერ მოხერხდა — სცადეთ მოგვიანებით.</p>'; });
+  }
 
   /* =====================================================
      ORDERS
