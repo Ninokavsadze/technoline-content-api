@@ -114,11 +114,18 @@ const DEFAULT_DB = {
     // AI chat-agent settings live on this same doc (one PUT saves both the
     // hours form and these fields — see the admin panel's chat-ai-save handler).
     aiEnabled: false,
+    aiName: '',
     aiAvatar: ''
   },
   // Knowledge base the AI agent answers customers from — object-wrapped
   // (not a bare array) because PUT /api/site/:doc rejects array bodies.
   'content/chat-kb': { entries: [] },
+  // Pushed periodically by the local qlogic-bridge.js (the only thing that can
+  // reach Q-Logic's localhost) via GET /api/integrations/availability — shape:
+  // { [siteBranchId]: { [date 'YYYY-MM-DD']: [appt_time, ...] } }. Merged into
+  // GET /api/bookings/busy so the site also blocks slots booked directly in
+  // Q-Logic (admin panel/kiosk), not just ones made through the site itself.
+  'content/qlogic-availability': {},
   bookings: [],
   users: {},
   feedback: [],
@@ -215,7 +222,8 @@ const SITE_DOC_KEYS = {
   'warranty': 'content/warranty',
   'warranty-template': 'content/warranty-template',
   'chatSettings': 'content/chat-settings',
-  'chatKb': 'content/chat-kb'
+  'chatKb': 'content/chat-kb',
+  'qlogicAvailability': 'content/qlogic-availability'
 };
 
 app.get('/api/site/:doc', async function (req, res) {
@@ -393,9 +401,14 @@ app.get('/api/bookings/busy', async function (req, res) {
     const date = String(req.query.date || '');
     if (!branchId || !date) return res.status(400).json({ error: 'missing_params' });
     const db = await readDb();
-    const slots = (db.bookings || [])
+    const siteSlots = (db.bookings || [])
       .filter(function (b) { return b.branchId === branchId && b.date === date; })
       .map(function (b) { return b.timeSlot; });
+    // merge in slots booked directly inside Q-Logic (admin panel/kiosk) —
+    // pushed periodically by the local qlogic-bridge.js, see DEFAULT_DB above
+    const qlogicAvail = db['content/qlogic-availability'] || {};
+    const qlogicSlots = (qlogicAvail[branchId] && qlogicAvail[branchId][date]) || [];
+    const slots = Array.from(new Set(siteSlots.concat(qlogicSlots)));
     res.json({ slots: slots });
   } catch (e) {
     res.status(500).json({ error: 'server_error' });
@@ -1039,11 +1052,13 @@ function chatKbToPromptText(kb) {
 // history: chat.messages BEFORE the new customer message, already filtered
 // to only 'customer'/'ai' turns by the caller (admin messages never appear —
 // once a human replies, chat.aiPaused is set and the AI is never called again).
-async function askChatAi(kb, history, userText) {
+async function askChatAi(kb, history, userText, agentName) {
   if (!CHAT_AI_CONFIGURED) return null;
+  const nameLine = agentName ? ('შენი სახელია „' + agentName + '" — თუ მომხმარებელი სახელს გკითხავს, ასე გააცანი თავი.\n\n') : '';
   const systemInstruction = {
     parts: [{
       text: 'შენ ხარ technoline.ge-ის საიტის ლაივ ჩატის დამხმარე AI აგენტი. უპასუხე მომხმარებელს მხოლოდ ქვემოთ მოცემული ცოდნის ბაზის მიხედვით, ქართულ ენაზე, თავაზიანად და მოკლედ.\n\n'
+        + nameLine
         + 'ცოდნის ბაზა:\n' + chatKbToPromptText(kb) + '\n\n'
         + 'წესები:\n'
         + '- უპასუხე მხოლოდ იმაზე, რაც ცოდნის ბაზაშია. არასდროს გამოიგონო ინფორმაცია.\n'
@@ -1257,7 +1272,7 @@ wssChat.on('connection', function (ws) {
             if (settings.aiEnabled) {
               const kb = db['content/chat-kb'] || { entries: [] };
               const history = chat.messages.slice(0, -1);
-              const aiResult = await askChatAi(kb, history, text);
+              const aiResult = await askChatAi(kb, history, text, settings.aiName);
               if (aiResult && aiResult.reply) {
                 const db2 = await readDb();
                 db2.chats = db2.chats || [];
