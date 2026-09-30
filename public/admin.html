@@ -2392,7 +2392,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     var isAi = m.from === 'ai';
     var bg = mine ? 'var(--gold-ghost,#FFEAC5)' : (isAi ? 'var(--blue-soft,#E7F0FB)' : 'var(--surface-alt)');
     return '<div style="align-self:' + (mine ? 'flex-end' : 'flex-start') + ';max-width:75%;background:' + bg + ';border-radius:14px;padding:9px 13px;font-size:.86rem;line-height:1.4">'
-      + (isAi ? '<div style="font-size:.68rem;font-weight:800;color:var(--blue-deep);margin-bottom:3px">🤖 AI აგენტი</div>' : '')
+      + (isAi ? '<div style="font-size:.68rem;font-weight:800;color:var(--blue-deep);margin-bottom:3px">🤖 ' + escHtml((chatState.hours && chatState.hours.aiName) || 'AI აგენტი') + '</div>' : '')
       + chatAttachmentHtml(m.attachment)
       + (m.text ? escHtml(emoticonsToEmoji(m.text)) : '')
       + '<div style="font-size:.68rem;color:var(--ink-faint);margin-top:3px">' + escHtml(fmtDate(m.at)) + '</div></div>';
@@ -2661,6 +2661,8 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     var h = chatState.hours || CHAT_HOURS_DEFAULT;
     var enabledEl = document.getElementById('chat-ai-enabled');
     if(enabledEl) enabledEl.checked = !!h.aiEnabled;
+    var nameEl = document.getElementById('chat-ai-name');
+    if(nameEl) nameEl.value = h.aiName || '';
     renderChatAiAvatarCell();
     renderKbEntries();
   }
@@ -2762,6 +2764,11 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       + '<div id="chat-ai-form" style="display:none;margin-top:14px">'
       + '<label style="display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:700;margin-bottom:14px"><input type="checkbox" id="chat-ai-enabled"> AI აგენტი ჩართულია</label>'
       + '<div class="field-block" style="margin-bottom:14px">'
+        + '<label>აგენტის სახელი</label>'
+        + '<input type="text" id="chat-ai-name" placeholder="მაგ. გია" maxlength="40">'
+        + '<p class="field-hint" style="margin-top:6px">ეს სახელი მომხმარებელს დაუნახავს AI-ის ყოველ შეტყობინებასთან ერთად.</p>'
+      + '</div>'
+      + '<div class="field-block" style="margin-bottom:14px">'
         + '<label>AI-ის ავატარი (არასავალდებულო)</label>'
         + '<div class="part-photo-cell" id="chat-ai-avatar-cell"></div>'
       + '</div>'
@@ -2838,6 +2845,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     document.getElementById('chat-ai-save').addEventListener('click', function(){
       var payload = Object.assign({}, chatState.hours, {
         aiEnabled: document.getElementById('chat-ai-enabled').checked,
+        aiName: document.getElementById('chat-ai-name').value.trim(),
         aiAvatar: (chatState.hours && chatState.hours.aiAvatar) || ''
       });
       var statusEl = document.getElementById('chat-ai-status');
@@ -2908,6 +2916,11 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       });
     }
     if(!chatState.ws) connectChatWs();
+    // load once in the background so the AI's name/avatar are correct in the
+    // thread even if the admin never opens "პარამეტრების რედაქტირება" themselves
+    loadChatHours().then(function(){
+      if(chatState.selectedId) renderChatThreadDom();
+    });
   }
 
   function renderFeedbackPanel(main, tab){
