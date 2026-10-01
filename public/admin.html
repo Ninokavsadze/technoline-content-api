@@ -16,6 +16,7 @@
     --blue:#0E4F8E; --blue-deep:#0A3A69; --blue-deeper:#082B4E; --blue-soft:#DCEAF6; --blue-soft-2:#B8D2E8; --blue-mid:#5C86AE;
     --gold:#FCBB2D; --gold-deep:#C98A08; --gold-soft:#FFD788; --gold-ghost:#FFEAC5;
     --ok:#1E8E5A; --warn:#C98A08; --err:#C0392B;
+    --series-ai:#2a78d6; --series-operator:#eb6834;
     --font-geo:'Noto Sans Georgian','Segoe UI',sans-serif;
     --font-display:'Unbounded','Noto Sans Georgian',sans-serif;
     --radius:14px;
@@ -27,6 +28,7 @@
       --line:#1E3B58; --line-soft:#173049;
       --blue:#5FA0DC; --blue-deep:#82B4E6; --blue-deeper:#B8D2E8; --blue-soft:#123350; --blue-soft-2:#1B4468; --blue-mid:#7FA9D2;
       --gold:#FCBB2D; --gold-deep:#FFD054; --gold-soft:#E4A028; --gold-ghost:#2E2410;
+      --series-ai:#3987e5; --series-operator:#d95926;
     }
   }
   :root[data-theme="dark"]{
@@ -35,6 +37,7 @@
     --line:#1E3B58; --line-soft:#173049;
     --blue:#5FA0DC; --blue-deep:#82B4E6; --blue-deeper:#B8D2E8; --blue-soft:#123350; --blue-soft-2:#1B4468; --blue-mid:#7FA9D2;
     --gold:#FCBB2D; --gold-deep:#FFD054; --gold-soft:#E4A028; --gold-ghost:#2E2410;
+    --series-ai:#3987e5; --series-operator:#d95926;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
@@ -116,6 +119,28 @@
   .status-chip.saving{background:var(--paper-deep);color:var(--ink-faint)}
 
   .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin-bottom:18px}
+
+  .ca-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
+  .ca-tile{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px}
+  .ca-tile-label{font-size:.78rem;font-weight:700;color:var(--ink-faint);margin-bottom:8px}
+  .ca-tile-value{font-family:var(--font-display);font-size:1.7rem;font-weight:700;color:var(--ink);line-height:1.1}
+  .ca-tile-sub{font-size:.78rem;color:var(--ink-soft);margin-top:5px}
+  .ca-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;color:var(--ink-soft);margin-bottom:14px}
+  .ca-legend-item{display:flex;align-items:center;gap:6px}
+  .ca-legend-swatch{width:10px;height:10px;border-radius:3px;flex:none}
+  .ca-chart{position:relative}
+  .ca-bars{display:flex;align-items:flex-end;gap:3px;height:160px;border-bottom:1px solid var(--line)}
+  .ca-bar-group{flex:1;min-width:2px;display:flex;flex-direction:column;justify-content:flex-end;height:100%;cursor:pointer}
+  .ca-bar-seg{width:100%;flex:none}
+  .ca-bar-seg.ai{background:var(--series-ai)}
+  .ca-bar-seg.operator{background:var(--series-operator)}
+  .ca-bar-seg:first-child{border-radius:4px 4px 0 0}
+  .ca-bar-axis{display:flex;justify-content:space-between;font-size:.7rem;color:var(--ink-faint);margin-top:6px}
+  .ca-tooltip{position:fixed;pointer-events:none;background:var(--ink);color:var(--paper);font-size:.78rem;padding:7px 11px;border-radius:8px;z-index:50;display:none;line-height:1.5;box-shadow:0 6px 18px rgba(0,0,0,.25);white-space:nowrap}
+  .ca-table{width:100%;border-collapse:collapse;font-size:.86rem}
+  .ca-table th{text-align:left;font-size:.76rem;color:var(--ink-faint);font-weight:700;padding:0 10px 8px;border-bottom:1px solid var(--line)}
+  .ca-table td{padding:9px 10px;border-bottom:1px solid var(--line-soft)}
+  .ca-table tr:last-child td{border-bottom:none}
   .field-block{margin-bottom:18px}
   .field-block:last-child{margin-bottom:0}
   .field-block label{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:.82rem;font-weight:700;color:var(--ink-soft);margin-bottom:7px}
@@ -243,6 +268,7 @@
   <symbol id="ic-emoji" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="1.1" fill="currentColor"/><circle cx="15" cy="10" r="1.1" fill="currentColor"/><path d="M8 14.5c1 1.3 2.4 2 4 2s3-.7 4-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="ic-file" viewBox="0 0 24 24"><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
   <symbol id="ic-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="ic-chart" viewBox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 20h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
 </svg>
 
 <!-- ============ LOGIN ============ -->
@@ -692,11 +718,12 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     TABS.push({id:'warranty', label:'საგარანტიო ბარათი', kind:'warranty', group:'other'});
     TABS.push({id:'bookings', label:'ვიზიტების ჯავშნები', kind:'bookings', group:'other'});
     TABS.push({id:'chat', label:'ლაივ ჩატი', kind:'chat', group:'other'});
+    TABS.push({id:'chat-analytics', label:'ჩატების ანალიტიკა', kind:'chat-analytics', group:'other'});
     TABS.push({id:'feedback', label:'მომხმარებელთა უკუკავშირი', kind:'feedback', group:'other'});
     TABS.push({id:'users', label:'მომხმარებლები', kind:'users', group:'other'});
   }
 
-  var TAB_ICONS = { content:'ic-inbox', pages:'ic-menu', colors:'ic-palette', typography:'ic-palette', parts:'ic-box', branches:'ic-pin', warranty:'ic-lock', bookings:'ic-calendar', chat:'ic-chat', feedback:'ic-star', users:'ic-user' };
+  var TAB_ICONS = { content:'ic-inbox', pages:'ic-menu', colors:'ic-palette', typography:'ic-palette', parts:'ic-box', branches:'ic-pin', warranty:'ic-lock', bookings:'ic-calendar', chat:'ic-chat', 'chat-analytics':'ic-chart', feedback:'ic-star', users:'ic-user' };
 
   function renderNav(){
     var nav = document.getElementById('side-nav');
@@ -780,6 +807,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(tab.kind === 'warranty') return renderWarrantyPanel(main, tab);
     if(tab.kind === 'bookings') return renderBookingsPanel(main, tab);
     if(tab.kind === 'chat') return renderChatPanel(main, tab);
+    if(tab.kind === 'chat-analytics') return renderChatAnalyticsPanel(main, tab);
     if(tab.kind === 'feedback') return renderFeedbackPanel(main, tab);
     if(tab.kind === 'users') return renderUsersPanel(main, tab);
   }
@@ -2606,6 +2634,20 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     }
     document.getElementById('chat-reply-send').addEventListener('click', sendReply);
     document.getElementById('chat-reply-input').addEventListener('keydown', function(e){ if(e.key === 'Enter') sendReply(); });
+    // operators routinely have a screenshot already on the clipboard (a
+    // Snipping Tool capture, a copied image) and expect Ctrl+V to attach it
+    // here the same way it already works in the customer-facing widget —
+    // this was the one input the reply box didn't wire up.
+    document.getElementById('chat-reply-input').addEventListener('paste', function(e){
+      var items = (e.clipboardData && e.clipboardData.items) || [];
+      for(var i = 0; i < items.length; i++){
+        if(items[i].kind === 'file'){
+          var file = items[i].getAsFile();
+          if(file){ e.preventDefault(); stageAttachment(file); }
+          break;
+        }
+      }
+    });
     document.getElementById('chat-attach-preview-remove').addEventListener('click', clearAttachPreview);
     document.getElementById('chat-reply-attach-btn').addEventListener('click', function(){
       document.getElementById('chat-reply-file-input').click();
@@ -3080,6 +3122,205 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     loadChatHours().then(function(){
       if(chatState.selectedId) renderChatThreadDom();
     });
+  }
+
+  // ---- Chat analytics: computed entirely from the same chats data the
+  // "ლაივ ჩატი" tab already loads (chatState.chats) — no new backend
+  // endpoint needed, just aggregation on the client.
+  function computeChatAnalytics(chatsObj){
+    var list = Object.keys(chatsObj || {}).map(function(id){ return chatsObj[id]; }).filter(function(c){ return c && c.messages && c.messages.length; });
+    var total = list.length;
+    var escalated = 0;
+    var aiResponseMs = [], adminResponseMs = [];
+    var byMonth = {}, byDay = {}, byOperator = {};
+
+    list.forEach(function(c){
+      var created = c.createdAt || c.messages[0].at || Date.now();
+      var d = new Date(created);
+      var mKey = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      var dKey = mKey + '-' + String(d.getDate()).padStart(2, '0');
+      if(!byMonth[mKey]) byMonth[mKey] = {total:0, ai:0, operator:0};
+      if(!byDay[dKey]) byDay[dKey] = {total:0, ai:0, operator:0};
+      byMonth[mKey].total++;
+      byDay[dKey].total++;
+      if(c.operatorJoined){
+        escalated++;
+        byMonth[mKey].operator++;
+        byDay[dKey].operator++;
+        var opName = c.assignedOperator || 'უცნობი';
+        byOperator[opName] = (byOperator[opName] || 0) + 1;
+      } else {
+        byMonth[mKey].ai++;
+        byDay[dKey].ai++;
+      }
+
+      // Response time: pair each customer message with the NEXT ai/admin
+      // reply that follows it (skipping system notices), whichever chat it
+      // happened in — this compares AI vs human reply speed head-to-head
+      // even inside chats that later escalated, rather than only judging
+      // whole chats as "AI" or "operator". A gap over 24h (chat abandoned,
+      // reopened days later) is excluded as noise, not a real wait.
+      var lastCustomerAt = null;
+      c.messages.forEach(function(m){
+        if(m.from === 'customer'){
+          lastCustomerAt = m.at;
+        } else if((m.from === 'ai' || m.from === 'admin') && lastCustomerAt != null){
+          var rt = m.at - lastCustomerAt;
+          if(rt >= 0 && rt < 24 * 3600 * 1000){
+            (m.from === 'ai' ? aiResponseMs : adminResponseMs).push(rt);
+          }
+          lastCustomerAt = null;
+        }
+      });
+    });
+
+    function avg(arr){ return arr.length ? arr.reduce(function(a, b){ return a + b; }, 0) / arr.length : null; }
+
+    return {
+      total: total, escalated: escalated, aiOnly: total - escalated,
+      escalatedPct: total ? Math.round(escalated / total * 100) : 0,
+      avgAiResponseMs: avg(aiResponseMs), avgAdminResponseMs: avg(adminResponseMs),
+      aiSamples: aiResponseMs.length, adminSamples: adminResponseMs.length,
+      byMonth: byMonth, byDay: byDay, byOperator: byOperator
+    };
+  }
+  function caFmtDuration(ms){
+    if(ms == null) return '—';
+    var s = Math.round(ms / 1000);
+    if(s < 60) return s + ' წმ';
+    var m = Math.floor(s / 60), rs = s % 60;
+    if(m < 60) return m + ' წთ' + (rs ? ' ' + rs + ' წმ' : '');
+    var h = Math.floor(m / 60), rm = m % 60;
+    return h + ' სთ' + (rm ? ' ' + rm + ' წთ' : '');
+  }
+  function caLastNMonths(n){
+    var out = [];
+    var now = new Date();
+    for(var i = n - 1; i >= 0; i--){
+      var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      out.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+    }
+    return out;
+  }
+  function caLastNDays(n){
+    var out = [];
+    var now = new Date();
+    for(var i = n - 1; i >= 0; i--){
+      var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      out.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
+    }
+    return out;
+  }
+  var CA_MONTH_NAMES = ['იან','თებ','მარ','აპრ','მაი','ივნ','ივლ','აგვ','სექ','ოქტ','ნოე','დეკ'];
+  function caMonthLabel(key){
+    var p = key.split('-');
+    return CA_MONTH_NAMES[parseInt(p[1], 10) - 1] + ' ' + p[0].slice(2);
+  }
+  function caDayLabel(key){
+    var p = key.split('-');
+    return p[2] + '.' + p[1];
+  }
+  // Stacked bar chart, built as plain divs (no canvas/SVG dependency): each
+  // bar's two segments are the AI vs operator share of that bucket's chats,
+  // height-scaled to the busiest bucket in the range, with a hover tooltip
+  // carrying the exact breakdown (bars alone only show relative size).
+  function caRenderBarChart(containerEl, keys, dataMap, labelFn, tooltipEl){
+    var maxTotal = 1;
+    keys.forEach(function(k){ var v = (dataMap[k] || {total:0}).total; if(v > maxTotal) maxTotal = v; });
+    var html = '<div class="ca-bars">';
+    keys.forEach(function(k){
+      var v = dataMap[k] || {total:0, ai:0, operator:0};
+      var aiH = v.total ? Math.round((v.ai / maxTotal) * 160) : 0;
+      var opH = v.total ? Math.round((v.operator / maxTotal) * 160) : 0;
+      if(v.ai && aiH < 2) aiH = 2;
+      if(v.operator && opH < 2) opH = 2;
+      html += '<div class="ca-bar-group" data-key="' + k + '" data-total="' + v.total + '" data-ai="' + v.ai + '" data-operator="' + v.operator + '">';
+      if(v.operator) html += '<div class="ca-bar-seg operator" style="height:' + opH + 'px"></div>';
+      if(v.ai) html += '<div class="ca-bar-seg ai" style="height:' + aiH + 'px"></div>';
+      if(!v.total) html += '<div class="ca-bar-seg" style="height:2px;background:var(--line)"></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div class="ca-bar-axis"><span>' + labelFn(keys[0]) + '</span><span>' + labelFn(keys[Math.floor(keys.length / 2)]) + '</span><span>' + labelFn(keys[keys.length - 1]) + '</span></div>';
+    containerEl.innerHTML = html;
+    containerEl.querySelectorAll('.ca-bar-group').forEach(function(el){
+      el.addEventListener('mousemove', function(e){
+        var k = el.getAttribute('data-key');
+        tooltipEl.innerHTML = '<strong>' + labelFn(k) + '</strong><br>სულ: ' + el.getAttribute('data-total')
+          + '<br>AI: ' + el.getAttribute('data-ai') + ' · ოპერატორი: ' + el.getAttribute('data-operator');
+        tooltipEl.style.display = 'block';
+        tooltipEl.style.left = (e.clientX + 14) + 'px';
+        tooltipEl.style.top = (e.clientY - 10) + 'px';
+      });
+      el.addEventListener('mouseleave', function(){ tooltipEl.style.display = 'none'; });
+    });
+  }
+
+  function renderChatAnalyticsPanel(main, tab){
+    var html = panelHeadHtml(tab, 'ყველა ჩატის მიმოხილვა — რამდენი შემოდის, რამდენი გადადის ოპერატორთან, საპასუხო დრო და დინამიკა დღეების/თვეების მიხედვით.');
+    html += '<div id="chat-analytics-body"><div class="card"><div class="empty-state"><p>იტვირთება…</p></div></div></div>';
+    html += '<div class="ca-tooltip" id="ca-tooltip"></div>';
+    main.innerHTML = html;
+
+    function renderBody(){
+      var stats = computeChatAnalytics(chatState.chats);
+      var body = document.getElementById('chat-analytics-body');
+      if(!body) return;
+      if(!stats.total){
+        body.innerHTML = '<div class="card"><div class="empty-state"><svg><use href="#ic-chat"/></svg><p>ჯერ არ არსებობს ჩატის ისტორია.</p></div></div>';
+        return;
+      }
+
+      var out = '<div class="ca-stats">'
+        + '<div class="ca-tile"><div class="ca-tile-label">სულ ჩატი</div><div class="ca-tile-value">' + stats.total + '</div></div>'
+        + '<div class="ca-tile"><div class="ca-tile-label">გადავიდა ოპერატორთან</div><div class="ca-tile-value">' + stats.escalated + '</div><div class="ca-tile-sub">' + stats.escalatedPct + '% სულ ჩატებიდან</div></div>'
+        + '<div class="ca-tile"><div class="ca-tile-label">საშ. პასუხის დრო — AI</div><div class="ca-tile-value">' + caFmtDuration(stats.avgAiResponseMs) + '</div><div class="ca-tile-sub">' + stats.aiSamples + ' პასუხის მიხედვით</div></div>'
+        + '<div class="ca-tile"><div class="ca-tile-label">საშ. პასუხის დრო — ოპერატორი</div><div class="ca-tile-value">' + caFmtDuration(stats.avgAdminResponseMs) + '</div><div class="ca-tile-sub">' + stats.adminSamples + ' პასუხის მიხედვით</div></div>'
+        + '</div>';
+
+      var legendHtml = '<div class="ca-legend">'
+        + '<span class="ca-legend-item"><span class="ca-legend-swatch" style="background:var(--series-ai)"></span>AI ჩატი</span>'
+        + '<span class="ca-legend-item"><span class="ca-legend-swatch" style="background:var(--series-operator)"></span>ოპერატორთან</span>'
+        + '</div>';
+
+      out += '<div class="card"><h3 style="margin:0 0 4px;font-size:.98rem">თვის ტრენდი</h3>'
+        + '<p class="field-hint" style="margin:0 0 14px">ბოლო 12 თვის ჩატების რაოდენობა.</p>'
+        + legendHtml + '<div class="ca-chart" id="ca-month-chart"></div></div>';
+
+      out += '<div class="card"><h3 style="margin:0 0 4px;font-size:.98rem">დღის ტრენდი</h3>'
+        + '<p class="field-hint" style="margin:0 0 14px">ბოლო 30 დღის ჩატების რაოდენობა.</p>'
+        + legendHtml + '<div class="ca-chart" id="ca-day-chart"></div></div>';
+
+      var opNames = Object.keys(stats.byOperator).sort(function(a, b){ return stats.byOperator[b] - stats.byOperator[a]; });
+      if(opNames.length){
+        out += '<div class="card"><h3 style="margin:0 0 4px;font-size:.98rem">ოპერატორების მიხედვით</h3>'
+          + '<p class="field-hint" style="margin:0 0 14px">რამდენი ჩატი აიყვანა თითოეულმა ოპერატორმა.</p>'
+          + '<table class="ca-table"><thead><tr><th>ოპერატორი</th><th>აყვანილი ჩატები</th></tr></thead><tbody>'
+          + opNames.map(function(name){ return '<tr><td>' + escHtml(name) + '</td><td>' + stats.byOperator[name] + '</td></tr>'; }).join('')
+          + '</tbody></table></div>';
+      }
+
+      body.innerHTML = out;
+
+      var tooltipEl = document.getElementById('ca-tooltip');
+      caRenderBarChart(document.getElementById('ca-month-chart'), caLastNMonths(12), stats.byMonth, caMonthLabel, tooltipEl);
+      caRenderBarChart(document.getElementById('ca-day-chart'), caLastNDays(30), stats.byDay, caDayLabel, tooltipEl);
+    }
+
+    if(!chatState.listLoaded){
+      chatState.listLoaded = true;
+      apiGet('/api/chats').then(function(list){
+        (list || []).forEach(function(c){
+          if(!chatState.chats[c.id]) chatState.chats[c.id] = c;
+        });
+        renderBody();
+      }).catch(function(err){
+        if(err && err.status === 401){ toast('ავტორიზაცია ვადაგასულია — გთხოვთ თავიდან შეხვიდეთ'); document.getElementById('logout-btn').click(); return; }
+        renderBody();
+      });
+    } else {
+      renderBody();
+    }
   }
 
   function renderFeedbackPanel(main, tab){
