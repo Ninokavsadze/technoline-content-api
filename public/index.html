@@ -2130,6 +2130,12 @@
       return merged;
     }catch(e){ return patch; }
   }
+  // Reassigned once initChatWidget() runs (its real implementation needs
+  // that function's own closure — ws, chatId, the gate DOM helpers). Logging
+  // out should end the chat session too, not just the "already verified"
+  // site identity, so both the logout button and the idle auto-logout call
+  // this rather than only clearing tl_user.
+  var deactivateChatSession = function(){};
 
   /* ---------- toast ---------- */
   var toastEl = document.getElementById('toast');
@@ -3230,6 +3236,7 @@
       resetLoginForms();
       renderProfileView();
       location.hash = 'profile';
+      deactivateChatSession();
     });
   });
   function initials(name){
@@ -4342,6 +4349,41 @@
       if(nameEl) nameEl.value = '';
       if(phoneEl) resetPhoneField(phoneEl);
     }
+    // Logging out of the site account (manually, or via the 15-min idle
+    // auto-logout) should end an active chat session too — otherwise the
+    // customer looks "logged out" everywhere except a chat panel that keeps
+    // quietly working under the identity they just logged out of. Unlike
+    // clearChatHistory() this never asks for confirmation (it's a side
+    // effect of logout, not a deliberate "delete my history" click) and
+    // never re-starts a new session afterward — the whole point is to stop
+    // trusting that identity, so the gate should ask again next time.
+    function endActiveChatSession(){
+      var hadSession = !!(chatId || (function(){ try{ return !!localStorage.getItem(CK_ID); }catch(e){ return false; } })());
+      try{ if(ws && wsReady && chatId) ws.send(JSON.stringify({ type:'customer_close', chatId: chatId })); }catch(e){}
+      try{ if(ws) ws.close(); }catch(e){}
+      clearTimeout(reconnectTimer);
+      joined = false;
+      wsReady = false;
+      chatId = null;
+      try{
+        localStorage.removeItem(CK_ID);
+        localStorage.removeItem(CK_NAME);
+        localStorage.removeItem(CK_PHONE);
+      }catch(e){}
+      if(!hadSession) return;
+      var box = document.getElementById('chat-messages');
+      if(box) box.innerHTML = '';
+      clearAttachPreview();
+      setStatus('');
+      document.getElementById('chat-body').style.display = 'none';
+      document.getElementById('chat-gate').style.display = 'flex';
+      resetChatGate();
+      var nameEl = document.getElementById('chat-gate-name');
+      var phoneEl = document.getElementById('chat-gate-phone');
+      if(nameEl) nameEl.value = '';
+      if(phoneEl) resetPhoneField(phoneEl);
+    }
+    deactivateChatSession = endActiveChatSession;
     function clearAttachPreview(){
       pendingAttachment = null;
       var prev = document.getElementById('chat-attach-preview');
@@ -4738,6 +4780,7 @@
     try{ resetLoginForms(); }catch(e){}
     var acctView = document.getElementById('profile-account');
     if(acctView && !acctView.hidden) renderProfileView();
+    try{ deactivateChatSession(); }catch(e){}
     toast('უმოქმედობის გამო გასულხართ სისტემიდან — გთხოვთ, თავიდან გაიაროთ ავტორიზაცია');
   }
   function initIdleLogout(){
