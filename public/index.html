@@ -659,13 +659,14 @@
   #chat-panel.collapsed #chat-panel-collapse svg{transform:rotate(180deg)}
   #chat-gate{padding:20px 18px;display:flex;flex-direction:column;gap:11px;flex:1;justify-content:center}
   #chat-gate p{font-size:.86rem;color:var(--ink-soft);margin:0 0 4px;line-height:1.5}
+  #chat-gate-step1,#chat-gate-step2{display:flex;flex-direction:column;gap:11px}
   #chat-offline-notice{font-size:.8rem;color:#8a5a12;background:rgba(255,181,71,.16);border:1px solid rgba(255,181,71,.32);border-radius:10px;padding:9px 11px;line-height:1.45}
   #chat-status-label.offline::before{background:#D08A2A;box-shadow:0 0 0 2px rgba(208,138,42,.25)}
   #chat-status-line.offline-note{color:#B14526}
   #chat-gate input{padding:11px 14px;border:1.5px solid var(--line);border-radius:11px;background:var(--surface-alt);color:var(--ink);font-size:.9rem;font-family:inherit}
   #chat-gate button{padding:12px;border:none;border-radius:11px;background:var(--gold);color:#241A00;font-weight:800;font-size:.88rem;cursor:pointer}
-  #chat-gate-err{color:var(--danger,#B14526);font-size:.8rem;display:none}
-  #chat-gate-err.show{display:block}
+  #chat-gate-err,#chat-gate-otp-err{color:var(--danger,#B14526);font-size:.8rem;display:none}
+  #chat-gate-err.show,#chat-gate-otp-err.show{display:block}
   #chat-body{display:flex;flex-direction:column;flex:1;min-height:0}
   #chat-messages-wrap{position:relative;flex:1;min-height:0;overflow:hidden}
   #chat-bg-emblem{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden}
@@ -1053,11 +1054,23 @@
     </div>
     <div id="chat-gate">
       <div id="chat-offline-notice" data-ck="chatWidget.offlineNotice" style="display:none">ამჟამად სამუშაო საათებს გარეთ ვართ — დაწერეთ შეტყობინება და პასუხს უახლოეს სამუშაო დროს მიიღებთ.</div>
-      <p data-ck="chatWidget.gateIntro">დაწყებამდე მიუთითეთ სახელი და ტელეფონის ნომერი, რომ პასუხი მიიღოთ.</p>
-      <input type="text" id="chat-gate-name" data-ck-placeholder="chatWidget.gateNamePlaceholder" placeholder="სახელი" maxlength="80">
-      <input type="tel" id="chat-gate-phone" data-ck-placeholder="chatWidget.gatePhonePlaceholder" placeholder="ტელეფონის ნომერი" maxlength="30">
-      <button type="button" id="chat-gate-start" data-ck="chatWidget.gateButton">საუბრის დაწყება</button>
-      <div id="chat-gate-err"></div>
+      <div id="chat-gate-step1">
+        <p data-ck="chatWidget.gateIntro">დაწყებამდე მიუთითეთ სახელი და ტელეფონის ნომერი, რომ პასუხი მიიღოთ.</p>
+        <input type="text" id="chat-gate-name" data-ck-placeholder="chatWidget.gateNamePlaceholder" placeholder="სახელი" maxlength="80">
+        <input type="tel" id="chat-gate-phone" maxlength="20">
+        <button type="button" id="chat-gate-start">კოდის გაგზავნა</button>
+        <div id="chat-gate-err"></div>
+      </div>
+      <div id="chat-gate-step2" style="display:none">
+        <p>ვერიფიკაციის კოდი გამოგზავნილია ნომერზე <strong id="chat-gate-otp-phone-label"></strong></p>
+        <input type="text" id="chat-gate-otp-code" inputmode="numeric" autocomplete="one-time-code" placeholder="______" maxlength="6">
+        <button type="button" id="chat-gate-otp-verify">დადასტურება</button>
+        <div style="display:flex;justify-content:space-between;font-size:.78rem">
+          <a href="#" id="chat-gate-otp-back" style="color:var(--ink-soft)">‹ უკან</a>
+          <a href="#" id="chat-gate-otp-resend" style="color:var(--ink-soft)">კოდის ხელახლა გაგზავნა</a>
+        </div>
+        <div id="chat-gate-otp-err"></div>
+      </div>
     </div>
     <div id="chat-body" style="display:none">
       <div id="chat-messages-wrap">
@@ -2048,6 +2061,70 @@
     set: function(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
   };
 
+  /* =====================================================
+     UNIFIED PHONE FIELD (+995, exactly 9 digits) + UNIFIED IDENTITY
+     — shared by the site login form, the warranty-restore form and the
+     live-chat gate, so a phone typed anywhere behaves the same everywhere.
+  ===================================================== */
+  var PHONE_PREFIX = '+995 ';
+  function phoneDigits(input){
+    return String((input && input.value) || '').replace(/\D/g, '').replace(/^995/, '').slice(0, 9);
+  }
+  function phoneFieldValid(input){
+    return phoneDigits(input).length === 9;
+  }
+  function phoneFieldE164(input){
+    return '+995' + phoneDigits(input);
+  }
+  function resetPhoneField(input){
+    if(input) input.value = PHONE_PREFIX;
+  }
+  function phoneLocalDigits(e164){
+    return String(e164 || '').replace(/\D/g, '').replace(/^995/, '').slice(-9);
+  }
+  function prefillPhoneField(input, e164){
+    if(!input) return;
+    var digits = phoneLocalDigits(e164);
+    if(digits.length === 9) input.value = PHONE_PREFIX + digits;
+  }
+  function initPhoneField(input){
+    if(!input || input.__phoneMaskInit) return;
+    input.__phoneMaskInit = true;
+    function render(){
+      input.value = PHONE_PREFIX + phoneDigits(input);
+      var p = input.value.length;
+      try{ input.setSelectionRange(p, p); }catch(e){}
+    }
+    if(!input.value) input.value = PHONE_PREFIX; else render();
+    input.addEventListener('focus', function(){
+      if(input.value.length < PHONE_PREFIX.length) input.value = PHONE_PREFIX;
+      setTimeout(function(){ var p = input.value.length; try{ input.setSelectionRange(p, p); }catch(e){} }, 0);
+    });
+    input.addEventListener('keydown', function(e){
+      if(e.key === 'Backspace' && input.selectionStart <= PHONE_PREFIX.length && input.selectionEnd <= PHONE_PREFIX.length) e.preventDefault();
+    });
+    input.addEventListener('input', render);
+    input.addEventListener('click', function(){
+      if(input.selectionStart < PHONE_PREFIX.length){
+        var p = input.value.length;
+        try{ input.setSelectionRange(p, p); }catch(e){}
+      }
+    });
+  }
+  // Once a phone is SMS-verified anywhere (site login, chat gate, or a
+  // warranty-card restore), remember it here so none of the other surfaces
+  // has to ask for it again.
+  function rememberVerifiedUser(patch){
+    try{
+      var current = store.get('tl_user', null) || {};
+      var merged = Object.assign({}, current, patch || {});
+      if(!merged.city) merged.city = 'თბილისი';
+      store.set('tl_user', merged);
+      user = merged;
+      return merged;
+    }catch(e){ return patch; }
+  }
+
   /* ---------- toast ---------- */
   var toastEl = document.getElementById('toast');
   var toastMsg = document.getElementById('toast-msg');
@@ -2588,6 +2665,13 @@
   var wOtpSerial = null, wOtpPhone = null;
   function daysBetween(a,b){ return Math.round((b-a)/86400000); }
 
+  (function(){
+    var wPhoneInput = document.getElementById('w-phone');
+    initPhoneField(wPhoneInput);
+    var savedUser = store.get('tl_user', null);
+    if(savedUser && savedUser.phone) prefillPhoneField(wPhoneInput, savedUser.phone);
+  })();
+
   function resetWarrantyForms(){
     wForm.hidden = false;
     wOtpForm.hidden = true;
@@ -2645,7 +2729,12 @@
   wForm.addEventListener('submit', function(e){
     e.preventDefault();
     var serial = document.getElementById('w-serial').value.trim().toUpperCase();
-    var phone = document.getElementById('w-phone').value.trim();
+    var wPhoneInput = document.getElementById('w-phone');
+    if(!phoneFieldValid(wPhoneInput)){
+      toast('ტელეფონის ნომერი უნდა შეიცავდეს 9 ციფრს');
+      return;
+    }
+    var phone = phoneFieldE164(wPhoneInput);
     wResult.classList.add('show');
     fetch(API_BASE + '/api/warranty/' + encodeURIComponent(serial), {cache:'no-store'}).then(function(res){
       if(res.status === 404){ renderWarrantyNotFound(serial); return null; }
@@ -2701,6 +2790,9 @@
       }
       resetWarrantyForms();
       renderWarrantyFound(wOtpSerial, r.data, r.data.active, r.data.remainingLabel, true);
+      // a phone-verified warranty restore counts as site-wide identity too —
+      // the chat gate and login page should not ask for this number again
+      rememberVerifiedUser({ name: r.data.customerName || '', phone: wOtpPhone });
     }).catch(function(){ btn.disabled = false; toast('კავშირის შეცდომა'); });
   });
   document.getElementById('w-otp-back').addEventListener('click', function(e){
@@ -3027,17 +3119,24 @@
   var otpForm = document.getElementById('otp-form');
   var pendingLoginUser = null;
   var otpPhone = null;
+  initPhoneField(document.getElementById('login-phone'));
   function resetLoginForms(){
     loginForm.hidden = false;
     otpForm.hidden = true;
     otpForm.reset();
+    resetPhoneField(document.getElementById('login-phone'));
   }
   loginForm.addEventListener('submit', function(e){
     e.preventDefault();
+    var loginPhoneInput = document.getElementById('login-phone');
+    if(!phoneFieldValid(loginPhoneInput)){
+      toast('ტელეფონის ნომერი უნდა შეიცავდეს 9 ციფრს');
+      return;
+    }
     pendingLoginUser = {
       name: document.getElementById('login-name').value.trim(),
       email: document.getElementById('login-email').value.trim(),
-      phone: document.getElementById('login-phone').value.trim(),
+      phone: phoneFieldE164(loginPhoneInput),
       city: 'თბილისი'
     };
     otpPhone = pendingLoginUser.phone;
@@ -3075,8 +3174,7 @@
         toast(msg);
         return;
       }
-      user = pendingLoginUser;
-      store.set('tl_user', user);
+      user = rememberVerifiedUser(pendingLoginUser);
       loginForm.reset();
       resetLoginForms();
       renderProfileView();
@@ -3115,9 +3213,9 @@
     guest.hidden = true; acct.hidden = false;
     document.getElementById('profile-initials').textContent = initials(user.name);
     document.getElementById('profile-name-display').textContent = user.name;
-    document.getElementById('p-name').value = user.name;
-    document.getElementById('p-email').value = user.email;
-    document.getElementById('p-phone').value = user.phone;
+    document.getElementById('p-name').value = user.name || '';
+    document.getElementById('p-email').value = user.email || '';
+    document.getElementById('p-phone').value = user.phone || '';
     document.getElementById('p-city').value = user.city || 'თბილისი';
     document.getElementById('p-personal-id').value = user.personalId || '';
   }
@@ -4020,22 +4118,93 @@
         }
       };
     }
-    function startChat(){
-      var nameEl = document.getElementById('chat-gate-name');
-      var phoneEl = document.getElementById('chat-gate-phone');
-      var errEl = document.getElementById('chat-gate-err');
-      var name = nameEl.value.trim();
-      var phone = phoneEl.value.trim();
-      if(!name || !phone){
-        errEl.textContent = 'გთხოვთ შეავსოთ სახელი და ტელეფონი';
-        errEl.classList.add('show');
-        return;
-      }
-      errEl.classList.remove('show');
+    var chatOtpName = null, chatOtpPhone = null;
+
+    function beginChatSession(name, phone){
       try{ localStorage.setItem(CK_NAME, name); localStorage.setItem(CK_PHONE, phone); }catch(e){}
       document.getElementById('chat-gate').style.display = 'none';
       document.getElementById('chat-body').style.display = 'flex';
       connect(name, phone);
+    }
+    function showChatGateStep(step){
+      var s1 = document.getElementById('chat-gate-step1');
+      var s2 = document.getElementById('chat-gate-step2');
+      if(s1) s1.style.display = step === 1 ? 'flex' : 'none';
+      if(s2) s2.style.display = step === 2 ? 'flex' : 'none';
+    }
+    function resetChatGate(){
+      showChatGateStep(1);
+      var errEl = document.getElementById('chat-gate-err');
+      if(errEl) errEl.classList.remove('show');
+      var otpErrEl = document.getElementById('chat-gate-otp-err');
+      if(otpErrEl) otpErrEl.classList.remove('show');
+    }
+    // step 1 → SMS-ით ვერიფიკაციის კოდის გაგზავნა
+    function startChatGate(){
+      var nameEl = document.getElementById('chat-gate-name');
+      var phoneEl = document.getElementById('chat-gate-phone');
+      var errEl = document.getElementById('chat-gate-err');
+      var name = nameEl.value.trim();
+      if(!name){
+        errEl.textContent = 'გთხოვთ მიუთითოთ სახელი';
+        errEl.classList.add('show');
+        return;
+      }
+      if(!phoneFieldValid(phoneEl)){
+        errEl.textContent = 'ტელეფონის ნომერი უნდა შეიცავდეს 9 ციფრს';
+        errEl.classList.add('show');
+        return;
+      }
+      errEl.classList.remove('show');
+      var phone = phoneFieldE164(phoneEl);
+      var btn = document.getElementById('chat-gate-start');
+      btn.disabled = true;
+      fetch(API_BASE + '/api/otp/send', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ phone: phone })
+      }).then(function(res){ return res.json().then(function(data){ return {ok:res.ok, data:data}; }); })
+      .then(function(r){
+        btn.disabled = false;
+        if(!r.ok){
+          var m = { not_configured:'SMS ვერიფიკაცია დროებით მიუწვდომელია', too_soon:'კოდი უკვე გაიგზავნა, სცადეთ ცოტა ხანში', invalid_phone:'ნომერი არასწორია' }[r.data && r.data.error] || 'კოდის გაგზავნა ვერ მოხერხდა';
+          errEl.textContent = m;
+          errEl.classList.add('show');
+          return;
+        }
+        chatOtpName = name;
+        chatOtpPhone = phone;
+        document.getElementById('chat-gate-otp-phone-label').textContent = phone;
+        var otpErrEl = document.getElementById('chat-gate-otp-err');
+        if(otpErrEl) otpErrEl.classList.remove('show');
+        showChatGateStep(2);
+        var codeEl = document.getElementById('chat-gate-otp-code');
+        if(codeEl){ codeEl.value = ''; codeEl.focus(); }
+      }).catch(function(){ btn.disabled = false; errEl.textContent = 'კავშირის შეცდომა'; errEl.classList.add('show'); });
+    }
+    // step 2 → SMS კოდის დადასტურება, შემდეგ ჩათის დაწყება
+    function verifyChatGateOtp(){
+      var codeEl = document.getElementById('chat-gate-otp-code');
+      var errEl = document.getElementById('chat-gate-otp-err');
+      var code = codeEl.value.trim();
+      var btn = document.getElementById('chat-gate-otp-verify');
+      btn.disabled = true;
+      fetch(API_BASE + '/api/otp/verify', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ phone: chatOtpPhone, code: code, name: chatOtpName })
+      }).then(function(res){ return res.json().then(function(data){ return {ok:res.ok, data:data}; }); })
+      .then(function(r){
+        btn.disabled = false;
+        if(!r.ok){
+          var msg = { invalid_code:'არასწორი კოდი', expired:'კოდს ვადა გაუვიდა, სცადეთ თავიდან', too_many_attempts:'ცდების ლიმიტი ამოიწურა, სცადეთ თავიდან', no_pending_code:'ჯერ გამოგზავნეთ კოდი' }[r.data && r.data.error] || 'ვერიფიკაცია ვერ მოხერხდა';
+          errEl.textContent = msg;
+          errEl.classList.add('show');
+          return;
+        }
+        errEl.classList.remove('show');
+        // ჩათზე გავლილი ვერიფიკაცია ავტომატურად ავტორიზებს საიტზეც
+        rememberVerifiedUser({ name: chatOtpName, phone: chatOtpPhone });
+        beginChatSession(chatOtpName, chatOtpPhone);
+      }).catch(function(){ btn.disabled = false; errEl.textContent = 'კავშირის შეცდომა'; errEl.classList.add('show'); });
     }
     function clearChatHistory(){
       if(!window.confirm('წავშალო ამ საუბრის ისტორია? დაიწყება ახალი საუბარი.')) return;
@@ -4057,15 +4226,21 @@
       if(box) box.innerHTML = '';
       clearAttachPreview();
       setStatus('');
+      document.getElementById('chat-panel').classList.remove('collapsed');
+      // already SMS-verified (site login or a warranty restore) — start the
+      // new conversation right away instead of asking for the phone again
+      var savedUser = store.get('tl_user', null);
+      if(savedUser && savedUser.name && savedUser.phone){
+        beginChatSession(savedUser.name, savedUser.phone);
+        return;
+      }
       document.getElementById('chat-body').style.display = 'none';
       document.getElementById('chat-gate').style.display = 'flex';
+      resetChatGate();
       var nameEl = document.getElementById('chat-gate-name');
       var phoneEl = document.getElementById('chat-gate-phone');
       if(nameEl) nameEl.value = '';
-      if(phoneEl) phoneEl.value = '';
-      var errEl = document.getElementById('chat-gate-err');
-      if(errEl) errEl.classList.remove('show');
-      document.getElementById('chat-panel').classList.remove('collapsed');
+      if(phoneEl) resetPhoneField(phoneEl);
     }
     function clearAttachPreview(){
       pendingAttachment = null;
@@ -4289,8 +4464,18 @@
       if(img) openLightbox(img.src);
     });
     document.getElementById('chat-lightbox').addEventListener('click', closeLightbox);
-    document.getElementById('chat-gate-start').addEventListener('click', startChat);
-    document.getElementById('chat-gate-phone').addEventListener('keydown', function(e){ if(e.key === 'Enter') startChat(); });
+    document.getElementById('chat-gate-start').addEventListener('click', startChatGate);
+    document.getElementById('chat-gate-phone').addEventListener('keydown', function(e){ if(e.key === 'Enter') startChatGate(); });
+    document.getElementById('chat-gate-otp-verify').addEventListener('click', verifyChatGateOtp);
+    document.getElementById('chat-gate-otp-code').addEventListener('keydown', function(e){ if(e.key === 'Enter') verifyChatGateOtp(); });
+    document.getElementById('chat-gate-otp-back').addEventListener('click', function(e){ e.preventDefault(); resetChatGate(); });
+    document.getElementById('chat-gate-otp-resend').addEventListener('click', function(e){
+      e.preventDefault();
+      if(!chatOtpPhone) return;
+      fetch(API_BASE + '/api/otp/send', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone: chatOtpPhone }) })
+        .then(function(res){ return res.json().then(function(data){ return {ok:res.ok, data:data}; }); })
+        .then(function(r){ toast(r.ok ? 'კოდი ხელახლა გაიგზავნა' : 'კოდის გაგზავნა ვერ მოხერხდა'); });
+    });
     document.getElementById('chat-send').addEventListener('click', sendMessage);
     document.getElementById('chat-return-ai-btn').addEventListener('click', function(){
       if(!ws || !wsReady || !chatAiPaused) return;
@@ -4327,6 +4512,8 @@
       if(pop && pop.classList.contains('show') && !pop.contains(e.target) && !(emojiBtn && emojiBtn.contains(e.target))) pop.classList.remove('show');
     });
 
+    initPhoneField(document.getElementById('chat-gate-phone'));
+
     // returning visitor with an already-started conversation — skip the gate
     try{
       var savedId = localStorage.getItem(CK_ID);
@@ -4337,6 +4524,16 @@
         document.getElementById('chat-gate').style.display = 'none';
         document.getElementById('chat-body').style.display = 'flex';
         connect(savedName, savedPhone);
+      } else {
+        // no conversation yet — but if this phone is already SMS-verified
+        // (site login or a warranty restore), don't ask for it again either
+        var savedUser = store.get('tl_user', null);
+        if(savedUser && savedUser.name && savedUser.phone){
+          beginChatSession(savedUser.name, savedUser.phone);
+        } else {
+          var gatePhoneEl = document.getElementById('chat-gate-phone');
+          if(gatePhoneEl) resetPhoneField(gatePhoneEl);
+        }
       }
     }catch(e){}
 
