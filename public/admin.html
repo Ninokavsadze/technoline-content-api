@@ -213,6 +213,19 @@
   #chat-lightbox img{max-width:min(880px,92vw);max-height:88vh;border-radius:10px;box-shadow:0 24px 60px -20px rgba(0,0,0,.6)}
   .chat-attachment-img{max-width:220px;max-height:220px;border-radius:10px;display:block;margin-bottom:6px;cursor:zoom-in}
   .chat-attachment-audio{display:block;max-width:230px;height:36px;margin-bottom:6px}
+  /* AI-agent reply formatting — mirrors the customer-facing chat widget's
+     bullet list / line-break / map-link / tel-link rendering (see
+     formatChatReplyHtml below) so an operator reading the AI's replies in
+     the back-office sees the same readable layout the customer saw. */
+  .chat-msg-text ul.chat-msg-list{margin:6px 0;padding-left:20px;display:flex;flex-direction:column;gap:9px;list-style:disc outside}
+  .chat-msg-text ul.chat-msg-list li{padding-left:2px}
+  .chat-msg-text p.chat-msg-line{margin:0}
+  .chat-msg-text p.chat-msg-line + p.chat-msg-line{margin-top:6px}
+  .chat-bullet-line{display:block}
+  .chat-bullet-line + .chat-bullet-line{margin-top:3px}
+  .chat-map-link{color:var(--blue-deep);font-weight:800;text-decoration:underline;text-underline-offset:2px;display:inline;word-break:break-word}
+  .chat-map-link svg{width:13px;height:13px;vertical-align:-2px;margin-left:1px}
+  .chat-tel-link{color:var(--blue-deep);font-weight:800;text-decoration:underline;text-underline-offset:2px}
   .chat-tool-btn{width:32px;height:32px;border-radius:9px;border:none;background:none;color:var(--ink-faint);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
   .chat-tool-btn:hover{background:var(--paper-soft);color:var(--blue-deep)}
   .chat-tool-btn svg{width:18px;height:18px}
@@ -2486,6 +2499,114 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         + '</button>';
     }).join('') : ('<div class="empty-state" style="padding:24px 14px"><p>' + ((q || statusFilter !== 'all' || operatorFilter !== 'all' || dateFilter !== 'all') ? 'ვერაფერი მოიძებნა ამ ფილტრით.' : 'ჯერ არცერთი საუბარი არ დაწყებულა.') + '</p></div>');
   }
+  // ---- AI-agent reply formatting (ported from technoline.html's identical
+  // functions, so an AI reply looks the same to the operator here as it did
+  // to the customer): turns "- "/"• " lines into a real bullet list, splits
+  // a branch-info bullet's address/hours/phone onto their own lines, and
+  // linkifies phone numbers and known branch addresses. Only ever applied to
+  // m.from === 'ai' messages — a customer's or operator's own text is shown
+  // as plain escaped text, exactly as before. ----
+  function chatEscHtml(text){
+    return String(text == null ? '' : text)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  // state.branches only holds overridden fields per branch id — merge with
+  // BRANCHES_DEFAULTS the same way renderBranchesPanel does, so a branch
+  // address the admin hasn't touched yet still gets recognized and linked.
+  function effectiveBranchesList(){
+    return BRANCHES_DEFAULTS.map(function(def){
+      var o = (state.branches && state.branches[def.id]) || {};
+      return {
+        name: o.name != null ? o.name : def.name,
+        addr: o.addr != null ? o.addr : def.addr
+      };
+    });
+  }
+  function linkifyPhoneNumbers(text){
+    var raw = String(text == null ? '' : text);
+    var re = /(\+?\d[\d\s\-().]{6,}\d)/g;
+    var out = '', lastIndex = 0, match;
+    while((match = re.exec(raw))){
+      out += chatEscHtml(raw.slice(lastIndex, match.index));
+      var candidate = match[0];
+      var digits = candidate.replace(/\D/g, '');
+      if(digits.length >= 9 && digits.length <= 15){
+        var tel = candidate.replace(/[^\d+]/g, '');
+        out += '<a class="chat-tel-link" href="tel:' + tel + '">' + chatEscHtml(candidate) + '</a>';
+      } else {
+        out += chatEscHtml(candidate);
+      }
+      lastIndex = match.index + candidate.length;
+    }
+    out += chatEscHtml(raw.slice(lastIndex));
+    return out;
+  }
+  function linkifyBranchLocations(text){
+    var out = String(text == null ? '' : text);
+    var tokens = [];
+    effectiveBranchesList().forEach(function(b){
+      if(!b || !b.addr) return;
+      [b.addr, b.name].forEach(function(needle){
+        if(!needle) return;
+        var idx = out.indexOf(needle);
+        while(idx !== -1){
+          var token = '\u0000MAPLINK' + tokens.length + '\u0000';
+          var mapUrl = 'https://www.google.com/maps?q=' + encodeURIComponent(b.addr);
+          tokens.push('<a class="chat-map-link" href="' + mapUrl + '" target="_blank" rel="noopener">'
+            + chatEscHtml(needle) + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="#ic-pin"/></svg></a>');
+          out = out.slice(0, idx) + token + out.slice(idx + needle.length);
+          idx = out.indexOf(needle, idx + token.length);
+        }
+      });
+    });
+    return { text: out, tokens: tokens };
+  }
+  function restoreMapTokens(html, tokens){
+    tokens.forEach(function(tok, i){ html = html.split('\u0000MAPLINK' + i + '\u0000').join(tok); });
+    return html;
+  }
+  function splitBulletLine(line){
+    var m = line.match(/^(\u0000MAPLINK\d+\u0000)\s*[.,]?\s*(.*)$/);
+    if(!m) return null;
+    var rest = m[2].trim();
+    if(!rest) return null;
+    var restParts = rest.split(/;\s*/).map(function(s){ return s.trim(); }).filter(Boolean);
+    if(!restParts.length) return null;
+    return [m[1]].concat(restParts);
+  }
+  function formatChatReplyHtml(text){
+    var protectedText = linkifyBranchLocations(text);
+    var lines = protectedText.text.split(/\r?\n/);
+    var parts = [];
+    var bulletBuf = [];
+    function flushBullets(){
+      if(!bulletBuf.length) return;
+      parts.push('<ul class="chat-msg-list">' + bulletBuf.map(function(l){
+        var segments = splitBulletLine(l);
+        if(segments && segments.length > 1){
+          return '<li>' + segments.map(function(seg){
+            return '<span class="chat-bullet-line">' + linkifyPhoneNumbers(seg) + '</span>';
+          }).join('') + '</li>';
+        }
+        return '<li>' + linkifyPhoneNumbers(l) + '</li>';
+      }).join('') + '</ul>');
+      bulletBuf = [];
+    }
+    lines.forEach(function(line){
+      var bulletMatch = line.match(/^\s*[-•]\s+(.*)$/);
+      if(bulletMatch){
+        bulletBuf.push(bulletMatch[1]);
+        return;
+      }
+      flushBullets();
+      if(line.trim() === '') return;
+      parts.push('<p class="chat-msg-line">' + linkifyPhoneNumbers(line) + '</p>');
+    });
+    flushBullets();
+    return restoreMapTokens(parts.join(''), protectedText.tokens);
+  }
+
   function chatAttachmentHtml(att){
     if(!att || !att.dataUrl) return '';
     if(/^image\//.test(att.type || '')){
@@ -2507,7 +2628,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     return '<div style="align-self:' + (mine ? 'flex-end' : 'flex-start') + ';max-width:75%;background:' + bg + ';border-radius:14px;padding:9px 13px;font-size:.86rem;line-height:1.4">'
       + (isAi ? '<div style="font-size:.68rem;font-weight:800;color:var(--blue-deep);margin-bottom:3px">🤖 ' + escHtml((chatState.hours && chatState.hours.aiName) || 'AI აგენტი') + '</div>' : '')
       + chatAttachmentHtml(m.attachment)
-      + (m.text ? escHtml(emoticonsToEmoji(m.text)) : '')
+      + (m.text ? (isAi ? ('<div class="chat-msg-text">' + formatChatReplyHtml(emoticonsToEmoji(m.text)) + '</div>') : escHtml(emoticonsToEmoji(m.text))) : '')
       + '<div style="font-size:.68rem;color:var(--ink-faint);margin-top:3px">' + escHtml(fmtDate(m.at)) + '</div></div>';
   }
   function appendChatMessageDom(m){
