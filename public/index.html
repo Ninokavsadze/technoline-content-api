@@ -2262,6 +2262,7 @@
     closeDrawer();
     closeHdrSearch();
     if(route === 'profile') renderProfileView();
+    if(route === 'booking' && typeof prefillBookingContact === 'function') prefillBookingContact();
     if(route === 'orders') renderOrders();
     if(route === 'catalog'){
       renderCatalog();
@@ -3018,11 +3019,29 @@
 
   var nameIn = document.getElementById('bk-name');
   var phoneIn = document.getElementById('bk-phone');
+  var emailIn = document.getElementById('bk-email');
+  initPhoneField(phoneIn);
+  // უკვე სმს-ვერიფიცირებული მომხმარებლისთვის (საიტზე შესვლა, ჩატი ან
+  // საგარანტიოს აღდგენა) სახელი/ნომერი/ელფოსტა წინასწარ ივსება — იგივე
+  // „ერთხელ გავლილი ვერიფიკაცია ყველგან მახსოვს" ლოგიკა, რაც დანარჩენ
+  // ფორმებს აქვთ. ასევე გამოიძახება ხელახლა "booking" გვერდზე შესვლისას,
+  // რომ ჯავშნის გვერდზე მისვლისას დაიჭიროს ვერიფიკაცია, რომელიც იმავე
+  // სესიაში მოგვიანებით (მაგ. ჩატში) გაიარა.
+  function prefillBookingContact(){
+    var savedUser = store.get('tl_user', null);
+    if(!savedUser) return;
+    if(savedUser.name && !nameIn.value.trim()) nameIn.value = savedUser.name;
+    if(savedUser.phone) prefillPhoneField(phoneIn, savedUser.phone);
+    if(savedUser.email && emailIn && !emailIn.value.trim()) emailIn.value = savedUser.email;
+    checkStep4();
+  }
+  prefillBookingContact();
   function checkStep4(){
-    document.getElementById('booking-confirm').disabled = !(nameIn.value.trim() && phoneIn.value.trim().length > 5);
+    document.getElementById('booking-confirm').disabled = !(nameIn.value.trim() && phoneFieldValid(phoneIn));
   }
   nameIn.addEventListener('input', checkStep4);
   phoneIn.addEventListener('input', checkStep4);
+  checkStep4();
 
   function summaryHTML(){
     return '<div class="result-grid">'
@@ -3035,8 +3054,12 @@
   function renderBookingSummary(){ document.getElementById('booking-summary').innerHTML = summaryHTML(); }
 
   document.getElementById('booking-confirm').addEventListener('click', function(){
+    if(!phoneFieldValid(phoneIn)){
+      toast('ტელეფონის ნომერი უნდა შეიცავდეს 9 ციფრს');
+      return;
+    }
     booking.name = nameIn.value.trim();
-    booking.phone = phoneIn.value.trim();
+    booking.phone = phoneFieldE164(phoneIn);
     booking.notes = (document.getElementById('bk-notes') || {}).value || '';
     var confirmBtn = document.getElementById('booking-confirm');
     confirmBtn.disabled = true;
