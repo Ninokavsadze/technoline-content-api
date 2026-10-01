@@ -1231,7 +1231,12 @@ const CHAT_MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 function chatAttachmentFromMsg(msg) {
   if (!msg.attachment || typeof msg.attachment !== 'object') return null;
   const dataUrl = String(msg.attachment.dataUrl || '');
-  if (!/^data:[\w.+-]+\/[\w.+-]+;base64,/.test(dataUrl)) return null;
+  // A recorded voice message's real MIME type (MediaRecorder.mimeType, e.g.
+  // "audio/webm;codecs=opus") carries a codec parameter before ";base64,",
+  // which this regex used to reject outright — the attachment was silently
+  // dropped, so a voice note never made it to the other side. Allow any
+  // number of ";key=value" parameters between the type and the payload.
+  if (!/^data:[\w.+-]+\/[\w.+-]+(?:;[\w.+-]+=[\w.+-]+)*;base64,/.test(dataUrl)) return null;
   const b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
   if (b64.length * 0.75 > CHAT_MAX_ATTACHMENT_BYTES) return null;
   return {
