@@ -685,10 +685,12 @@
   .chat-msg-text{white-space:pre-wrap;word-break:break-word}
   .chat-msg-text p.chat-msg-line{margin:0}
   .chat-msg-text p.chat-msg-line + p.chat-msg-line{margin-top:6px}
-  .chat-msg-text ul.chat-msg-list{margin:6px 0;padding-left:18px;display:flex;flex-direction:column;gap:5px}
+  .chat-msg-text ul.chat-msg-list{margin:6px 0;padding-left:20px;display:flex;flex-direction:column;gap:9px;list-style:disc outside}
   .chat-msg-text ul.chat-msg-list li{padding-left:2px}
+  .chat-bullet-line{display:block}
+  .chat-bullet-line + .chat-bullet-line{margin-top:3px}
   .chat-tel-link{color:var(--blue-deep);font-weight:800;text-decoration:underline;text-underline-offset:2px}
-  .chat-map-link{color:var(--blue-deep);font-weight:800;text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
+  .chat-map-link{color:var(--blue-deep);font-weight:800;text-decoration:underline;text-underline-offset:2px;display:inline;word-break:break-word}
   .chat-map-link svg{width:13px;height:13px;vertical-align:-2px;margin-left:1px}
   .chat-msg-system{align-self:center;max-width:90%;text-align:center;font-size:.72rem;color:var(--ink-faint);background:var(--surface-alt);border-radius:999px;padding:5px 14px;margin:2px 0}
   .chat-typing{align-self:flex-start;display:flex;flex-direction:column;gap:4px;max-width:82%}
@@ -2136,6 +2138,15 @@
   // site identity, so both the logout button and the idle auto-logout call
   // this rather than only clearing tl_user.
   var deactivateChatSession = function(){};
+  // Same pattern as deactivateChatSession above, but for the opposite
+  // direction: when a phone gets SMS-verified elsewhere on the page (site
+  // login, a warranty-card restore) WHILE the chat widget is already open
+  // and showing its own name/phone gate, nothing was telling that gate to
+  // re-check "already verified" — it only re-checked on page load and on
+  // the chat-fab open click, so the customer had to refresh the page for
+  // it to notice. Reassigned to the real trySkipGate() once initChatWidget()
+  // runs; called right after rememberVerifiedUser() succeeds anywhere else.
+  var refreshChatIdentity = function(){};
 
   /* ---------- toast ---------- */
   var toastEl = document.getElementById('toast');
@@ -2806,6 +2817,7 @@
       // a phone-verified warranty restore counts as site-wide identity too —
       // the chat gate and login page should not ask for this number again
       rememberVerifiedUser({ name: r.data.customerName || '', phone: wOtpPhone });
+      refreshChatIdentity();
     }).catch(function(){ btn.disabled = false; toast('კავშირის შეცდომა'); });
   });
   document.getElementById('w-otp-back').addEventListener('click', function(e){
@@ -3214,6 +3226,7 @@
       resetLoginForms();
       renderProfileView();
       toast('კეთილი იყოს თქვენი მობრძანება, ' + user.name.split(' ')[0]);
+      refreshChatIdentity();
     }).catch(function(){ btn.disabled = false; toast('კავშირის შეცდომა'); });
   });
   document.getElementById('otp-back').addEventListener('click', function(e){
@@ -4024,6 +4037,25 @@
       tokens.forEach(function(tok, i){ html = html.split('\u0000MAPLINK' + i + '\u0000').join(tok); });
       return html;
     }
+    // A branch-info bullet comes back from the AI as one run-on line —
+    // "<address>. <hours>; <phone>" — which read fine as a sentence but
+    // looked cramped stacked in a narrow chat bubble. Since the address was
+    // already swapped for a single MAPLINK token (no raw periods left
+    // inside it — see linkifyBranchLocations above), the first "." right
+    // after that token is reliably the real address/hours boundary, and any
+    // "; " after that separates the hours from one or more phone numbers.
+    // Splitting on that lets each piece render on its own line within the
+    // bullet. Returns null (render the line as-is) when the shape doesn't
+    // match, so an ordinary bullet list (steps, options, etc.) is untouched.
+    function splitBulletLine(line){
+      var m = line.match(/^(\u0000MAPLINK\d+\u0000)\s*[.,]?\s*(.*)$/);
+      if(!m) return null;
+      var rest = m[2].trim();
+      if(!rest) return null;
+      var restParts = rest.split(/;\s*/).map(function(s){ return s.trim(); }).filter(Boolean);
+      if(!restParts.length) return null;
+      return [m[1]].concat(restParts);
+    }
     // Turns the AI's reply into readable HTML: consecutive "- "/"• " lines
     // become a real bullet list instead of one run-on paragraph, each line
     // still gets phone numbers and branch addresses linkified, and
@@ -4037,6 +4069,12 @@
       function flushBullets(){
         if(!bulletBuf.length) return;
         parts.push('<ul class="chat-msg-list">' + bulletBuf.map(function(l){
+          var segments = splitBulletLine(l);
+          if(segments && segments.length > 1){
+            return '<li>' + segments.map(function(seg){
+              return '<span class="chat-bullet-line">' + linkifyPhoneNumbers(seg) + '</span>';
+            }).join('') + '</li>';
+          }
           return '<li>' + linkifyPhoneNumbers(l) + '</li>';
         }).join('') + '</ul>');
         bulletBuf = [];
@@ -4689,6 +4727,7 @@
         }
       }catch(e){}
     }
+    refreshChatIdentity = trySkipGate;
     trySkipGate();
     if(!chatId){
       var gatePhoneEl = document.getElementById('chat-gate-phone');
