@@ -4633,6 +4633,58 @@
   }
 
   /* =====================================================
+     AUTO-LOGOUT AFTER 15 MIN OF INACTIVITY
+     — applies to the site-wide identity (tl_user), the same one shared by
+     login, the chat gate and warranty restore. An idle visitor who never
+     interacts with the page for 15 minutes gets logged out automatically,
+     the next time any activity (or the next periodic check) notices it;
+     an active live chat conversation is untouched — this only clears the
+     "already verified, don't ask again" identity.
+  ===================================================== */
+  var IDLE_LOGOUT_MS = 15 * 60 * 1000;
+  var LAST_ACTIVITY_KEY = 'tl_last_activity';
+  function markActivity(){
+    try{ localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now())); }catch(e){}
+  }
+  function getLastActivity(){
+    try{
+      var v = localStorage.getItem(LAST_ACTIVITY_KEY);
+      return v ? parseInt(v, 10) : Date.now();
+    }catch(e){ return Date.now(); }
+  }
+  function idleLogoutIfDue(){
+    var u = store.get('tl_user', null);
+    if(!u) return;
+    if(Date.now() - getLastActivity() < IDLE_LOGOUT_MS) return;
+    store.set('tl_user', null);
+    user = null;
+    try{ resetLoginForms(); }catch(e){}
+    var acctView = document.getElementById('profile-account');
+    if(acctView && !acctView.hidden) renderProfileView();
+    toast('უმოქმედობის გამო გასულხართ სისტემიდან — გთხოვთ, თავიდან გაიაროთ ავტორიზაცია');
+  }
+  function initIdleLogout(){
+    idleLogoutIfDue();
+    markActivity();
+    var throttled = false;
+    ['mousemove','keydown','click','scroll','touchstart','wheel'].forEach(function(ev){
+      document.addEventListener(ev, function(){
+        if(throttled) return;
+        throttled = true;
+        markActivity();
+        setTimeout(function(){ throttled = false; }, 5000);
+      }, { passive: true });
+    });
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible'){
+        idleLogoutIfDue();
+        markActivity();
+      }
+    });
+    setInterval(idleLogoutIfDue, 60000);
+  }
+
+  /* =====================================================
      INIT
   ===================================================== */
   renderCartBadge();
@@ -4648,5 +4700,6 @@
   loadSiteContent();
   loadFeaturedReviews();
   initChatWidget();
+  initIdleLogout();
 })();
 </script>
