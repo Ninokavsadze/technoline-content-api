@@ -683,7 +683,13 @@
   .chat-ai-content{display:flex;flex-direction:column;gap:2px;min-width:0}
   .chat-ai-name{font-size:.7rem;font-weight:800;color:var(--blue-deep)}
   .chat-msg-text{white-space:pre-wrap;word-break:break-word}
+  .chat-msg-text p.chat-msg-line{margin:0}
+  .chat-msg-text p.chat-msg-line + p.chat-msg-line{margin-top:6px}
+  .chat-msg-text ul.chat-msg-list{margin:6px 0;padding-left:18px;display:flex;flex-direction:column;gap:5px}
+  .chat-msg-text ul.chat-msg-list li{padding-left:2px}
   .chat-tel-link{color:var(--blue-deep);font-weight:800;text-decoration:underline;text-underline-offset:2px}
+  .chat-map-link{color:var(--blue-deep);font-weight:800;text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
+  .chat-map-link svg{width:13px;height:13px;vertical-align:-2px;margin-left:1px}
   .chat-msg-system{align-self:center;max-width:90%;text-align:center;font-size:.72rem;color:var(--ink-faint);background:var(--surface-alt);border-radius:999px;padding:5px 14px;margin:2px 0}
   .chat-typing{align-self:flex-start;display:flex;flex-direction:column;gap:4px;max-width:82%}
   .chat-typing-dots{display:flex;align-items:center;gap:4px;background:var(--blue-soft,#E7F0FB);border-radius:15px;border-bottom-left-radius:4px;padding:10px 14px;width:fit-content}
@@ -3979,6 +3985,69 @@
       return out;
     }
 
+    // Any branch address (or name) the AI's reply mentions verbatim — matched
+    // against the site's own BRANCHES list, the same single source of truth
+    // the Contact page's map already uses — gets wrapped in a clickable
+    // Google Maps link, so a customer asking about a branch can tap straight
+    // through to directions instead of retyping the address themselves.
+    // Matches are protected behind null-byte placeholder tokens BEFORE any
+    // HTML-escaping happens, so the escaping pass below can never split one
+    // apart or accidentally escape the link markup itself.
+    function linkifyBranchLocations(text){
+      var out = String(text == null ? '' : text);
+      var tokens = [];
+      (typeof BRANCHES !== 'undefined' ? BRANCHES : []).forEach(function(b){
+        if(!b || !b.addr) return;
+        [b.addr, b.name].forEach(function(needle){
+          if(!needle) return;
+          var idx = out.indexOf(needle);
+          while(idx !== -1){
+            var token = '\u0000MAPLINK' + tokens.length + '\u0000';
+            var mapUrl = 'https://www.google.com/maps?q=' + encodeURIComponent(b.addr);
+            tokens.push('<a class="chat-map-link" href="' + mapUrl + '" target="_blank" rel="noopener">'
+              + chatEscHtml(needle) + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="#ic-pin"/></svg></a>');
+            out = out.slice(0, idx) + token + out.slice(idx + needle.length);
+            idx = out.indexOf(needle, idx + token.length);
+          }
+        });
+      });
+      return { text: out, tokens: tokens };
+    }
+    function restoreMapTokens(html, tokens){
+      tokens.forEach(function(tok, i){ html = html.split('\u0000MAPLINK' + i + '\u0000').join(tok); });
+      return html;
+    }
+    // Turns the AI's reply into readable HTML: consecutive "- "/"• " lines
+    // become a real bullet list instead of one run-on paragraph, each line
+    // still gets phone numbers and branch addresses linkified, and
+    // everything that isn't deliberately turned into markup stays
+    // HTML-escaped plain text (never trusts the AI's output as raw markup).
+    function formatChatReplyHtml(text){
+      var protectedText = linkifyBranchLocations(text);
+      var lines = protectedText.text.split(/\r?\n/);
+      var parts = [];
+      var bulletBuf = [];
+      function flushBullets(){
+        if(!bulletBuf.length) return;
+        parts.push('<ul class="chat-msg-list">' + bulletBuf.map(function(l){
+          return '<li>' + linkifyPhoneNumbers(l) + '</li>';
+        }).join('') + '</ul>');
+        bulletBuf = [];
+      }
+      lines.forEach(function(line){
+        var bulletMatch = line.match(/^\s*[-•]\s+(.*)$/);
+        if(bulletMatch){
+          bulletBuf.push(bulletMatch[1]);
+          return;
+        }
+        flushBullets();
+        if(line.trim() === '') return;
+        parts.push('<p class="chat-msg-line">' + linkifyPhoneNumbers(line) + '</p>');
+      });
+      flushBullets();
+      return restoreMapTokens(parts.join(''), protectedText.tokens);
+    }
+
     function wsUrl(){
       return API_BASE.replace(/^https/, 'wss').replace(/^http:/, 'ws:') + '/ws/chat';
     }
@@ -4047,7 +4116,7 @@
           if(m.text){
             var t1 = document.createElement('div');
             t1.className = 'chat-msg-text';
-            t1.innerHTML = linkifyPhoneNumbers(emoticonsToEmoji(m.text));
+            t1.innerHTML = formatChatReplyHtml(emoticonsToEmoji(m.text));
             content.appendChild(t1);
           }
           div.appendChild(content);
