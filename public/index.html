@@ -4581,7 +4581,12 @@
 
     document.getElementById('chat-fab').addEventListener('click', function(){
       var panel = document.getElementById('chat-panel');
-      if(panel.classList.contains('open')) closePanel(); else openPanel();
+      if(panel.classList.contains('open')){
+        closePanel();
+      } else {
+        trySkipGate();
+        openPanel();
+      }
     });
     document.getElementById('chat-panel-close').addEventListener('click', closePanel);
     document.getElementById('chat-panel-collapse').addEventListener('click', function(){
@@ -4656,28 +4661,39 @@
 
     initPhoneField(document.getElementById('chat-gate-phone'));
 
-    // returning visitor with an already-started conversation — skip the gate
-    try{
-      var savedId = localStorage.getItem(CK_ID);
-      var savedName = localStorage.getItem(CK_NAME);
-      var savedPhone = localStorage.getItem(CK_PHONE);
-      if(savedId && savedName && savedPhone){
-        chatId = savedId;
-        document.getElementById('chat-gate').style.display = 'none';
-        document.getElementById('chat-body').style.display = 'flex';
-        connect(savedName, savedPhone);
-      } else {
-        // no conversation yet — but if this phone is already SMS-verified
-        // (site login or a warranty restore), don't ask for it again either
+    // Returning visitor with an already-started conversation, or someone
+    // already SMS-verified (site login, chat, or a warranty restore) —
+    // skip the name/phone gate. This runs at page load AND again every
+    // time the chat panel is opened (see the chat-fab click handler below),
+    // because the verification can happen AFTER the widget first loads —
+    // e.g. the customer opens the page, the gate shows (not verified yet),
+    // they go log in via the profile form elsewhere on the page, then come
+    // back and open the chat: by then tl_user exists and this should no
+    // longer ask them to type their name/phone in again.
+    function trySkipGate(){
+      if(chatId) return; // a session is already underway — nothing to do
+      try{
+        var savedId = localStorage.getItem(CK_ID);
+        var savedName = localStorage.getItem(CK_NAME);
+        var savedPhone = localStorage.getItem(CK_PHONE);
+        if(savedId && savedName && savedPhone){
+          chatId = savedId;
+          document.getElementById('chat-gate').style.display = 'none';
+          document.getElementById('chat-body').style.display = 'flex';
+          connect(savedName, savedPhone);
+          return;
+        }
         var savedUser = store.get('tl_user', null);
         if(savedUser && savedUser.name && savedUser.phone){
           beginChatSession(savedUser.name, savedUser.phone);
-        } else {
-          var gatePhoneEl = document.getElementById('chat-gate-phone');
-          if(gatePhoneEl) resetPhoneField(gatePhoneEl);
         }
-      }
-    }catch(e){}
+      }catch(e){}
+    }
+    trySkipGate();
+    if(!chatId){
+      var gatePhoneEl = document.getElementById('chat-gate-phone');
+      if(gatePhoneEl) resetPhoneField(gatePhoneEl);
+    }
 
     // re-evaluate the online/offline status while the tab stays open, so a
     // chat left open across a business-hours boundary doesn't show a stale
