@@ -621,14 +621,28 @@
   #toast svg{width:16px;height:16px;color:var(--success-soft)}
 
   /* scroll-to-top */
-  #scroll-top-btn{position:fixed;right:20px;bottom:24px;width:46px;height:46px;border-radius:50%;background:var(--surface);color:var(--ink-soft);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-2);border:1px solid var(--line);z-index:150;opacity:0;visibility:hidden;transform:translateY(8px);transition:opacity .2s ease,transform .2s ease,color .15s,border-color .15s}
+  #scroll-top-btn{position:fixed;right:20px;bottom:24px;width:46px;height:46px;border-radius:50%;background:var(--surface);color:var(--ink-soft);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-2);border:1px solid var(--line);z-index:150;opacity:0;visibility:hidden;transform:translateY(8px);transition:opacity .2s ease,transform .2s ease,color .15s,border-color .15s,bottom .2s ease}
   #scroll-top-btn.show{opacity:1;visibility:visible;transform:translateY(0)}
   #scroll-top-btn:hover{color:var(--blue);border-color:var(--blue-mid)}
   #scroll-top-btn svg{width:18px;height:18px}
   @media (max-width:600px){ #scroll-top-btn{right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px))} }
 
+  /* ---------- cookie consent banner ---------- */
+  #cookie-banner{position:fixed;left:0;right:0;bottom:0;z-index:390;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -8px 28px -12px rgba(0,0,0,.25);padding:16px 0;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  #cookie-banner[hidden]{display:none}
+  .cookie-banner-inner{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+  .cookie-banner-text{flex:1 1 420px;font-size:.88rem;line-height:1.55;color:var(--ink-soft);margin:0}
+  .cookie-banner-text a{color:var(--blue);font-weight:700;text-decoration:underline;text-underline-offset:2px}
+  .cookie-banner-actions{display:flex;gap:10px;flex-wrap:wrap;flex:0 0 auto}
+  @media (max-width:640px){ #cookie-banner{padding:14px 0 calc(14px + env(safe-area-inset-bottom,0px))} .cookie-banner-inner{gap:14px} .cookie-banner-actions{width:100%} .cookie-banner-actions .btn{flex:1 1 0}
+    body.cookie-banner-visible #chat-widget{bottom:calc(86px + 128px)}
+    body.cookie-banner-visible #scroll-top-btn{bottom:calc(24px + 128px)}
+  }
+  body.cookie-banner-visible #chat-widget{bottom:calc(86px + 84px)}
+  body.cookie-banner-visible #scroll-top-btn{bottom:calc(24px + 84px)}
+
   /* ---------- live chat widget ---------- */
-  #chat-widget{position:fixed;right:20px;bottom:86px;z-index:150}
+  #chat-widget{position:fixed;right:20px;bottom:86px;z-index:150;transition:bottom .2s ease}
   #chat-fab{width:56px;height:56px;border-radius:50%;background:var(--blue-deep);color:#fff;border:none;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-2);cursor:pointer;position:relative}
   #chat-fab svg{width:24px;height:24px}
   #chat-fab-avatar-img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover;display:none}
@@ -1033,6 +1047,16 @@
 
 <div id="toast"><svg><use href="#ic-check"/></svg><span id="toast-msg"></span></div>
 <button id="scroll-top-btn" type="button" aria-label="ზემოთ დაბრუნება" title="ზემოთ დაბრუნება"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+
+<div id="cookie-banner" role="region" aria-label="ქუქი-ფაილების თანხმობა" hidden>
+  <div class="wrap cookie-banner-inner">
+    <p class="cookie-banner-text" data-ck="common.cookieBannerText">საიტი იყენებს აუცილებელ ტექნიკურ ქუქი-ფაილებს გამართული მუშაობისთვის (მაგ. ავტორიზაციის დამახსოვრება). სტატისტიკისა და საიტის გაუმჯობესების მიზნით დამატებითი ანალიტიკური ქუქი-ფაილების გამოყენებაზე თანხმობას თქვენ წყვეტთ — დეტალები <a href="#privacy" data-route="privacy">კონფიდენციალურობის პოლიტიკაში</a>.</p>
+    <div class="cookie-banner-actions">
+      <button type="button" class="btn btn-ghost btn-sm" id="cookie-decline-btn" data-ck="common.cookieDeclineBtn">მხოლოდ აუცილებელი</button>
+      <button type="button" class="btn btn-blue btn-sm" id="cookie-accept-btn" data-ck="common.cookieAcceptBtn">ყველას მიღება</button>
+    </div>
+  </div>
+</div>
 
 <div id="chat-widget">
   <button id="chat-fab" type="button" aria-label="ლაივ ჩატი" title="ლაივ ჩატი">
@@ -1985,6 +2009,7 @@
           <p data-ck="privacy.s2.body">მონაცემებს ვიყენებთ მხოლოდ მომსახურების გასაწევად: თქვენი ვინაობის დასადასტურებლად SMS-კოდით, ჯავშნის/შეკეთების სტატუსის შეტყობინებისთვის, ჩატში (AI აგენტთან ან ოპერატორთან) პასუხის გასაცემად და საგარანტიო ბარათის მოსაძებნად ან გასაგზავნად. თქვენი მონაცემები არასოდეს გამოიყენება პირდაპირი მარკეტინგისთვის თქვენი დამატებითი თანხმობის გარეშე.</p>
           <h2 id="p-cookies" data-ck="privacy.s3.title">3. ქუქი-ფაილები და ანალიტიკა</h2>
           <p data-ck="privacy.s3.body">საიტი იყენებს ბრაუზერის ლოკალურ მეხსიერებას (localStorage) იმისთვის, რომ დალოგინებული დაგხვდეთ საიტზე დაბრუნებისას და ჩატში ხელახლა არ გკითხოთ სახელი/ტელეფონი. სტატისტიკისა და საიტის გაუმჯობესების მიზნით შესაძლოა გამოყენებულ იქნას Google Analytics/Google Tag Manager-ის ანონიმური, აგრეგირებული სტატისტიკის ქუქი-ფაილები — ამ შემთხვევაში მოქმედებს Google-ის საკუთარი კონფიდენციალურობის პირობები. ბრაუზერის პარამეტრებში შეგიძლიათ ნებისმიერ დროს გამორთოთ ან წაშალოთ ქუქი-ფაილები.</p>
+          <button type="button" id="cookie-prefs-reopen" class="btn btn-ghost btn-sm" style="margin-top:4px">ქუქი-ფაილების პარამეტრების შეცვლა</button>
           <h2 id="p-share" data-ck="privacy.s4.title">4. მონაცემთა გაზიარება მესამე მხარეებთან</h2>
           <p data-ck="privacy.s4.body">თქვენს მონაცემებს არ ვყიდით და არ ვუზიარებთ მესამე პირებს სარეკლამო მიზნით. SMS-კოდებისა და შეტყობინებების გასაგზავნად ვიყენებთ სანდო SMS-პროვაიდერს, ხოლო ვიზიტის ჯავშნის მართვისთვის — Smart Q-Logic-ის სისტემას. ეს პარტნიორები თქვენს მონაცემებს იღებენ მხოლოდ იმ მოცულობით, რაც კონკრეტული ფუნქციის (SMS-ის მიტანა, ჯავშნის დამუშავება) შესასრულებლად არის საჭირო.</p>
           <h2 id="p-retain" data-ck="privacy.s5.title">5. შენახვა და უსაფრთხოება</h2>
@@ -4793,6 +4818,43 @@
     setInterval(refreshChatHoursStatus, 60000);
   }
 
+  // Cookie consent banner: a first-time (or previously "declined") visitor
+  // sees a bottom bar with two choices — "only necessary" keeps just the
+  // functional localStorage use (login/session memory, never optional), and
+  // "accept all" additionally allows the analytics container (GTM, see
+  // applyGtmContainer below) to load. The choice is remembered in
+  // localStorage so the banner doesn't reappear, and can be reopened anytime
+  // from the link on the privacy-policy page.
+  var COOKIE_CONSENT_KEY = 'tl_cookie_consent';
+  function getCookieConsent(){ return store.get(COOKIE_CONSENT_KEY, null); }
+  function setCookieConsent(val){ store.set(COOKIE_CONSENT_KEY, val); }
+  function initCookieBanner(){
+    var banner = document.getElementById('cookie-banner');
+    if(!banner) return;
+    function showBanner(){
+      banner.hidden = false;
+      document.body.classList.add('cookie-banner-visible');
+    }
+    function hideBanner(){
+      banner.hidden = true;
+      document.body.classList.remove('cookie-banner-visible');
+    }
+    if(!getCookieConsent()) showBanner();
+    var acceptBtn = document.getElementById('cookie-accept-btn');
+    var declineBtn = document.getElementById('cookie-decline-btn');
+    var reopenBtn = document.getElementById('cookie-prefs-reopen');
+    if(acceptBtn) acceptBtn.addEventListener('click', function(){
+      setCookieConsent('accepted');
+      hideBanner();
+      applyGtmContainer();
+    });
+    if(declineBtn) declineBtn.addEventListener('click', function(){
+      setCookieConsent('declined');
+      hideBanner();
+    });
+    if(reopenBtn) reopenBtn.addEventListener('click', showBanner);
+  }
+
   // Google Tag Manager: only loads once a real container id is saved via
   // the admin panel (content key "common.gtmId", empty by default — see the
   // manual CONTENT_DEFAULTS registration above). Runs once applied data
@@ -4803,6 +4865,11 @@
   function applyGtmContainer(){
     var id = String(siteContent.content['common.gtmId'] || '').trim();
     if(gtmInjected || !/^GTM-[A-Z0-9]+$/.test(id)) return;
+    // Analytics/tracking cookies are opt-in — only load the GTM container once
+    // the visitor has accepted via the cookie-consent banner (see initCookieBanner
+    // below). "declined" or no decision yet both hold this off; accepting calls
+    // applyGtmContainer() again immediately, so it fires without a reload.
+    if(getCookieConsent() !== 'accepted') return;
     gtmInjected = true;
     var s = document.createElement('script');
     s.innerHTML = "(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','" + id + "');";
@@ -4952,6 +5019,7 @@
   loadSiteContent();
   loadFeaturedReviews();
   initChatWidget();
+  initCookieBanner();
   initIdleLogout();
 })();
 </script>
