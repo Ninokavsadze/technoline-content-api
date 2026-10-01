@@ -1237,7 +1237,7 @@ wssChat.on('connection', function (ws) {
         }
         ws.chatId = chat.id;
         chatCustomerSockets.set(chat.id, ws);
-        ws.send(JSON.stringify({ type: 'joined', chatId: chat.id, messages: chat.messages, status: chat.status }));
+        ws.send(JSON.stringify({ type: 'joined', chatId: chat.id, messages: chat.messages, status: chat.status, aiPaused: !!chat.aiPaused }));
       } catch (e) {
         ws.send(JSON.stringify({ type: 'error', error: 'server_error' }));
       }
@@ -1301,7 +1301,7 @@ wssChat.on('connection', function (ws) {
                   await writeDb(db2);
                   const custWs = chatCustomerSockets.get(chat2.id);
                   outbox.forEach(function (om) {
-                    if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: om }));
+                    if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: om, aiPaused: chat2.aiPaused }));
                     chatBroadcastToAdmins({
                       type: 'message', chatId: chat2.id, message: om,
                       chatSummary: { id: chat2.id, name: chat2.name, phone: chat2.phone, status: chat2.status, lastAt: chat2.lastAt, aiPaused: chat2.aiPaused }
@@ -1317,6 +1317,52 @@ wssChat.on('connection', function (ws) {
           }
         }
       } catch (e) { /* drop silently — customer keeps typing, no hard failure surfaced to them */ }
+    }
+
+    // customer closed/cleared their side of the conversation (the widget's
+    // "clear history" action) — without this, the chat sat untouched in the
+    // admin panel looking perfectly normal/open forever, with no sign the
+    // customer had actually left it; now it's marked closed, same as when
+    // an admin closes it, so the existing "დახურულია" UI picks it up
+    if (msg.type === 'customer_close' && ws.chatId) {
+      try {
+        const db = await readDb();
+        db.chats = db.chats || [];
+        const chat = db.chats.find(function (c) { return c.id === ws.chatId; });
+        if (!chat || chat.status === 'closed') return;
+        chat.status = 'closed';
+        const sysMsg = { from: 'system', text: 'მომხმარებელმა დახურა საუბარი.', at: Date.now() };
+        chat.messages.push(sysMsg);
+        chat.lastAt = sysMsg.at;
+        await writeDb(db);
+        chatBroadcastToAdmins({
+          type: 'message', chatId: chat.id, message: sysMsg,
+          chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt, aiPaused: chat.aiPaused, operatorJoined: chat.operatorJoined, assignedOperator: chat.assignedOperator }
+        });
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    // customer-initiated "return to AI" — lets them leave a human hand-off
+    // and go back to the AI agent themselves, without waiting for an admin
+    if (msg.type === 'return_to_ai' && ws.chatId) {
+      try {
+        const db = await readDb();
+        db.chats = db.chats || [];
+        const chat = db.chats.find(function (c) { return c.id === ws.chatId; });
+        if (!chat || !chat.aiPaused) return; // already with the AI, or chat missing — nothing to do
+        chat.aiPaused = false;
+        chat.operatorJoined = false;
+        const sysMsg = { from: 'system', text: 'დაბრუნდით AI აგენტთან.', at: Date.now() };
+        chat.messages.push(sysMsg);
+        chat.lastAt = sysMsg.at;
+        await writeDb(db);
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'message', message: sysMsg, aiPaused: false }));
+        chatBroadcastToAdmins({
+          type: 'message', chatId: chat.id, message: sysMsg,
+          chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt, aiPaused: false, operatorJoined: false, assignedOperator: chat.assignedOperator }
+        });
+      } catch (e) { /* ignore */ }
     }
   });
   ws.on('close', function () {
@@ -1365,7 +1411,7 @@ wssAdminChat.on('connection', function (ws, req) {
         chat.lastAt = sysMsg.at;
         await writeDb(db);
         const custWs = chatCustomerSockets.get(chat.id);
-        if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: sysMsg }));
+        if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: sysMsg, aiPaused: chat.aiPaused }));
         const payload = {
           type: 'message', chatId: chat.id, message: sysMsg,
           chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt, aiPaused: chat.aiPaused, operatorJoined: chat.operatorJoined, assignedOperator: chat.assignedOperator }
@@ -1400,7 +1446,7 @@ wssAdminChat.on('connection', function (ws, req) {
         chat.aiPaused = true; // a human took over — the AI must never talk over them again in this chat
         await writeDb(db);
         outbox.forEach(function (om) {
-          if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: om }));
+          if (custWs && custWs.readyState === WebSocket.OPEN) custWs.send(JSON.stringify({ type: 'message', message: om, aiPaused: chat.aiPaused }));
           const payload = {
             type: 'message', chatId: chat.id, message: om,
             chatSummary: { id: chat.id, name: chat.name, phone: chat.phone, status: chat.status, lastAt: chat.lastAt, aiPaused: chat.aiPaused, operatorJoined: chat.operatorJoined, assignedOperator: chat.assignedOperator }
