@@ -326,6 +326,42 @@ const QLOGIC_API_KEY = process.env.QLOGIC_API_KEY || '';
 // branch maps to it for now — update this if Q-Logic adds more branches.
 const QLOGIC_BRANCH_MAP = { b1: 1, b2: 1, b3: 1, b4: 1 };
 
+// --- booking constants shared with the chat AI agent's booking action ---
+// Kept in sync by hand with technoline.html's own BRANCHES array and
+// admin-panel.html's BRANCHES_DEFAULTS (same ids/fields) and with the
+// <select id="bk-device">/<select id="bk-issue"> option lists and
+// TIME_SLOTS in technoline.html's booking wizard — this is the server's own
+// copy of "what a booking is allowed to look like", used so the AI chat
+// agent (which never sees the storefront's DOM) can be told the real
+// branch names/ids and offer the same device/issue/time choices a human
+// filling in the booking page would see.
+const BRANCHES_DEFAULTS = [
+  { id: 'b1', name: 'ვაჟა-ფშაველას ფილიალი', addr: 'ვაჟა-ფშაველას გამზ. 71', hours: 'ორშ–შაბ, 10:00–20:00' },
+  { id: 'b2', name: 'პეკინის გამზირის ფილიალი', addr: 'პეკინის გამზ. 14', hours: 'ორშ–კვ, 10:00–21:00' },
+  { id: 'b3', name: 'რუსთაველის ფილიალი', addr: 'რუსთაველის ქ. 22', hours: 'ორშ–შაბ, 10:00–19:00' },
+  { id: 'b4', name: 'ცენტრალური ფილიალი', addr: 'თამარ მეფის ქ. 8', hours: 'ორშ–შაბ, 10:00–19:00' }
+];
+const BOOKING_DEVICE_TYPES = ['სმარტფონი', 'ლეპტოპი / კომპიუტერი', 'პლანშეტი', 'სმარტ-საათი', 'სათამაშო კონსოლი', 'საყოფაცხოვრებო ტექნიკა'];
+const BOOKING_ISSUE_TYPES = ['ეკრანის დაზიანება', 'ბატარეა ვერ იტენება', 'წყლის დაზიანება', 'არ ირთვება', 'სხვა'];
+const BOOKING_TIME_SLOTS = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+
+// db['content/branches'] only holds per-branch OVERRIDES saved from the
+// admin panel (same shape technoline.html/admin-panel.html merge client
+// side) — merge them onto BRANCHES_DEFAULTS so the AI agent always sees a
+// branch's current real name/address, not the stale factory default.
+function effectiveBranches(db) {
+  const overrides = (db && db['content/branches']) || {};
+  return BRANCHES_DEFAULTS.map(function (def) {
+    const o = overrides[def.id] || {};
+    return {
+      id: def.id,
+      name: o.name != null ? o.name : def.name,
+      addr: o.addr != null ? o.addr : def.addr,
+      hours: o.hours != null ? o.hours : def.hours
+    };
+  });
+}
+
 async function sendToQLogic(booking) {
   if (!QLOGIC_API_BASE || !QLOGIC_API_KEY) return null; // not configured yet
   const branch_id = QLOGIC_BRANCH_MAP[booking.branchId] || 1;
@@ -364,45 +400,38 @@ async function sendToQLogic(booking) {
   }
 }
 
-app.post('/api/bookings', async function (req, res) {
-  const b = req.body || {};
-  const required = ['branchId', 'serviceType', 'date', 'timeSlot', 'name', 'phone'];
-  const missing = required.filter(function (f) { return !b[f]; });
-  if (missing.length) {
-    return res.status(400).json({ error: 'missing_fields', fields: missing });
-  }
-  let booking;
-  try {
-    const db = await readDb();
-    booking = {
-      id: 'bk_' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex'),
-      confirmationCode: genConfirmationCode(),
-      status: 'received',
-      createdAt: new Date().toISOString(),
-      branchId: b.branchId,
-      serviceType: b.serviceType,
-      date: b.date,
-      timeSlot: b.timeSlot,
-      name: b.name,
-      phone: b.phone,
-      deviceType: b.deviceType || null,
-      issue: b.issue || null,
-      notes: b.notes || null,
-      qlogicId: null,
-      qlogicVerifyCode: null,
-      qlogicSpace: null,
-      qlogicError: null
-    };
-    db.bookings.push(booking);
-    await writeDb(db);
-  } catch (e) {
-    return res.status(500).json({ error: 'server_error' });
-  }
-  res.status(201).json(booking); // respond right away — the site shouldn't wait on Q-Logic
+// Shared by the public POST /api/bookings route below AND the chat AI
+// agent's "book_visit" action (see askChatAi / the chat action handler
+// further down) — one place that creates a booking record, pushes it to
+// Q-Logic, and keeps the saved record's qlogic* fields in sync, so a future
+// change to that logic never needs to be made in two places.
+async function createBookingRecord(b) {
+  const db = await readDb();
+  const booking = {
+    id: 'bk_' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex'),
+    confirmationCode: genConfirmationCode(),
+    status: 'received',
+    createdAt: new Date().toISOString(),
+    branchId: b.branchId,
+    serviceType: b.serviceType,
+    date: b.date,
+    timeSlot: b.timeSlot,
+    name: b.name,
+    phone: b.phone,
+    deviceType: b.deviceType || null,
+    issue: b.issue || null,
+    notes: b.notes || null,
+    qlogicId: null,
+    qlogicVerifyCode: null,
+    qlogicSpace: null,
+    qlogicError: null
+  };
+  db.bookings.push(booking);
+  await writeDb(db);
 
-  // fire the Q-Logic sync after responding; update the saved record either way,
-  // so a failure (bad/rotated API key, IP not allowlisted, rate limit, etc.)
-  // is recorded and visible in the admin panel, not just silently dropped
+  // fire the Q-Logic sync in the background; update the saved record either
+  // way, so a failure (bad/rotated API key, IP not allowlisted, rate limit,
+  // etc.) is recorded and visible in the admin panel, not just silently dropped
   sendToQLogic(booking).then(async function (result) {
     if (!result) return; // integration not configured on this deploy — nothing to record
     const db2 = await readDb();
@@ -418,7 +447,40 @@ app.post('/api/bookings', async function (req, res) {
     }
     await writeDb(db2);
   }).catch(function (e) { console.error('post-booking qlogic sync error:', e.message); });
+
+  return booking;
+}
+
+app.post('/api/bookings', async function (req, res) {
+  const b = req.body || {};
+  const required = ['branchId', 'serviceType', 'date', 'timeSlot', 'name', 'phone'];
+  const missing = required.filter(function (f) { return !b[f]; });
+  if (missing.length) {
+    return res.status(400).json({ error: 'missing_fields', fields: missing });
+  }
+  let booking;
+  try {
+    booking = await createBookingRecord(b);
+  } catch (e) {
+    return res.status(500).json({ error: 'server_error' });
+  }
+  res.status(201).json(booking); // respond right away — the site shouldn't wait on Q-Logic
 });
+
+// Which time slots are already taken for a branch+date (site bookings +
+// whatever's pushed from Q-Logic directly) — shared by the public
+// GET /api/bookings/busy route below and the chat AI agent's "book_visit"
+// action, so both always see the exact same availability.
+function computeBusySlots(db, branchId, date) {
+  const siteSlots = (db.bookings || [])
+    .filter(function (b) { return b.branchId === branchId && b.date === date; })
+    .map(function (b) { return b.timeSlot; });
+  // merge in slots booked directly inside Q-Logic (admin panel/kiosk) —
+  // pushed periodically by the local qlogic-bridge.js, see DEFAULT_DB above
+  const qlogicAvail = db['content/qlogic-availability'] || {};
+  const qlogicSlots = (qlogicAvail[branchId] && qlogicAvail[branchId][date]) || [];
+  return Array.from(new Set(siteSlots.concat(qlogicSlots)));
+}
 
 // Public — no personal data, just which time slots are already taken for a
 // branch+date, so the booking page can grey them out before the customer
@@ -431,15 +493,7 @@ app.get('/api/bookings/busy', async function (req, res) {
     const date = String(req.query.date || '');
     if (!branchId || !date) return res.status(400).json({ error: 'missing_params' });
     const db = await readDb();
-    const siteSlots = (db.bookings || [])
-      .filter(function (b) { return b.branchId === branchId && b.date === date; })
-      .map(function (b) { return b.timeSlot; });
-    // merge in slots booked directly inside Q-Logic (admin panel/kiosk) —
-    // pushed periodically by the local qlogic-bridge.js, see DEFAULT_DB above
-    const qlogicAvail = db['content/qlogic-availability'] || {};
-    const qlogicSlots = (qlogicAvail[branchId] && qlogicAvail[branchId][date]) || [];
-    const slots = Array.from(new Set(siteSlots.concat(qlogicSlots)));
-    res.json({ slots: slots });
+    res.json({ slots: computeBusySlots(db, branchId, date) });
   } catch (e) {
     res.status(500).json({ error: 'server_error' });
   }
@@ -1086,9 +1140,16 @@ function chatKbToPromptText(kb) {
 // history: chat.messages BEFORE the new customer message, already filtered
 // to only 'customer'/'ai' turns by the caller (admin messages never appear —
 // once a human replies, chat.aiPaused is set and the AI is never called again).
-async function askChatAi(kb, history, userText, agentName) {
+// branches: effectiveBranches(db) — the real, current branch list (admin
+// overrides already merged in), so the model names/picks real branches
+// instead of the factory defaults once staff rename or move one.
+async function askChatAi(kb, history, userText, agentName, branches) {
   if (!CHAT_AI_CONFIGURED) return null;
   const nameLine = agentName ? ('შენი სახელია „' + agentName + '" — თუ მომხმარებელი სახელს გკითხავს, ასე გააცანი თავი.\n\n') : '';
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const branchesLines = (branches || []).map(function (b) {
+    return b.id + ' — ' + b.name + ' (' + b.addr + '), სამუშაო საათები: ' + b.hours;
+  }).join('\n');
   const systemInstruction = {
     parts: [{
       text: 'შენ ხარ technoline.ge-ის საიტის ლაივ ჩატის დამხმარე AI აგენტი. უპასუხე მომხმარებელს მხოლოდ ქვემოთ მოცემული ცოდნის ბაზის მიხედვით, თავაზიანად და მოკლედ.\n\n'
@@ -1102,8 +1163,18 @@ async function askChatAi(kb, history, userText, agentName) {
         + '- თუ მომხმარებელი უბრალოდ თბილ სიტყვას, კომპლიმენტს, მადლობას ან დამშვიდობებას წერს და კონკრეტულ კითხვას არ სვამს (ანუ წინა შეტყობინება უკვე ამომწურავად პასუხობდა მის საკითხს) — ეს არც ინფორმაციის ნაკლებობაა და არც ახალი გვერდითი საკითხი, ამიტომ არასდროს დაამატო „სხვა საკითხში თუ შევძლებ...“-ის მსგავსი ფრაზა ხელახლა: უბრალოდ თბილად და მოკლედ უპასუხე მადლობით (escalate:false), და თუ აშკარაა, რომ საუბარი სრულდება და დამატებითი დახმარება აღარ სჭირდება, თავაზიანად დაემშვიდობე, დახმარების შეთავაზების გამეორების გარეშე.\n'
         + '- არასდროს გაიმეორო სიტყვასიტყვით (ან თითქმის სიტყვასიტყვით) წინადადება, რომელიც ამ საუბარში უკვე დაწერე — თუნდაც იგივე ტიპის სიტუაცია განმეორდეს, თითოეული პასუხი ბუნებრივად და ახლებურად ჩამოაყალიბე.\n'
         + '- თუ პასუხი რამდენიმე პუნქტს შეიცავს (მაგ. რამდენიმე ფილიალი, რამდენიმე ნაბიჯი, რამდენიმე ვარიანტი) — არასდროს ჩაყარო ყველაფერი ერთ წინადადებაში მძიმით/წერტილ-მძიმით გამოყოფილი. სამაგიეროდ დაწერე ცალკე ხაზზე, ხაზის დასაწყისში „- “ (დეფისი და space) ნიშნით, თითოეული პუნქტი ცალკე ხაზზე. ფილიალის მისამართი ყოველთვის ზუსტად ისე ჩაწერე, როგორც ცოდნის ბაზაშია — სიტყვასიტყვით, შემოკლების ან გადაკეთების გარეშე.\n'
-        + '- ყველა სხვა შემთხვევაში დააბრუნე escalate:false და დასვი პასუხი reply ველში.\n'
-        + '- უპასუხე მხოლოდ JSON ობიექტით, მითითებული სქემის მიხედვით — არაფერი სხვა.'
+        + '- ყველა სხვა შემთხვევაში დააბრუნე escalate:false და დასვი პასუხი reply ველში.\n\n'
+        + 'დამატებითი შესაძლებლობები — საგარანტიო ბარათის გამოგზავნა და ვიზიტის დაჯავშნა ჩატშივე (action ველი):\n'
+        + 'დღევანდელი თარიღი: ' + todayStr + ' (YYYY-MM-DD).\n'
+        + 'ფილიალები (id — დასახელება (მისამართი), სამუშაო საათები):\n' + branchesLines + '\n'
+        + 'მოწყობილობის ტიპები ვიზიტისთვის: ' + BOOKING_DEVICE_TYPES.join(', ') + '.\n'
+        + 'პრობლემის ტიპები ვიზიტისთვის: ' + BOOKING_ISSUE_TYPES.join(', ') + '.\n'
+        + 'საათების სლოტები: ' + BOOKING_TIME_SLOTS.join(', ') + '.\n\n'
+        + '1) საგარანტიო ბარათის გამოგზავნა (action.type = "send_warranty_card"): თუ მომხმარებელი სურს თავისი საგარანტიო ბარათის მიღება ჩატში, სთხოვე მოწყობილობის სერიული ნომერი (თუ ჯერ არ დაწერა). როგორც კი სერიული ნომერი გაქვს, დააბრუნე action.type="send_warranty_card" და action.serial ველში ზუსტად ის სერიული ნომერი — ნუ დაელოდები დამატებით დადასტურებას, რადგან ბარათის ძებნა/გაგზავნა თავისთავად უსაფრთხოა (ან იპოვება და გაეგზავნება, ან არა). reply-ში დაწერე მხოლოდ მოკლე გარდამავალი ფრაზა (მაგ. „წამით, ვამოწმებ სერიულ ნომერს...“) — არასდროს დაწერო, რომ ბარათი უკვე გამოგზავნილია ან ვერ მოიძებნა, რადგან ამას რეალური შედეგის მიხედვით ცალკე შეტყობინება დაადასტურებს.\n'
+        + '2) ვიზიტის დაჯავშნა (action.type = "book_visit"): საჭირო ოთხივე დეტალი შეაგროვე საუბრის განმავლობაში — ფილიალი (ზემოთ ჩამოთვლილთაგან), მოწყობილობის ტიპი, პრობლემის ტიპი და სასურველი თარიღი+საათი (ზემოთ ჩამოთვლილი სლოტებიდან). სახელი და ტელეფონი არ გჭირდება კითხვა — სისტემამ უკვე იცის ვინ ესაუბრება. სანამ ეს ოთხივე არ გაქვს, action.type="none" და reply-ში ჰკითხე ნაკლული დეტალი. როცა ოთხივე გაქვს, reply-ში ერთ წინადადებაში გაუმეორე მომხმარებელს არჩეული დეტალები („ასე გავაგებინო: [ფილიალი], [თარიღი] [საათი], [მოწყობილობა] — [პრობლემა]?“) და მხოლოდ იმ ერთ შემდეგ შეტყობინებაში, როცა მომხმარებელი ამაზე პირდაპირ თანხმობას (კი/დიახ/დამიჯავშნე და მისთ.) დაწერს, დააბრუნე action.type="book_visit" შესაბამისი action.branchId (მხოლოდ id, მაგ. "b1"), action.deviceType, action.issue, action.date (YYYY-MM-DD) და action.timeSlot (HH:MM) ველებით — ოთხივე ერთად, ზუსტად ისე როგორც თანხმობის წინ დაწერე. reply-ში ამ დასტურის შეტყობინებაში დაწერე მხოლოდ მოკლე გარდამავალი ფრაზა (მაგ. „ვაგზავნი ჯავშანს...“) — არასდროს დაწერო, რომ ჯავშანი უკვე დადასტურებულია ან სლოტი დაკავებულია, რადგან ამას რეალური შედეგის მიხედვით ცალკე შეტყობინება დაადასტურებს.\n'
+        + '- ორივე ქმედებისთვის: action-ის გამოყენება (type !== "none") არასდროს ჩაითვალოს ოპერატორთან გადაცემის მიზეზად — დატოვე escalate:false.\n'
+        + '- action ველი ყოველთვის დააბრუნე — როცა არც ერთი ზემოთხსენებული ქმედება არ გჭირდება, დააბრუნე {"type":"none"}.\n\n'
+        + 'უპასუხე მხოლოდ JSON ობიექტით, მითითებული სქემის მიხედვით — არაფერი სხვა.'
     }]
   };
   const contents = [];
@@ -1126,8 +1197,24 @@ async function askChatAi(kb, history, userText, agentName) {
           responseMimeType: 'application/json',
           responseSchema: {
             type: 'object',
-            properties: { escalate: { type: 'boolean' }, reply: { type: 'string' } },
-            required: ['escalate', 'reply']
+            properties: {
+              escalate: { type: 'boolean' },
+              reply: { type: 'string' },
+              action: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string', enum: ['none', 'send_warranty_card', 'book_visit'] },
+                  serial: { type: 'string' },
+                  branchId: { type: 'string' },
+                  deviceType: { type: 'string' },
+                  issue: { type: 'string' },
+                  date: { type: 'string' },
+                  timeSlot: { type: 'string' }
+                },
+                required: ['type']
+              }
+            },
+            required: ['escalate', 'reply', 'action']
           }
         }
       }),
@@ -1141,11 +1228,109 @@ async function askChatAi(kb, history, userText, agentName) {
     if (!text) { console.error('Gemini chat-ai: no candidate text', data.promptFeedback || data); return null; }
     let parsed;
     try { parsed = JSON.parse(text); } catch (e) { return null; }
-    return { escalate: !!parsed.escalate, reply: String(parsed.reply || '').trim().slice(0, 2000) };
+    const rawAction = (parsed.action && typeof parsed.action === 'object') ? parsed.action : {};
+    const actionType = ['send_warranty_card', 'book_visit'].indexOf(rawAction.type) !== -1 ? rawAction.type : 'none';
+    return {
+      escalate: !!parsed.escalate,
+      reply: String(parsed.reply || '').trim().slice(0, 2000),
+      action: {
+        type: actionType,
+        serial: String(rawAction.serial || '').trim().slice(0, 40),
+        branchId: String(rawAction.branchId || '').trim().slice(0, 20),
+        deviceType: String(rawAction.deviceType || '').trim().slice(0, 60),
+        issue: String(rawAction.issue || '').trim().slice(0, 60),
+        date: String(rawAction.date || '').trim().slice(0, 10),
+        timeSlot: String(rawAction.timeSlot || '').trim().slice(0, 10)
+      }
+    };
   } catch (e) {
     console.error('Gemini chat-ai failed:', e.message);
     return null;
   }
+}
+
+// Executes the AI chat agent's proposed action (see the action instructions
+// inside askChatAi above) against the real warranty/booking systems and
+// returns the single deterministic follow-up chat message to append — never
+// trusts the model's own wording for the outcome, since it can't know in
+// advance whether a serial exists or a time slot is still free (the model
+// is told as much, and keeps its own `reply` to a short "checking..."
+// line). Returns null for action.type "none".
+// chat: the live chat record, which already carries the OTP-verified
+// name/phone from the chat gate (see the 'join' handler in /ws/chat below)
+// — booking never needs to ask the customer for those again, and a
+// warranty-card lookup can trust it as the "this is really you" check
+// instead of running a second OTP step inside the chat.
+async function performChatAiAction(db, chat, action) {
+  if (!action || action.type === 'none') return null;
+
+  if (action.type === 'send_warranty_card') {
+    const serial = String(action.serial || '').trim().toUpperCase();
+    if (!serial) {
+      return { from: 'ai', text: 'სერიული ნომერი ვერ ამოვიცანი — გთხოვთ, დამისახელოთ ზუსტად.', at: Date.now() };
+    }
+    const rec = (db['content/warranty'] || {})[serial];
+    if (!rec) {
+      return { from: 'ai', text: 'სერიული ნომრით „' + serial + '" საგარანტიო ბარათი ვერ მოიძებნა — გთხოვთ, გადაამოწმოთ ნომერი.', at: Date.now() };
+    }
+    if (rec.phone && normalizePhone(rec.phone) !== normalizePhone(chat.phone)) {
+      return {
+        from: 'ai',
+        text: 'უსაფრთხოების მიზნით ამ სერიული ნომრის ბარათს ვერ გამოგიგზავნით ამ საუბრიდან — ეს ჩანაწერი დარეგისტრირებულია სხვა ტელეფონის ნომერზე. გთხოვთ, ბარათი გადაამოწმოთ საიტის „საგარანტიოს აღდგენა" გვერდზე თქვენი საკუთარი ნომრით.',
+        at: Date.now()
+      };
+    }
+    try {
+      const status = warrantyStatus(rec);
+      const pdf = await generateWarrantyCardPdf(db, serial, rec, status);
+      return {
+        from: 'ai',
+        text: 'აი თქვენი საგარანტიო ბარათი (' + serial + '):',
+        attachment: { name: 'warranty-' + serial + '.pdf', type: 'application/pdf', dataUrl: 'data:application/pdf;base64,' + pdf.toString('base64') },
+        at: Date.now()
+      };
+    } catch (e) {
+      console.error('chat action: warranty card generation failed:', e.stack || e.message);
+      return { from: 'ai', text: 'ბარათის მომზადებისას შეცდომა მოხდა — სცადეთ ცოტა ხანში, ან მოითხოვეთ ოპერატორის დახმარება.', at: Date.now() };
+    }
+  }
+
+  if (action.type === 'book_visit') {
+    const branches = effectiveBranches(db);
+    const branch = branches.find(function (b) { return b.id === action.branchId; });
+    const validShape = branch
+      && BOOKING_DEVICE_TYPES.indexOf(action.deviceType) !== -1
+      && BOOKING_ISSUE_TYPES.indexOf(action.issue) !== -1
+      && /^\d{4}-\d{2}-\d{2}$/.test(action.date)
+      && BOOKING_TIME_SLOTS.indexOf(action.timeSlot) !== -1;
+    if (!validShape) {
+      return { from: 'ai', text: 'ვერ შევძელი ჯავშნის დეტალების ამოცნობა — გთხოვთ, კიდევ ერთხელ დამისახელოთ ფილიალი, მოწყობილობის ტიპი, პრობლემა და სასურველი თარიღი/საათი.', at: Date.now() };
+    }
+    if (action.date < new Date().toISOString().slice(0, 10)) {
+      return { from: 'ai', text: 'ეს თარიღი უკვე გავიდა — გთხოვთ, აირჩიოთ მომავალი თარიღი.', at: Date.now() };
+    }
+    const busy = computeBusySlots(db, action.branchId, action.date);
+    if (busy.indexOf(action.timeSlot) !== -1) {
+      return { from: 'ai', text: branch.name + '-ში ' + action.date + ' ' + action.timeSlot + ' საათზე ადგილი უკვე დაკავებულია — გთხოვთ, აირჩიოთ სხვა საათი.', at: Date.now() };
+    }
+    try {
+      const booking = await createBookingRecord({
+        branchId: action.branchId, serviceType: action.issue, date: action.date, timeSlot: action.timeSlot,
+        name: chat.name, phone: chat.phone, deviceType: action.deviceType, issue: action.issue, notes: null
+      });
+      return {
+        from: 'ai',
+        text: 'ჯავშანი დადასტურებულია ✅\n- ფილიალი: ' + branch.name + ' (' + branch.addr + ')\n- თარიღი/საათი: ' + booking.date + ', ' + booking.timeSlot
+          + '\n- მოწყობილობა: ' + booking.deviceType + ' — ' + booking.issue + '\n- დადასტურების კოდი: ' + booking.confirmationCode,
+        at: Date.now()
+      };
+    } catch (e) {
+      console.error('chat action: booking creation failed:', e.stack || e.message);
+      return { from: 'ai', text: 'ჯავშნის გაფორმებისას შეცდომა მოხდა — სცადეთ ცოტა ხანში, ან მოითხოვეთ ოპერატორის დახმარება.', at: Date.now() };
+    }
+  }
+
+  return null;
 }
 
 // Admin panel: paste one document, get it back auto-split into KB entries
@@ -1320,7 +1505,7 @@ wssChat.on('connection', function (ws) {
             try {
               const kb = db['content/chat-kb'] || { entries: [] };
               const history = chat.messages.slice(0, -1);
-              const aiResult = await askChatAi(kb, history, text, settings.aiName);
+              const aiResult = await askChatAi(kb, history, text, settings.aiName, effectiveBranches(db));
               if (aiResult && aiResult.reply) {
                 const db2 = await readDb();
                 db2.chats = db2.chats || [];
@@ -1339,6 +1524,20 @@ wssChat.on('connection', function (ws) {
                     const escMsg = { from: 'system', text: 'გადაგამისამართებთ ოპერატორესთან — გთხოვთ, მოითმინოთ.', at: Date.now() };
                     chat2.messages.push(escMsg);
                     outbox.push(escMsg);
+                  }
+                  // Warranty-card / booking action, if the model proposed one —
+                  // performChatAiAction actually hits the warranty/booking data
+                  // and returns the one deterministic follow-up message to show,
+                  // so aiMsg.text above never has to be trusted for the outcome.
+                  try {
+                    const actionMsg = await performChatAiAction(db2, chat2, aiResult.action);
+                    if (actionMsg) {
+                      chat2.messages.push(actionMsg);
+                      chat2.lastAt = actionMsg.at;
+                      outbox.push(actionMsg);
+                    }
+                  } catch (e) {
+                    console.error('chat AI action failed:', e.message);
                   }
                   await writeDb(db2);
                   const custWs = chatCustomerSockets.get(chat2.id);
