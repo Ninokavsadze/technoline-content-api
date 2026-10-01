@@ -2351,8 +2351,10 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       c.messages.push(msg.message);
       if(msg.chatSummary){
         c.name = msg.chatSummary.name; c.phone = msg.chatSummary.phone; c.status = msg.chatSummary.status; c.lastAt = msg.chatSummary.lastAt;
-        if(msg.chatSummary.aiPaused) c.aiPaused = true;
-        if(msg.chatSummary.operatorJoined) c.operatorJoined = true;
+        // full assignment, not just "set true" — a customer can send the chat
+        // back to the AI (return_to_ai), which must be able to flip these back off
+        c.aiPaused = !!msg.chatSummary.aiPaused;
+        c.operatorJoined = !!msg.chatSummary.operatorJoined;
         if(msg.chatSummary.assignedOperator) c.assignedOperator = msg.chatSummary.assignedOperator;
       }
       if(msg.message.from === 'customer' && chatState.selectedId !== msg.chatId) c.unread = true;

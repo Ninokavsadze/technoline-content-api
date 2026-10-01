@@ -700,6 +700,9 @@
   .chat-attachment-audio{display:block;max-width:230px;height:36px}
   .chat-attachment-audio + .chat-msg-text{margin-top:7px}
   #chat-status-line{padding:0 16px 6px;font-size:.74rem;color:var(--ink-faint);flex:none}
+  #chat-return-ai-btn{display:none;align-items:center;justify-content:center;gap:6px;margin:0 16px 8px;padding:8px 14px;border:1.5px solid var(--blue-deep);border-radius:999px;background:transparent;color:var(--blue-deep);font-size:.78rem;font-weight:700;font-family:inherit;cursor:pointer;flex:none}
+  #chat-return-ai-btn.show{display:flex}
+  #chat-return-ai-btn:active{background:var(--blue-soft,#E7F0FB)}
   #chat-ai-badge{display:none;align-items:center;justify-content:center;gap:6px;padding:6px 16px;font-size:.68rem;font-weight:500;color:var(--ink-faint);opacity:.65;background:transparent;flex:none;border-top:1px solid var(--line);text-align:center}
   #chat-ai-badge.show{display:flex}
   #chat-toolbar{display:flex;align-items:center;gap:2px;padding:6px 10px 0;flex:none;position:relative}
@@ -1067,6 +1070,7 @@
         <div id="chat-messages"></div>
       </div>
       <div id="chat-status-line"></div>
+      <button type="button" id="chat-return-ai-btn">🤖 დაბრუნება AI აგენტთან</button>
       <div id="chat-ai-badge"><span data-ck="chatWidget.aiBadgeLabel">თქვენ გესაუბრებათ AI აგენტი — საჭიროების შემთხვევაში გადაამოწმეთ ინფორმაცია.</span></div>
       <div id="chat-attach-preview">
         <img id="chat-attach-preview-img" alt="" style="display:none">
@@ -3621,6 +3625,15 @@
           source.setAttribute('src', wantSrc);
           video.load();
         }
+        // the poster= on this tag is a hardcoded still frame from the
+        // ORIGINAL built-in video, baked into the page's markup — once an
+        // admin uploads a different video, that still frame no longer
+        // matches it. Autoplay is more often delayed or briefly blocked on
+        // mobile than on desktop, so that stale poster sits on screen
+        // visibly longer there — reading exactly as "mobile shows the old
+        // video". Clearing it once a custom video is active means there is
+        // never a frame on screen that doesn't belong to the current video.
+        if(customVideo && video.hasAttribute('poster')) video.removeAttribute('poster');
       }
       video.style.display = wantPhoto ? 'none' : '';
     }
@@ -3787,7 +3800,7 @@
   ===================================================== */
   function initChatWidget(){
     var CK_ID = 'tlChatId', CK_NAME = 'tlChatName', CK_PHONE = 'tlChatPhone';
-    var ws = null, wsReady = false, reconnectTimer = null, joined = false, chatId = null;
+    var ws = null, wsReady = false, reconnectTimer = null, joined = false, chatId = null, chatAiPaused = false;
     var pendingAttachment = null; // {name, type, dataUrl} staged via attach button or Ctrl+V, sent with the next message
     var CHAT_MAX_FILE_BYTES = 5 * 1024 * 1024;
     var EMOJI_LIST = ['😀','😁','😂','🙂','😊','😍','🤔','😉','👍','👌','🙏','👏','🔥','💯','✅','❌','⏰','📱','💻','⌚','🛠️','📦','🚚','💬','❓','❗','🎉','❤️'];
@@ -3952,6 +3965,17 @@
       var el = document.getElementById('chat-status-line');
       if(el) el.textContent = text || '';
     }
+    // shows a "return to the AI agent" button once a human operator has
+    // taken over (or the AI escalated and is waiting for one) — lets the
+    // customer leave the hand-off themselves instead of waiting on staff
+    function refreshReturnAiBtn(){
+      var btn = document.getElementById('chat-return-ai-btn');
+      if(btn) btn.classList.toggle('show', !!chatAiPaused);
+    }
+    function setChatAiPaused(val){
+      chatAiPaused = !!val;
+      refreshReturnAiBtn();
+    }
     function connect(name, phone){
       try{ ws = new WebSocket(wsUrl()); }catch(e){ setStatus('კავშირი ვერ დამყარდა'); return; }
       ws.onopen = function(){
@@ -3977,9 +4001,11 @@
             (msg.messages || []).forEach(appendMsg);
           }
           setStatus(msg.status === 'closed' ? 'საუბარი დახურულია' : '');
+          setChatAiPaused(msg.aiPaused);
         } else if(msg.type === 'message'){
           hideChatTypingIndicator();
           appendMsg(msg.message);
+          if(typeof msg.aiPaused !== 'undefined') setChatAiPaused(msg.aiPaused);
           var panel = document.getElementById('chat-panel');
           if((msg.message.from === 'admin' || msg.message.from === 'ai') && panel && !panel.classList.contains('open')){
             var b = document.getElementById('chat-fab-badge');
@@ -4013,6 +4039,10 @@
     }
     function clearChatHistory(){
       if(!window.confirm('წავშალო ამ საუბრის ისტორია? დაიწყება ახალი საუბარი.')) return;
+      // tell the server first, while the socket is still open — otherwise the
+      // chat just sits in the admin panel looking untouched, with no sign the
+      // customer actually left it
+      try{ if(ws && wsReady && chatId) ws.send(JSON.stringify({ type:'customer_close', chatId: chatId })); }catch(e){}
       try{ if(ws) ws.close(); }catch(e){}
       clearTimeout(reconnectTimer);
       joined = false;
@@ -4262,6 +4292,13 @@
     document.getElementById('chat-gate-start').addEventListener('click', startChat);
     document.getElementById('chat-gate-phone').addEventListener('keydown', function(e){ if(e.key === 'Enter') startChat(); });
     document.getElementById('chat-send').addEventListener('click', sendMessage);
+    document.getElementById('chat-return-ai-btn').addEventListener('click', function(){
+      if(!ws || !wsReady || !chatAiPaused) return;
+      ws.send(JSON.stringify({ type: 'return_to_ai', chatId: chatId }));
+      // optimistic — the server echoes the same system message + aiPaused:false
+      // back over the socket, so this just makes the button disappear instantly
+      setChatAiPaused(false);
+    });
     document.getElementById('chat-input').addEventListener('keydown', function(e){
       if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
     });
