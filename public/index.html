@@ -3298,16 +3298,24 @@
   function renderMyWarranty(){
     var host = document.getElementById('my-warranty-list');
     if(!host || !user) return;
-    if(!user.personalId){
-      host.innerHTML = '<p class="field-hint">დაამატეთ პირადი ნომერი „პირადი მონაცემები" ჩანართში, რომ თქვენი საგარანტიო ბარათები გამოჩნდეს.</p>';
+    if(!user.phone){
+      host.innerHTML = '<p class="field-hint">საგარანტიო ბარათების საძებნელად ჯერ ტელეფონის ნომერი უნდა იყოს ვერიფიცირებული.</p>';
       return;
     }
     host.innerHTML = '<p class="field-hint">იტვირთება…</p>';
-    fetch(API_BASE + '/api/warranty/by-customer?phone=' + encodeURIComponent(user.phone) + '&personalId=' + encodeURIComponent(user.personalId), {cache:'no-store'})
+    // ნომერი უკვე ვერიფიცირებულია შესვლისას — ეს თავისთავად საკმარისია
+    // ბარათის მოსაძებნელად; personalId (თუ შეყვანილია) მხოლოდ დამატებითი,
+    // ძველი ჩანაწერებისთვისაა, რომლებზეც ტელეფონი არაა შენახული.
+    fetch(API_BASE + '/api/warranty/by-customer?phone=' + encodeURIComponent(user.phone) + '&personalId=' + encodeURIComponent(user.personalId || ''), {cache:'no-store'})
       .then(function(res){ return res.ok ? res.json() : {cards:[]}; })
       .then(function(data){
         var cards = (data && data.cards) || [];
-        if(!cards.length){ host.innerHTML = '<p class="field-hint">თქვენს მონაცემებზე საგარანტიო ბარათი ვერ მოიძებნა.</p>'; return; }
+        if(!cards.length){
+          host.innerHTML = '<p class="field-hint">თქვენს მონაცემებზე საგარანტიო ბარათი ვერ მოიძებნა.'
+            + (user.personalId ? '' : ' თუ ბარათი პირად ნომერზეა დამატებული (ტელეფონის გარეშე), დაამატეთ პირადი ნომერი „პირადი მონაცემები" ჩანართში.')
+            + '</p>';
+          return;
+        }
         // თითოეულ ბარათს — PDF ჩამოტვირთვა + მეილზე/SMS-ით გაგზავნა, ისევე
         // როგორც სერიული ნომრით შემოწმების გვერდზეა; საკუთარი ანგარიშის
         // მეილი/ტელეფონი წინასწარაა ჩაწერილი, შეგიძლიათ სხვაზეც შეცვალოთ.
