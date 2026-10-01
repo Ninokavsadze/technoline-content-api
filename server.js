@@ -58,11 +58,40 @@ app.use(express.static(path.join(__dirname, 'public'), {
     if (filePath.endsWith('.html')) {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
+    // the staff-only admin panel has no business showing up in search
+    // results (see the robots.txt + /api noindex block below)
+    if (filePath.endsWith('admin.html')) {
+      res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+    }
   }
 }));
 app.get('/admin', function (req, res) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// --- keep search engines out of the API + admin panel -------------------
+// /api/* responses carry customer PII (warranty PDFs with names/serials,
+// phone numbers, personal ID numbers, booking details) with a guessable
+// URL (e.g. /api/warranty/:serial/card) and no login on several routes —
+// there's no reason any of that should ever be crawled, cached or shown in
+// Google (or any other) search results. robots.txt asks crawlers not to
+// fetch these paths at all; X-Robots-Tag stops indexing even if a URL still
+// gets fetched anyway (a shared link opened by a crawler-driven preview,
+// for example). The public storefront pages (index.html, catalog, etc.)
+// are deliberately left untouched so normal SEO keeps working there.
+app.get('/robots.txt', function (req, res) {
+  res.type('text/plain').send(
+    'User-agent: *\n' +
+    'Disallow: /api/\n' +
+    'Disallow: /admin.html\n' +
+    'Disallow: /admin\n'
+  );
+});
+app.use('/api', function (req, res, next) {
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+  next();
 });
 
 // --- permissive CORS for the test server -----------------------------
