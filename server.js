@@ -762,13 +762,16 @@ function warrantyStatus(rec) {
 }
 
 // "ჩემი საგარანტიო ბარათები" (site account cabinet) — pulls every warranty
-// record that matches BOTH the phone number AND the personal ID number the
-// customer has saved in their profile. The account itself was already
-// phone-verified via /api/otp/verify at login, so this doesn't re-run its
-// own OTP step — it trusts the already-logged-in phone, same as the other
-// account cabinet tabs (devices, orders). Records staff never gave a
-// personalId to simply never match here (they still work fine on the
-// single-serial warranty-check page).
+// record belonging to this customer. The account's phone is already
+// SMS-verified via /api/otp/verify at login (same unified identity used
+// site-wide), so a record whose own phone matches it is proven to be this
+// customer's on that basis alone — this doesn't re-run its own OTP step,
+// it trusts the already-logged-in phone, same as the other account
+// cabinet tabs (devices, orders). personalId is now only a FALLBACK match
+// for older/demo records that have a personal ID on file but no phone —
+// requiring both used to mean a record with a phone but no personalId (the
+// common case when staff only fill in the phone) could never show up here
+// at all, even though the phone match alone is just as trustworthy.
 // Registered BEFORE /api/warranty/:serial so it isn't swallowed by that
 // param route (Express matches route order, and :serial would otherwise
 // match the literal word "by-customer" too — same fix as /api/bookings/busy).
@@ -776,15 +779,16 @@ app.get('/api/warranty/by-customer', async function (req, res) {
   try {
     const phone = normalizePhone(req.query.phone);
     const personalId = String(req.query.personalId || '').trim();
-    if (!phone || !personalId) return res.status(400).json({ error: 'missing_params' });
+    if (!phone) return res.status(400).json({ error: 'missing_params' });
     const db = await readDb();
     const all = db['content/warranty'] || {};
     const cards = Object.keys(all)
       .filter(function (serial) {
         const rec = all[serial];
-        return rec && rec.phone && rec.personalId
-          && normalizePhone(rec.phone) === phone
-          && String(rec.personalId).trim() === personalId;
+        if (!rec) return false;
+        if (rec.phone && normalizePhone(rec.phone) === phone) return true;
+        if (!rec.phone && personalId && rec.personalId && String(rec.personalId).trim() === personalId) return true;
+        return false;
       })
       .map(function (serial) {
         const rec = all[serial];
