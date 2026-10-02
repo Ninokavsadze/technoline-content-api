@@ -1085,6 +1085,14 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     {navitem:'about', hideKey:'navHideAbout', label:'ჩვენს შესახებ (ყოფილი „კომპანია")'},
     {navitem:'contact', hideKey:'navHideContact', label:'კონტაქტი'}
   ];
+  // Header icon buttons (search, cart) — same hide/show mechanism as
+  // NAV_ITEMS above (applyNavVisibility on the public site matches any
+  // data-navitem, wherever it sits), but these aren't part of the
+  // reorderable top nav, so they get their own list with no up/down arrows.
+  var HEADER_ICON_ITEMS = [
+    {navitem:'search', hideKey:'navHideSearch', label:'ძიების ხატულა (ჰედერში)'},
+    {navitem:'cart', hideKey:'navHideCart', label:'კალათის ხატულა (ჰედერში)'}
+  ];
   // Effective nav order: state.theme.navOrder (an array of navitem keys)
   // if present and valid, filtered to known items and with any new item
   // NAV_ITEMS gained since it was saved appended at the end — otherwise
@@ -1109,6 +1117,16 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
           + '<button type="button" class="drag-eye" style="font-size:.85rem;padding:0"'+(i===0?' disabled':'')+' data-nav-move-up="'+it.navitem+'" title="ზემოთ აწევა">▲</button>'
           + '<button type="button" class="drag-eye" style="font-size:.85rem;padding:0"'+(i===items.length-1?' disabled':'')+' data-nav-move-down="'+it.navitem+'" title="ქვემოთ ჩამოწევა">▼</button>'
         + '</div>'
+        + '<h3 style="margin:0;flex:1">'+it.label+(hidden ? ' <span style="color:var(--ink-soft);font-weight:600">— დამალულია</span>' : '')+'</h3>'
+        + '<button type="button" class="drag-eye" style="font-size:1.3rem" data-nav-hide-key="'+it.hideKey+'" title="ჩვენება/დამალვა">'+(hidden?'🚫':'👁')+'</button>'
+        + '</div>';
+    });
+    html += '</div>';
+    html += '<div class="side-group-label" style="margin-top:18px">ჰედერის სხვა ელემენტები</div>';
+    html += '<div class="card">';
+    HEADER_ICON_ITEMS.forEach(function(it){
+      var hidden = !!state.theme[it.hideKey];
+      html += '<div class="branch-card" style="display:flex;align-items:center;justify-content:space-between;gap:14px">'
         + '<h3 style="margin:0;flex:1">'+it.label+(hidden ? ' <span style="color:var(--ink-soft);font-weight:600">— დამალულია</span>' : '')+'</h3>'
         + '<button type="button" class="drag-eye" style="font-size:1.3rem" data-nav-hide-key="'+it.hideKey+'" title="ჩვენება/დამალვა">'+(hidden?'🚫':'👁')+'</button>'
         + '</div>';
@@ -3743,7 +3761,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       }
       else if(tab.kind === 'parts'){ state.parts = {}; }
       else if(tab.kind === 'branches'){ state.branches = {}; }
-      else if(tab.kind === 'pages'){ NAV_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); delete state.theme.navOrder; }
+      else if(tab.kind === 'pages'){ NAV_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); HEADER_ICON_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); delete state.theme.navOrder; }
       setDirty(tab, true);
       renderMain();
     });
