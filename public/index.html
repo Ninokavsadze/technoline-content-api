@@ -708,6 +708,9 @@
   .chat-map-link{color:var(--blue-deep);font-weight:800;text-decoration:underline;text-underline-offset:2px;display:inline;word-break:break-word}
   .chat-map-link svg{width:13px;height:13px;vertical-align:-2px;margin-left:1px}
   .chat-msg-system{align-self:center;max-width:90%;text-align:center;font-size:.72rem;color:var(--ink-faint);background:var(--surface-alt);border-radius:999px;padding:5px 14px;margin:2px 0}
+  .chat-msg-time{font-size:.66rem;color:var(--ink-faint);opacity:.75;margin-top:4px;line-height:1}
+  .chat-msg.from-customer .chat-msg-time{text-align:right}
+  .chat-msg.from-admin .chat-msg-time,.chat-ai-content .chat-msg-time{text-align:left}
   .chat-typing{align-self:flex-start;display:flex;flex-direction:column;gap:4px;max-width:82%}
   .chat-typing-dots{display:flex;align-items:center;gap:4px;background:var(--blue-soft,#E7F0FB);border-radius:15px;border-bottom-left-radius:4px;padding:10px 14px;width:fit-content}
   .chat-typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--blue-deep);opacity:.4;animation:chatTypingBounce 1.2s infinite ease-in-out}
@@ -4263,6 +4266,13 @@
       a.querySelector('.chat-attachment-file-name').textContent = att.name || 'ფაილი';
       return a;
     }
+    function formatChatMsgTime(ts){
+      try{
+        var d = new Date(ts);
+        if(isNaN(d.getTime())) return '';
+        return new Intl.DateTimeFormat('ka-GE', {hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Tbilisi'}).format(d);
+      }catch(e){ return ''; }
+    }
     function appendMsg(m){
       try{
         var box = document.getElementById('chat-messages');
@@ -4302,6 +4312,12 @@
             t1.innerHTML = formatChatReplyHtml(emoticonsToEmoji(m.text));
             content.appendChild(t1);
           }
+          if(m.at){
+            var timeEl1 = document.createElement('div');
+            timeEl1.className = 'chat-msg-time';
+            timeEl1.textContent = formatChatMsgTime(m.at);
+            content.appendChild(timeEl1);
+          }
           div.appendChild(content);
         } else {
           if(m.attachment) div.appendChild(attachmentBubbleHtml(m.attachment));
@@ -4310,6 +4326,12 @@
             t.className = 'chat-msg-text';
             t.textContent = emoticonsToEmoji(m.text);
             div.appendChild(t);
+          }
+          if(m.at){
+            var timeEl2 = document.createElement('div');
+            timeEl2.className = 'chat-msg-time';
+            timeEl2.textContent = formatChatMsgTime(m.at);
+            div.appendChild(timeEl2);
           }
         }
         box.appendChild(div);
