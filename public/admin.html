@@ -2948,6 +2948,8 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(nameEl) nameEl.value = h.aiName || '';
     var roleEl = document.getElementById('chat-ai-role');
     if(roleEl) roleEl.value = h.aiRole || '';
+    var greetingEl = document.getElementById('chat-ai-greeting');
+    if(greetingEl) greetingEl.value = h.aiGreeting || '';
     renderChatAiAvatarCell();
     renderKbEntries();
   }
@@ -3061,6 +3063,11 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       + '<div class="field-block" style="margin-bottom:14px">'
         + '<label>AI-ის ავატარი (არასავალდებულო)</label>'
         + '<div class="part-photo-cell" id="chat-ai-avatar-cell"></div>'
+      + '</div>'
+      + '<div class="field-block" style="margin-bottom:14px">'
+        + '<label>მისალმების ტექსტი</label>'
+        + '<textarea id="chat-ai-greeting" rows="3" maxlength="500" placeholder="მაგ. გამარჯობა! მე ვარ ტატო, ტექნოლაინის AI ასისტენტი. რით შემიძლია დაგეხმაროთ?"></textarea>'
+        + '<p class="field-hint" style="margin-top:6px">ჩატის გახსნისთანავე, პირველ შეტყობინებად, ავტომატურად მოსწერება ყოველ ახალ მომხმარებელს. ცარიელი თუ დატოვეთ, მისალმება არ გაიგზავნება.</p>'
       + '</div>'
       + '<div style="display:flex;gap:12px;align-items:center;margin-bottom:20px">'
       + '<button type="button" class="btn btn-gold" id="chat-ai-save">შენახვა</button>'
@@ -3188,7 +3195,8 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         aiEnabled: document.getElementById('chat-ai-enabled').checked,
         aiName: document.getElementById('chat-ai-name').value.trim(),
         aiRole: document.getElementById('chat-ai-role').value.trim(),
-        aiAvatar: (chatState.hours && chatState.hours.aiAvatar) || ''
+        aiAvatar: (chatState.hours && chatState.hours.aiAvatar) || '',
+        aiGreeting: document.getElementById('chat-ai-greeting').value.trim()
       });
       var statusEl = document.getElementById('chat-ai-status');
       statusEl.textContent = 'ინახება…';
