@@ -145,7 +145,11 @@ const DEFAULT_DB = {
     aiEnabled: false,
     aiName: '',
     aiRole: '',
-    aiAvatar: ''
+    aiAvatar: '',
+    // Sent automatically as the AI agent's first message the moment a brand
+    // new chat is created (see the 'join' handler in /ws/chat) — admin can
+    // change this text any time from the panel without touching code.
+    aiGreeting: ''
   },
   // Knowledge base the AI agent answers customers from — object-wrapped
   // (not a bare array) because PUT /api/site/:doc rejects array bodies.
@@ -1471,6 +1475,17 @@ wssChat.on('connection', function (ws) {
             name: name, phone: phone, messages: [], status: 'open',
             createdAt: Date.now(), lastAt: Date.now()
           };
+          // Admin-configured greeting (content/chat-settings.aiGreeting) goes
+          // in as the AI agent's first message on every brand-new chat, so it
+          // is visible to the customer immediately and also saved into the
+          // chat's own history (admin panel, reloads, reconnects all see it
+          // the same way as any other message) — only when the AI agent is
+          // actually on and admin bothered to write a greeting.
+          const chatSettings = db['content/chat-settings'] || {};
+          const greeting = String(chatSettings.aiGreeting || '').trim();
+          if (chatSettings.aiEnabled && greeting) {
+            chat.messages.push({ from: 'ai', text: greeting, at: Date.now() });
+          }
           db.chats.push(chat);
           await writeDb(db);
           chatBroadcastToAdmins({ type: 'chat_new', chat: chat });
