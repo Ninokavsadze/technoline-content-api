@@ -100,6 +100,10 @@
   .side-scroll{flex:1;overflow-y:auto;padding:14px 12px 20px}
   .side-group{margin-bottom:4px}
   .side-group-label{font-size:.68rem;font-weight:800;letter-spacing:.05em;color:var(--ink-faint);text-transform:uppercase;padding:14px 10px 6px}
+  .side-group-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;cursor:pointer;font:inherit;margin:0}
+  .side-group-toggle:hover{color:var(--ink-soft)}
+  .side-group-toggle svg{width:12px;height:12px;flex:none;transition:transform .15s ease}
+  .side-group-toggle.is-collapsed svg{transform:rotate(-90deg)}
   .side-btn{width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:10px;border:none;background:transparent;color:var(--ink-soft);font-size:.87rem;font-weight:600;margin-bottom:2px;transition:background .12s,color .12s}
   .side-btn:hover{background:var(--paper-soft);color:var(--ink)}
   .side-btn.is-active{background:var(--blue-soft);color:var(--blue-deep);font-weight:800}
@@ -724,12 +728,21 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   // to reach one field; now only the selected segment's fields render.
   var contentSubTab = {};
 
+  // Content pages are split into three sidebar subgroups so staff aren't
+  // scrolling one long flat list to find a page — "informational" static
+  // pages, the two pages that actually call the live Q-Logic APIs, and
+  // everything else (plain content). A page not listed here falls into
+  // 'main' by default.
+  var CONTENT_SUBGROUP_OF_PAGE = {
+    chatWidget: 'info', wservice: 'info', terms: 'info', privacy: 'info',
+    'warranty-check': 'api', booking: 'api'
+  };
   function buildTabs(){
     TABS = [];
     var seenPages = {};
     CONTENT_ORDER.forEach(function(k){ seenPages[parseCk(k).page] = true; });
     PAGE_ORDER.forEach(function(page){
-      if(seenPages[page]) TABS.push({id:'content:'+page, label:PAGE_LABELS[page] || page, kind:'content', page:page, group:'content'});
+      if(seenPages[page]) TABS.push({id:'content:'+page, label:PAGE_LABELS[page] || page, kind:'content', page:page, group:'content', subgroup: CONTENT_SUBGROUP_OF_PAGE[page] || 'main'});
     });
     TABS.push({id:'pages', label:'გვერდები', kind:'pages', group:'other'});
     TABS.push({id:'colors', label:'ბრენდის ფერები', kind:'colors', group:'other'});
@@ -746,17 +759,51 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
 
   var TAB_ICONS = { content:'ic-inbox', pages:'ic-menu', colors:'ic-palette', typography:'ic-palette', parts:'ic-box', branches:'ic-pin', warranty:'ic-lock', bookings:'ic-calendar', chat:'ic-chat', 'chat-analytics':'ic-chart', feedback:'ic-star', users:'ic-user' };
 
+  // Sidebar groups, in the order they render — "საერთო მართვა" first (the
+  // tools staff reach for most), then content pages split into three
+  // smaller, labeled groups instead of one long flat list.
+  var NAV_GROUPS = [
+    {key:'other', label:'საერთო მართვა', match:function(t){ return t.group === 'other'; }},
+    {key:'content-info', label:'საინფორმაციო გვერდები', match:function(t){ return t.group === 'content' && t.subgroup === 'info'; }},
+    {key:'content-api', label:'API სერვისები', match:function(t){ return t.group === 'content' && t.subgroup === 'api'; }},
+    {key:'content-main', label:'კონტენტი', match:function(t){ return t.group === 'content' && t.subgroup === 'main'; }}
+  ];
+  var NAV_COLLAPSE_KEY = 'tl_admin_nav_collapse';
+  function loadNavCollapse(){
+    try{ return JSON.parse(localStorage.getItem(NAV_COLLAPSE_KEY) || '{}') || {}; }catch(e){ return {}; }
+  }
+  function saveNavCollapse(){
+    try{ localStorage.setItem(NAV_COLLAPSE_KEY, JSON.stringify(navCollapse)); }catch(e){}
+  }
+  var navCollapse = loadNavCollapse();
+
   function renderNav(){
     var nav = document.getElementById('side-nav');
-    var html = '<div class="side-group-label">კონტენტი გვერდების მიხედვით</div>';
-    TABS.filter(function(t){ return t.group === 'content'; }).forEach(function(t){
-      html += navBtn(t);
-    });
-    html += '<div class="side-group-label">საერთო მართვა</div>';
-    TABS.filter(function(t){ return t.group === 'other'; }).forEach(function(t){
-      html += navBtn(t);
+    var html = '';
+    NAV_GROUPS.forEach(function(g){
+      var items = TABS.filter(g.match);
+      if(!items.length) return;
+      // a group that holds the currently-active tab always renders expanded,
+      // so selecting a tab can never hide the very button you just clicked
+      var hasActive = items.some(function(t){ return t.id === activeTab; });
+      var collapsed = !!navCollapse[g.key] && !hasActive;
+      html += '<button type="button" class="side-group-label side-group-toggle'+(collapsed?' is-collapsed':'')+'" data-nav-group="'+g.key+'">'
+        + '<span>'+g.label+'</span>'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'
+        + '</button>';
+      if(!collapsed){
+        items.forEach(function(t){ html += navBtn(t); });
+      }
     });
     nav.innerHTML = html;
+    nav.querySelectorAll('[data-nav-group]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var key = btn.getAttribute('data-nav-group');
+        navCollapse[key] = !navCollapse[key];
+        saveNavCollapse();
+        renderNav();
+      });
+    });
     nav.querySelectorAll('[data-tab]').forEach(function(b){
       b.addEventListener('click', function(){
         selectTab(b.getAttribute('data-tab'));
@@ -1093,6 +1140,13 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     {navitem:'search', hideKey:'navHideSearch', label:'ძიების ხატულა (ჰედერში)'},
     {navitem:'cart', hideKey:'navHideCart', label:'კალათის ხატულა (ჰედერში)'}
   ];
+  // Individual page sections/cards that admin can hide one-by-one — same
+  // hide mechanism as above (data-navitem + applyNavVisibility on the public
+  // site), just not tied to the header. Add new entries here as more
+  // sections need a one-click hide/show.
+  var PAGE_SECTION_ITEMS = [
+    {navitem:'contact-corp-card', hideKey:'navHideContactCorp', label:'კონტაქტი — კორპორატიული კლიენტების ქარდი'}
+  ];
   // Effective nav order: state.theme.navOrder (an array of navitem keys)
   // if present and valid, filtered to known items and with any new item
   // NAV_ITEMS gained since it was saved appended at the end — otherwise
@@ -1125,6 +1179,16 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     html += '<div class="side-group-label" style="margin-top:18px">ჰედერის სხვა ელემენტები</div>';
     html += '<div class="card">';
     HEADER_ICON_ITEMS.forEach(function(it){
+      var hidden = !!state.theme[it.hideKey];
+      html += '<div class="branch-card" style="display:flex;align-items:center;justify-content:space-between;gap:14px">'
+        + '<h3 style="margin:0;flex:1">'+it.label+(hidden ? ' <span style="color:var(--ink-soft);font-weight:600">— დამალულია</span>' : '')+'</h3>'
+        + '<button type="button" class="drag-eye" style="font-size:1.3rem" data-nav-hide-key="'+it.hideKey+'" title="ჩვენება/დამალვა">'+(hidden?'🚫':'👁')+'</button>'
+        + '</div>';
+    });
+    html += '</div>';
+    html += '<div class="side-group-label" style="margin-top:18px">გვერდის სექციები/ქარდები</div>';
+    html += '<div class="card">';
+    PAGE_SECTION_ITEMS.forEach(function(it){
       var hidden = !!state.theme[it.hideKey];
       html += '<div class="branch-card" style="display:flex;align-items:center;justify-content:space-between;gap:14px">'
         + '<h3 style="margin:0;flex:1">'+it.label+(hidden ? ' <span style="color:var(--ink-soft);font-weight:600">— დამალულია</span>' : '')+'</h3>'
@@ -3761,7 +3825,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       }
       else if(tab.kind === 'parts'){ state.parts = {}; }
       else if(tab.kind === 'branches'){ state.branches = {}; }
-      else if(tab.kind === 'pages'){ NAV_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); HEADER_ICON_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); delete state.theme.navOrder; }
+      else if(tab.kind === 'pages'){ NAV_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); HEADER_ICON_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); PAGE_SECTION_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); delete state.theme.navOrder; }
       setDirty(tab, true);
       renderMain();
     });

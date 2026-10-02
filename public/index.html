@@ -2055,7 +2055,7 @@
           <div class="contact-line"><svg><use href="#ic-phone"/></svg><a class="tel-link" data-ck="contact.center.phone" data-tel>+995 322 12 34 56 (ყოველდღე, 09:00–21:00)</a></div>
           <div class="contact-line"><svg><use href="#ic-mail"/></svg><span data-ck="contact.center.email">info@technoline.ge</span></div>
         </div>
-        <div class="contact-card">
+        <div class="contact-card" data-navitem="contact-corp-card">
           <div class="svc-icon" style="margin-bottom:14px"><svg><use href="#ic-truck"/></svg></div>
           <h4 data-ck="contact.corp.title">კორპორატიული კლიენტები</h4>
           <div class="contact-line"><svg><use href="#ic-phone"/></svg><a class="tel-link" data-ck="contact.corp.phone" data-tel>+995 322 12 34 57</a></div>
@@ -3622,7 +3622,8 @@
     'services': 'navHideServices', 'catalog': 'navHideCatalog',
     'warranty-service': 'navHideWarrantyService', 'warranty-check': 'navHideWarrantyCheck',
     'about': 'navHideAbout', 'contact': 'navHideContact',
-    'search': 'navHideSearch', 'cart': 'navHideCart'
+    'search': 'navHideSearch', 'cart': 'navHideCart',
+    'contact-corp-card': 'navHideContactCorp'
   };
   function applyNavVisibility(){
     Object.keys(NAV_VISIBILITY_MAP).forEach(function(navKey){
