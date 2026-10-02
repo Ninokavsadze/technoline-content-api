@@ -149,7 +149,26 @@ const DEFAULT_DB = {
     // Sent automatically as the AI agent's first message the moment a brand
     // new chat is created (see the 'join' handler in /ws/chat) — admin can
     // change this text any time from the panel without touching code.
-    aiGreeting: ''
+    aiGreeting: '',
+    // Real operators' own working schedule — separate from hoursEnabled/
+    // schedule above (that pair only drives the widget's cosmetic online/
+    // offline label). This one is enforced server-side: see
+    // isWithinOperatorHours() and its use in the 'message' WS handler —
+    // outside these hours the AI never actually hands a chat off to a human.
+    operatorHoursEnabled: false,
+    operatorSchedule: {
+      mon: { closed: false, open: '10:00', close: '20:00' },
+      tue: { closed: false, open: '10:00', close: '20:00' },
+      wed: { closed: false, open: '10:00', close: '20:00' },
+      thu: { closed: false, open: '10:00', close: '20:00' },
+      fri: { closed: false, open: '10:00', close: '20:00' },
+      sat: { closed: false, open: '11:00', close: '18:00' },
+      sun: { closed: true, open: '11:00', close: '18:00' }
+    },
+    // Shown to the customer (as the AI's own message, chat stays active)
+    // instead of actually escalating, whenever the model wanted to hand off
+    // but operators are currently off the clock per operatorSchedule above.
+    operatorOfflineMessage: 'ამ ეტაპზე ოპერატორების სამუშაო დრო დასრულებულია. გთხოვთ, ხვალ მოგვმართოთ სამუშაო საათებში ან დაგვიკავშირდეთ ცხელ ხაზზე.'
   },
   // Knowledge base the AI agent answers customers from — object-wrapped
   // (not a bare array) because PUT /api/site/:doc rejects array bodies.
@@ -1135,6 +1154,42 @@ app.post('/api/catalog/search-ai', async function (req, res) {
   }
 });
 
+// Operators' own working schedule (content/chat-settings.operatorHoursEnabled
+// / .operatorSchedule / .timezone — admin panel's "ოპერატორების სამუშაო
+// გრაფიკი" card) — separate from chatSettings.hoursEnabled/.schedule, which
+// only drives the widget's cosmetic online/offline label and never blocks
+// anything. This one is enforced server-side: see its use in the 'message'
+// WS handler below, which refuses to actually hand a chat off to a human
+// outside these hours. Same Intl-based weekday/time check as the client's
+// isWithinChatHours() in technoline.html — kept in sync by hand since one
+// runs in the browser and the other in Node.
+const OPERATOR_DOW_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+function isWithinOperatorHours(settings) {
+  if (!settings || !settings.operatorHoursEnabled) return true;
+  const sched = settings.operatorSchedule || {};
+  const tz = settings.timezone || 'Asia/Tbilisi';
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, hour12: false, weekday: 'short', hour: '2-digit', minute: '2-digit'
+    }).formatToParts(new Date());
+    const map = {};
+    parts.forEach(function (p) { map[p.type] = p.value; });
+    const dowShort = (map.weekday || '').slice(0, 3).toLowerCase();
+    const idx = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(dowShort);
+    const key = idx > -1 ? OPERATOR_DOW_KEYS[idx] : null;
+    const day = key ? sched[key] : null;
+    if (!day || day.closed) return false;
+    const nowMinutes = (parseInt(map.hour, 10) || 0) * 60 + (parseInt(map.minute, 10) || 0);
+    const toMinutes = function (s) {
+      const m = String(s || '').match(/^(\d{1,2}):(\d{2})$/);
+      return m ? (parseInt(m[1], 10) * 60 + parseInt(m[2], 10)) : null;
+    };
+    const openM = toMinutes(day.open), closeM = toMinutes(day.close);
+    if (openM == null || closeM == null) return true;
+    return nowMinutes >= openM && nowMinutes < closeM;
+  } catch (e) { return true; /* bad timezone/schedule data — never block hand-off on a data error */ }
+}
+
 // --- AI chat agent (live chat, Google Gemini) ----------------------------
 // Answers customers from the admin-authored knowledge base (content/chat-kb)
 // and hands off to a real operator (sets chat.aiPaused, see the WS handlers
@@ -1544,17 +1599,34 @@ wssChat.on('connection', function (ws) {
                 // re-check aiPaused: a human admin may have jumped in while
                 // the Gemini call was in flight — the AI must never talk over them
                 if (chat2 && !chat2.aiPaused) {
-                  const aiMsg = { from: 'ai', text: aiResult.reply, at: Date.now() };
-                  chat2.messages.push(aiMsg);
-                  chat2.lastAt = aiMsg.at;
-                  const outbox = [aiMsg];
-                  if (aiResult.escalate) {
-                    chat2.aiPaused = true;
-                    // guaranteed, deterministic hand-off notice — never relies on
-                    // the model itself having phrased this correctly in aiMsg.text
-                    const escMsg = { from: 'system', text: 'გადაგამისამართებთ ოპერატორესთან — გთხოვთ, მოითმინოთ.', at: Date.now() };
-                    chat2.messages.push(escMsg);
-                    outbox.push(escMsg);
+                  const outbox = [];
+                  const chatSettings2 = db2['content/chat-settings'] || {};
+                  if (aiResult.escalate && !isWithinOperatorHours(chatSettings2)) {
+                    // Operators are off the clock right now — never actually
+                    // hand off (no one would be there to pick it up) and skip
+                    // the model's own reply text, since it was phrased assuming
+                    // a live operator is coming. The AI stays in charge of the
+                    // chat (aiPaused untouched) and tells the customer plainly
+                    // when to come back instead.
+                    const offlineText = String(chatSettings2.operatorOfflineMessage || '').trim()
+                      || 'ამ ეტაპზე ოპერატორების სამუშაო დრო დასრულებულია. გთხოვთ, ხვალ მოგვმართოთ სამუშაო საათებში ან დაგვიკავშირდეთ ცხელ ხაზზე.';
+                    const offlineMsg = { from: 'ai', text: offlineText, at: Date.now() };
+                    chat2.messages.push(offlineMsg);
+                    chat2.lastAt = offlineMsg.at;
+                    outbox.push(offlineMsg);
+                  } else {
+                    const aiMsg = { from: 'ai', text: aiResult.reply, at: Date.now() };
+                    chat2.messages.push(aiMsg);
+                    chat2.lastAt = aiMsg.at;
+                    outbox.push(aiMsg);
+                    if (aiResult.escalate) {
+                      chat2.aiPaused = true;
+                      // guaranteed, deterministic hand-off notice — never relies on
+                      // the model itself having phrased this correctly in aiMsg.text
+                      const escMsg = { from: 'system', text: 'გადაგამისამართებთ ოპერატორესთან — გთხოვთ, მოითმინოთ.', at: Date.now() };
+                      chat2.messages.push(escMsg);
+                      outbox.push(escMsg);
+                    }
                   }
                   // Warranty-card / booking action, if the model proposed one —
                   // performChatAiAction actually hits the warranty/booking data
