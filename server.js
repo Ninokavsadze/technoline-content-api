@@ -1201,6 +1201,41 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
 const CHAT_AI_CONFIGURED = !!GEMINI_API_KEY;
 
+// Turns a saved chat attachment ({name,type,dataUrl}, already validated by
+// chatAttachmentFromMsg) into a Gemini inlineData part when it's an image —
+// lets the AI agent actually look at photos customers send (read any text/
+// serial numbers on them, recognize the device/part shown), not just see
+// that a file arrived. Non-image attachments (e.g. a PDF) aren't sent as
+// vision input; buildGeminiUserParts below falls back to a text note instead.
+function attachmentToGeminiPart(attachment) {
+  if (!attachment || typeof attachment !== 'object') return null;
+  const type = String(attachment.type || '');
+  if (!/^image\//.test(type)) return null;
+  const dataUrl = String(attachment.dataUrl || '');
+  const comma = dataUrl.indexOf(',');
+  if (comma === -1) return null;
+  const b64 = dataUrl.slice(comma + 1);
+  if (!b64) return null;
+  return { inlineData: { mimeType: type, data: b64 } };
+}
+// Builds one Gemini "user" turn's parts from a chat message's text + optional
+// attachment — shared by the conversation history and the newest message, so
+// both get the same image-aware treatment.
+function buildGeminiUserParts(text, attachment) {
+  const parts = [];
+  if (text) parts.push({ text: String(text).slice(0, 2000) });
+  const imgPart = attachmentToGeminiPart(attachment);
+  if (imgPart) {
+    parts.push(imgPart);
+  } else if (attachment && !parts.length) {
+    // non-image attachment with no caption text — Gemini can't see it, but
+    // the turn still needs at least one part, and the model should know
+    // some file came through even though it can't read it.
+    parts.push({ text: '[მომხმარებელმა გამოგზავნა ფაილი: ' + String(attachment.name || 'ფაილი').slice(0, 100) + ']' });
+  }
+  return parts;
+}
+
 function chatKbToPromptText(kb) {
   const entries = (kb && Array.isArray(kb.entries)) ? kb.entries : [];
   if (!entries.length) return '(ცოდნის ბაზა ჯერ ცარიელია)';
@@ -1215,7 +1250,7 @@ function chatKbToPromptText(kb) {
 // branches: effectiveBranches(db) — the real, current branch list (admin
 // overrides already merged in), so the model names/picks real branches
 // instead of the factory defaults once staff rename or move one.
-async function askChatAi(kb, history, userText, agentName, branches) {
+async function askChatAi(kb, history, userText, agentName, branches, attachment) {
   if (!CHAT_AI_CONFIGURED) return null;
   const nameLine = agentName ? ('შენი სახელია „' + agentName + '" — თუ მომხმარებელი სახელს გკითხავს, ასე გააცანი თავი.\n\n') : '';
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -1234,6 +1269,7 @@ async function askChatAi(kb, history, userText, agentName, branches) {
         + '- თუ მომხმარებელი გეკითხება ტექნოლაინთან ან მის სერვისებთან სრულიად დაუკავშირებელ, გვერდით საკითხს (ეს არ არის ინფორმაციის ნაკლებობა ცოდნის ბაზაში — უბრალოდ თემა სხვაა), ეს არ ითვლება ოპერატორთან გადაცემის მიზეზად: escalate:false, თავაზიანად აუხსენი, რომ მხოლოდ ტექნოლაინის საკითხებში ეხმარები, და reply-ს ბოლოში სიტყვასიტყვით დაამატე: „სხვა საკითხში თუ შევძლებ თქვენს დახმარებას, სიამოვნებით გიპასუხებთ.“ (არასდროს დასვა „რით შემიძლია დაგეხმაროთ დღეს?" ან სხვა მსგავსი ფრაზა ამის ნაცვლად).\n'
         + '- თუ მომხმარებელი უბრალოდ თბილ სიტყვას, კომპლიმენტს, მადლობას ან დამშვიდობებას წერს და კონკრეტულ კითხვას არ სვამს (ანუ წინა შეტყობინება უკვე ამომწურავად პასუხობდა მის საკითხს) — ეს არც ინფორმაციის ნაკლებობაა და არც ახალი გვერდითი საკითხი, ამიტომ არასდროს დაამატო „სხვა საკითხში თუ შევძლებ...“-ის მსგავსი ფრაზა ხელახლა: უბრალოდ თბილად და მოკლედ უპასუხე მადლობით (escalate:false), და თუ აშკარაა, რომ საუბარი სრულდება და დამატებითი დახმარება აღარ სჭირდება, თავაზიანად დაემშვიდობე, დახმარების შეთავაზების გამეორების გარეშე.\n'
         + '- არასდროს გაიმეორო სიტყვასიტყვით (ან თითქმის სიტყვასიტყვით) წინადადება, რომელიც ამ საუბარში უკვე დაწერე — თუნდაც იგივე ტიპის სიტუაცია განმეორდეს, თითოეული პასუხი ბუნებრივად და ახლებურად ჩამოაყალიბე.\n'
+        + '- მომხმარებელს შეუძლია ჩატში სურათის გამოგზავნაც (მაგ. დაზიანებული მოწყობილობის ფოტო, საგარანტიო ბარათი, სერიული ნომრის ან მოდელის ეტიკეტი). თუ შეტყობინებას სურათი ახლავს, ყურადღებით დააკვირდი მას — წაიკითხე მასზე არსებული ნებისმიერი ტექსტი თუ ციფრები (მაგ. სერიული ნომერი, მოდელის სახელი) და ამოიცანი რა საგანია/დაზიანებაა გამოსახული, და ეს დანახული ინფორმაცია გამოიყენე პასუხის გასაცემად.\n'
         + '- თუ პასუხი რამდენიმე პუნქტს შეიცავს (მაგ. რამდენიმე ფილიალი, რამდენიმე ნაბიჯი, რამდენიმე ვარიანტი) — არასდროს ჩაყარო ყველაფერი ერთ წინადადებაში მძიმით/წერტილ-მძიმით გამოყოფილი. სამაგიეროდ დაწერე ცალკე ხაზზე, ხაზის დასაწყისში „- “ (დეფისი და space) ნიშნით, თითოეული პუნქტი ცალკე ხაზზე. ფილიალის მისამართი ყოველთვის ზუსტად ისე ჩაწერე, როგორც ცოდნის ბაზაშია — სიტყვასიტყვით, შემოკლების ან გადაკეთების გარეშე.\n'
         + '- ყველა სხვა შემთხვევაში დააბრუნე escalate:false და დასვი პასუხი reply ველში.\n\n'
         + 'დამატებითი შესაძლებლობები — საგარანტიო ბარათის გამოგზავნა და ვიზიტის დაჯავშნა ჩატშივე (action ველი):\n'
@@ -1251,10 +1287,10 @@ async function askChatAi(kb, history, userText, agentName, branches) {
   };
   const contents = [];
   (history || []).forEach(function (m) {
-    if (m.from === 'customer' && m.text) contents.push({ role: 'user', parts: [{ text: String(m.text).slice(0, 2000) }] });
+    if (m.from === 'customer' && (m.text || m.attachment)) contents.push({ role: 'user', parts: buildGeminiUserParts(m.text, m.attachment) });
     else if (m.from === 'ai' && m.text) contents.push({ role: 'model', parts: [{ text: String(m.text).slice(0, 2000) }] });
   });
-  contents.push({ role: 'user', parts: [{ text: userText }] });
+  contents.push({ role: 'user', parts: buildGeminiUserParts(userText, attachment) });
 
   try {
     const controller = new AbortController();
@@ -1591,7 +1627,7 @@ wssChat.on('connection', function (ws) {
             try {
               const kb = db['content/chat-kb'] || { entries: [] };
               const history = chat.messages.slice(0, -1);
-              const aiResult = await askChatAi(kb, history, text, settings.aiName, effectiveBranches(db));
+              const aiResult = await askChatAi(kb, history, text, settings.aiName, effectiveBranches(db), attachment);
               if (aiResult && aiResult.reply) {
                 const db2 = await readDb();
                 db2.chats = db2.chats || [];
