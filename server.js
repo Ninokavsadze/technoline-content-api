@@ -405,8 +405,20 @@ async function sendToQLogic(booking) {
 // further down) — one place that creates a booking record, pushes it to
 // Q-Logic, and keeps the saved record's qlogic* fields in sync, so a future
 // change to that logic never needs to be made in two places.
-async function createBookingRecord(b) {
-  const db = await readDb();
+// dbToUse: pass the SAME db object a caller is already holding (and will
+// writeDb itself afterward) when that caller mutates other parts of the
+// same db in the same turn — e.g. the chat AI action handler, which also
+// appends chat messages to its own db2 and writes it once at the end. Doing
+// our own independent readDb()+writeDb() in that case would read a snapshot
+// taken before the booking existed and then overwrite the just-saved
+// booking on disk with that stale snapshot (a lost-update race) the moment
+// the caller's own writeDb() runs afterward — exactly the bug where a chat
+// booking showed a confirmation message but the booking record itself (and
+// its Q-Logic sync) silently vanished. Without dbToUse (the plain HTTP
+// POST /api/bookings route) this reads/writes its own db as before.
+async function createBookingRecord(b, dbToUse) {
+  const owns = !dbToUse;
+  const db = dbToUse || await readDb();
   const booking = {
     id: 'bk_' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex'),
     confirmationCode: genConfirmationCode(),
@@ -426,8 +438,9 @@ async function createBookingRecord(b) {
     qlogicSpace: null,
     qlogicError: null
   };
+  db.bookings = db.bookings || [];
   db.bookings.push(booking);
-  await writeDb(db);
+  if (owns) await writeDb(db);
 
   // fire the Q-Logic sync in the background; update the saved record either
   // way, so a failure (bad/rotated API key, IP not allowlisted, rate limit,
@@ -1314,10 +1327,13 @@ async function performChatAiAction(db, chat, action) {
       return { from: 'ai', text: branch.name + '-ში ' + action.date + ' ' + action.timeSlot + ' საათზე ადგილი უკვე დაკავებულია — გთხოვთ, აირჩიოთ სხვა საათი.', at: Date.now() };
     }
     try {
+      // Pass this same db through so the booking is merged into the exact
+      // object the caller (the chat message handler) will writeDb() itself
+      // right after — see createBookingRecord's dbToUse comment for why.
       const booking = await createBookingRecord({
         branchId: action.branchId, serviceType: action.issue, date: action.date, timeSlot: action.timeSlot,
         name: chat.name, phone: chat.phone, deviceType: action.deviceType, issue: action.issue, notes: null
-      });
+      }, db);
       return {
         from: 'ai',
         text: 'ჯავშანი დადასტურებულია ✅\n- ფილიალი: ' + branch.name + ' (' + branch.addr + ')\n- თარიღი/საათი: ' + booking.date + ', ' + booking.timeSlot
