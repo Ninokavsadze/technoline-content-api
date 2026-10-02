@@ -1929,8 +1929,10 @@
            so the sidebar stays put across both pages. -->
       <div class="acct-layout">
         <nav class="acct-nav">
-          <a data-route="profile" href="#profile"><svg><use href="#ic-user"/></svg>პირადი მონაცემები</a>
-          <a data-route="profile" href="#profile"><svg><use href="#ic-phone"/></svg>ჩემი მოწყობილობები</a>
+          <a data-route="profile" data-acct-tab-target="info" href="#profile"><svg><use href="#ic-user"/></svg>პირადი მონაცემები</a>
+          <a data-route="profile" data-acct-tab-target="devices" href="#profile"><svg><use href="#ic-phone"/></svg>ჩემი მოწყობილობები</a>
+          <a data-route="profile" data-acct-tab-target="bookings" href="#profile"><svg><use href="#ic-calendar"/></svg>ვიზიტის ჯავშნები</a>
+          <a data-route="profile" data-acct-tab-target="warranty" href="#profile"><svg><use href="#ic-shield"/></svg>ჩემი საგარანტიო ბარათები</a>
           <a class="is-active" data-route="orders" href="#orders"><svg><use href="#ic-truck"/></svg>ჩემი შეკვეთები</a>
           <a class="js-logout" style="color:var(--danger)"><svg><use href="#ic-close"/></svg>გასვლა</a>
         </nav>
@@ -2336,6 +2338,13 @@
   ===================================================== */
   var VALID_ROUTES = ['home','about','services','catalog','warranty-check','booking','warranty-service','profile','orders','terms','privacy','contact'];
 
+  // Set by a [data-acct-tab-target] link (e.g. the orders page's own sidebar
+  // linking back to "ვიზიტის ჯავშნები"/"ჩემი საგარანტიო ბარათები", which live
+  // as in-page tabs inside the profile route, not routes of their own) —
+  // renderProfileView() picks this up once the profile route actually
+  // renders and opens that tab, then clears it.
+  var pendingAcctTab = null;
+
   function currentRoute(){
     var h = location.hash.replace('#','');
     return VALID_ROUTES.indexOf(h) !== -1 ? h : 'home';
@@ -2372,6 +2381,7 @@
     var targetRoute = el.getAttribute('data-route');
     if(el.hasAttribute('data-brand')){ pendingCatalogFilter = {type:'brand', value:el.getAttribute('data-brand')}; }
     if(el.hasAttribute('data-cat')){ pendingCatalogFilter = {type:'cat', value:el.getAttribute('data-cat')}; }
+    if(el.hasAttribute('data-acct-tab-target')){ pendingAcctTab = el.getAttribute('data-acct-tab-target'); }
     if(el.tagName === 'BUTTON'){ location.hash = targetRoute; }
     if(targetRoute === currentRoute()){
       /* already on this route: the hash isn't changing, so 'hashchange'
@@ -3339,6 +3349,19 @@
     document.getElementById('p-phone').value = user.phone || '';
     document.getElementById('p-city').value = user.city || 'თბილისი';
     document.getElementById('p-personal-id').value = user.personalId || '';
+    if(pendingAcctTab){ activateAcctTab(pendingAcctTab); pendingAcctTab = null; }
+  }
+  // Shared by the sidebar's own [data-acct-tab] clicks and by a
+  // [data-acct-tab-target] link landing here from another page (see
+  // pendingAcctTab above) — one place that switches the visible panel,
+  // highlights the right nav item and lazy-loads that tab's data.
+  function activateAcctTab(target){
+    document.querySelectorAll('.acct-nav a[data-acct-tab]').forEach(function(t){
+      t.classList.toggle('is-active', t.getAttribute('data-acct-tab') === target);
+    });
+    document.querySelectorAll('[data-acct-panel]').forEach(function(p){ p.hidden = p.getAttribute('data-acct-panel') !== target; });
+    if(target === 'bookings' && !myBookingsLoaded){ myBookingsLoaded = true; renderMyBookings(); }
+    if(target === 'warranty' && !myWarrantyLoaded){ myWarrantyLoaded = true; renderMyWarranty(); }
   }
   document.getElementById('profile-save').addEventListener('click', function(){
     user.name = document.getElementById('p-name').value.trim();
@@ -3354,14 +3377,7 @@
     toast('ცვლილებები შენახულია');
   });
   document.querySelectorAll('.acct-nav a[data-acct-tab]').forEach(function(tab){
-    tab.addEventListener('click', function(){
-      document.querySelectorAll('.acct-nav a[data-acct-tab]').forEach(function(t){ t.classList.remove('is-active'); });
-      tab.classList.add('is-active');
-      var target = tab.getAttribute('data-acct-tab');
-      document.querySelectorAll('[data-acct-panel]').forEach(function(p){ p.hidden = p.getAttribute('data-acct-panel') !== target; });
-      if(target === 'bookings' && !myBookingsLoaded){ myBookingsLoaded = true; renderMyBookings(); }
-      if(target === 'warranty' && !myWarrantyLoaded){ myWarrantyLoaded = true; renderMyWarranty(); }
-    });
+    tab.addEventListener('click', function(){ activateAcctTab(tab.getAttribute('data-acct-tab')); });
   });
 
   // ---- „ვიზიტის ჯავშნები" და „ჩემი საგარანტიო ბარათები" (ანგარიშის კაბინეტი) ----
