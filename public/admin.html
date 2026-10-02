@@ -263,7 +263,7 @@
       <path d="M12.98 37.89A19.91 19.91 0 1 1 19.42 47.43"/>
       <path d="M51.98 15.36A26 26 0 1 1 44.76 9.35"/>
     </g>
-    <path d="M32 21.3v7.1M26 26a7.6 7.6 0 1 0 12 0" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <path d="M32 24.3v6.4M27.64 25.77A7.6 7.6 0 1 0 36.36 25.77" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
   </symbol>
   <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.1 5.9l-1.9 1.9M7.8 16.3l-1.9 1.9M18.1 18.1l-1.9-1.9M7.8 7.7 5.9 5.9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="ic-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.8-1.9 0-.5-.2-.9-.5-1.3-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H16a5 5 0 0 0 5-5c0-3.9-4-6.8-9-6.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7.5" cy="10.5" r="1.3" fill="currentColor"/><circle cx="10.5" cy="7" r="1.3" fill="currentColor"/><circle cx="15.2" cy="7.6" r="1.3" fill="currentColor"/></symbol>
@@ -2923,6 +2923,48 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     });
     return { hoursEnabled: document.getElementById('chat-hours-enabled').checked, timezone: (chatState.hours && chatState.hours.timezone) || 'Asia/Tbilisi', schedule: schedule };
   }
+  // Operators' own working schedule — same day-row markup/shape as the chat
+  // widget's cosmetic hours above, but saved under its own keys
+  // (operatorHoursEnabled/operatorSchedule) since it drives real server-side
+  // logic (see isWithinOperatorHours in server.js) rather than just a label.
+  function renderOperatorHoursForm(){
+    var wrap = document.getElementById('operator-hours-days');
+    if(!wrap) return;
+    var h = chatState.hours || CHAT_HOURS_DEFAULT;
+    var enabledEl = document.getElementById('operator-hours-enabled');
+    if(enabledEl) enabledEl.checked = !!h.operatorHoursEnabled;
+    var msgEl = document.getElementById('operator-offline-message');
+    if(msgEl) msgEl.value = h.operatorOfflineMessage || '';
+    wrap.innerHTML = CHAT_HOURS_DAYS.map(chatHoursDayRowHtml).join('');
+    CHAT_HOURS_DAYS.forEach(function(d){
+      var row = wrap.querySelector('[data-day="' + d.key + '"]');
+      var s = (h.operatorSchedule && h.operatorSchedule[d.key]) || CHAT_HOURS_DEFAULT.schedule[d.key];
+      row.querySelector('.chat-hours-closed').checked = !!s.closed;
+      row.querySelector('.chat-hours-open').value = s.open || '10:00';
+      row.querySelector('.chat-hours-close').value = s.close || '20:00';
+      row.querySelector('.chat-hours-times').style.opacity = s.closed ? .4 : 1;
+      row.querySelector('.chat-hours-closed').addEventListener('change', function(){
+        row.querySelector('.chat-hours-times').style.opacity = this.checked ? .4 : 1;
+      });
+    });
+  }
+  function collectOperatorHoursForm(){
+    var wrap = document.getElementById('operator-hours-days');
+    var schedule = {};
+    CHAT_HOURS_DAYS.forEach(function(d){
+      var row = wrap.querySelector('[data-day="' + d.key + '"]');
+      schedule[d.key] = {
+        closed: row.querySelector('.chat-hours-closed').checked,
+        open: row.querySelector('.chat-hours-open').value || '10:00',
+        close: row.querySelector('.chat-hours-close').value || '20:00'
+      };
+    });
+    return {
+      operatorHoursEnabled: document.getElementById('operator-hours-enabled').checked,
+      operatorSchedule: schedule,
+      operatorOfflineMessage: document.getElementById('operator-offline-message').value.trim()
+    };
+  }
   function loadChatHours(){
     if(chatState.hoursLoaded) return Promise.resolve(chatState.hours);
     return apiGet('/api/site/chatSettings').then(function(d){
@@ -3040,6 +3082,24 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       + '<div style="margin-top:14px;display:flex;gap:12px;align-items:center">'
       + '<button type="button" class="btn btn-gold" id="chat-hours-save">შენახვა</button>'
       + '<span id="chat-hours-status" style="font-size:.82rem;color:var(--ink-faint)"></span>'
+      + '</div></div>'
+      + '</div>';
+    html += '<div class="card" id="operator-hours-card" style="padding:16px 18px;margin-bottom:14px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'
+      + '<div><h3 style="margin:0 0 2px;font-size:.98rem">ოპერატორების სამუშაო გრაფიკი</h3>'
+      + '<p style="margin:0;font-size:.82rem;color:var(--ink-faint)">განსაზღვრეთ, როდის არიან რეალური ოპერატორები ხელმისაწვდომნი. ამ საათების გარეთ AI (ტატო) აღარ გადაამისამართებს მომხმარებელს ოპერატორთან — თავად დარჩება საუბარში და მოსწერს ქვემოთ მითითებულ ტექსტს.</p></div>'
+      + '<button type="button" class="btn btn-ghost" id="operator-hours-toggle-view">განრიგის რედაქტირება</button>'
+      + '</div>'
+      + '<div id="operator-hours-form" style="display:none;margin-top:14px">'
+      + '<label style="display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:700;margin-bottom:10px"><input type="checkbox" id="operator-hours-enabled"> ოპერატორების სამუშაო საათების გათვალისწინება ჩართულია</label>'
+      + '<div id="operator-hours-days"></div>'
+      + '<div class="field-block" style="margin-top:14px">'
+        + '<label>შეტყობინება, როცა ოპერატორები არ არიან ხელმისაწვდომნი</label>'
+        + '<textarea id="operator-offline-message" rows="3" maxlength="500" placeholder="ამ ეტაპზე ოპერატორების სამუშაო დრო დასრულებულია. გთხოვთ, ხვალ მოგვმართოთ სამუშაო საათებში ან დაგვიკავშირდეთ ცხელ ხაზზე."></textarea>'
+      + '</div>'
+      + '<div style="margin-top:14px;display:flex;gap:12px;align-items:center">'
+      + '<button type="button" class="btn btn-gold" id="operator-hours-save">შენახვა</button>'
+      + '<span id="operator-hours-status" style="font-size:.82rem;color:var(--ink-faint)"></span>'
       + '</div></div>'
       + '</div>';
     html += '<div class="card" id="chat-ai-card" style="padding:16px 18px;margin-bottom:14px">'
@@ -3174,6 +3234,32 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         chatState.hours = payload;
         statusEl.textContent = 'შენახულია ✓';
         toast('ჩათის სამუშაო საათები შენახულია');
+        setTimeout(function(){ statusEl.textContent = ''; }, 2500);
+      }).catch(function(){
+        statusEl.textContent = '';
+        toast('ვერ შეინახა — სცადეთ თავიდან');
+      });
+    });
+
+    document.getElementById('operator-hours-toggle-view').addEventListener('click', function(){
+      var form = document.getElementById('operator-hours-form');
+      var opening = form.style.display === 'none';
+      if(opening){
+        loadChatHours().then(renderOperatorHoursForm);
+      }
+      form.style.display = opening ? 'block' : 'none';
+      this.textContent = opening ? 'დამალვა' : 'განრიგის რედაქტირება';
+    });
+    document.getElementById('operator-hours-save').addEventListener('click', function(){
+      // same shared chatSettings doc as the two cards above/below — merge
+      // onto the last-saved object so this save never wipes their fields out
+      var payload = Object.assign({}, chatState.hours, collectOperatorHoursForm());
+      var statusEl = document.getElementById('operator-hours-status');
+      statusEl.textContent = 'ინახება…';
+      apiPut('/api/site/chatSettings', payload).then(function(){
+        chatState.hours = payload;
+        statusEl.textContent = 'შენახულია ✓';
+        toast('ოპერატორების სამუშაო გრაფიკი შენახულია');
         setTimeout(function(){ statusEl.textContent = ''; }, 2500);
       }).catch(function(){
         statusEl.textContent = '';
