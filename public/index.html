@@ -719,7 +719,11 @@
   .chat-attachment-img + .chat-msg-text{margin-top:7px}
   .chat-attachment-file{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.06);text-decoration:none;color:inherit;font-size:.82rem;font-weight:700}
   .chat-attachment-file svg{width:18px;height:18px;flex:none;color:var(--blue-deep)}
-  .chat-attachment-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chat-attachment-file-info{display:flex;flex-direction:column;overflow:hidden;gap:1px;min-width:0}
+  .chat-attachment-file-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chat-attachment-file-type{font-size:.66rem;font-weight:800;letter-spacing:.02em;color:var(--ink-faint)}
+  .chat-attachment-pdf svg{color:#D64545}
+  .chat-attachment-pdf .chat-attachment-file-type{color:#D64545}
   .chat-attachment-file + .chat-msg-text{margin-top:7px}
   .chat-attachment-audio{display:block;max-width:230px;height:36px}
   .chat-attachment-audio + .chat-msg-text{margin-top:7px}
@@ -877,6 +881,7 @@
   <symbol id="ic-paperclip" viewBox="0 0 24 24"><path d="M8 12.5l6.5-6.5a3.5 3.5 0 0 1 5 5L11 19.5a5 5 0 0 1-7-7L13.5 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="ic-emoji" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="1.1" fill="currentColor"/><circle cx="15" cy="10" r="1.1" fill="currentColor"/><path d="M8 14.5c1 1.3 2.4 2 4 2s3-.7 4-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="ic-file" viewBox="0 0 24 24"><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-file-pdf" viewBox="0 0 24 24"><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><text x="12" y="17.5" text-anchor="middle" font-size="7" font-weight="800" fill="currentColor" font-family="Arial,sans-serif">PDF</text></symbol>
   <symbol id="ic-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
 </defs>
 </svg>
@@ -4071,7 +4076,14 @@
         out += chatEscHtml(raw.slice(lastIndex, match.index));
         var candidate = match[0];
         var digits = candidate.replace(/\D/g, '');
-        if(digits.length >= 9 && digits.length <= 15){
+        // A bare, unformatted run of digits (no "+", no spaces/dashes/parens)
+        // is far more likely to be a serial number, order code, or warranty
+        // card number written out in full than a phone number — a human
+        // writing an actual phone number almost always includes a "+" or
+        // separators (e.g. "+995 322 55 11 01"), so only linkify when the
+        // candidate actually looks phone-shaped, never a naked digit string.
+        var looksLikePhone = candidate.charAt(0) === '+' || /[\s\-().]/.test(candidate);
+        if(looksLikePhone && digits.length >= 9 && digits.length <= 15){
           var tel = candidate.replace(/[^\d+]/g, '');
           out += '<a class="tel-link chat-tel-link" href="tel:' + tel + '">' + chatEscHtml(candidate) + '</a>';
         } else {
@@ -4195,12 +4207,17 @@
         return audio;
       }
       var a = document.createElement('a');
-      a.className = 'chat-attachment-file';
+      var isPdf = (att.type === 'application/pdf') || /\.pdf$/i.test(att.name || '');
+      a.className = 'chat-attachment-file' + (isPdf ? ' chat-attachment-pdf' : '');
       a.href = att.dataUrl;
       a.download = att.name || 'ფაილი';
       a.target = '_blank';
-      a.innerHTML = '<svg><use href="#ic-file"/></svg><span></span>';
-      a.querySelector('span').textContent = att.name || 'ფაილი';
+      a.title = att.name || '';
+      a.innerHTML = '<svg><use href="#' + (isPdf ? 'ic-file-pdf' : 'ic-file') + '"/></svg>'
+        + '<span class="chat-attachment-file-info"><span class="chat-attachment-file-name"></span>'
+        + (isPdf ? '<span class="chat-attachment-file-type">PDF დოკუმენტი</span>' : '')
+        + '</span>';
+      a.querySelector('.chat-attachment-file-name').textContent = att.name || 'ფაილი';
       return a;
     }
     function appendMsg(m){

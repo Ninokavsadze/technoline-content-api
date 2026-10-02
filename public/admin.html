@@ -2531,7 +2531,12 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       out += chatEscHtml(raw.slice(lastIndex, match.index));
       var candidate = match[0];
       var digits = candidate.replace(/\D/g, '');
-      if(digits.length >= 9 && digits.length <= 15){
+      // A bare, unformatted run of digits (no "+", no spaces/dashes/parens)
+      // is far more likely to be a serial number, order code, or warranty
+      // card number written out in full than a phone number, so only
+      // linkify when the candidate actually looks phone-shaped.
+      var looksLikePhone = candidate.charAt(0) === '+' || /[\s\-().]/.test(candidate);
+      if(looksLikePhone && digits.length >= 9 && digits.length <= 15){
         var tel = candidate.replace(/[^\d+]/g, '');
         out += '<a class="chat-tel-link" href="tel:' + tel + '">' + chatEscHtml(candidate) + '</a>';
       } else {
@@ -2615,7 +2620,14 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(/^audio\//.test(att.type || '')){
       return '<audio class="chat-attachment-audio" controls src="' + att.dataUrl.replace(/"/g,'&quot;') + '"></audio>';
     }
-    return '<a href="' + att.dataUrl.replace(/"/g,'&quot;') + '" download="' + escHtml(att.name || 'ფაილი') + '" style="display:flex;align-items:center;gap:6px;font-size:.82rem;font-weight:700;color:var(--blue-deep);text-decoration:underline;margin-bottom:6px">📎 ' + escHtml(att.name || 'ფაილი') + '</a>';
+    var isPdf = (att.type === 'application/pdf') || /\.pdf$/i.test(att.name || '');
+    var icon = isPdf ? '📕' : '📎';
+    var nameHtml = '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(att.name || 'ფაილი') + '</span>';
+    var typeHtml = isPdf ? '<span style="font-size:.66rem;font-weight:800;letter-spacing:.02em;color:#D64545">PDF დოკუმენტი</span>' : '';
+    return '<a href="' + att.dataUrl.replace(/"/g,'&quot;') + '" download="' + escHtml(att.name || 'ფაილი') + '" title="' + escHtml(att.name || '') + '" target="_blank" style="display:flex;align-items:center;gap:7px;font-size:.82rem;font-weight:700;color:var(--blue-deep);text-decoration:none;background:rgba(0,0,0,.06);border-radius:10px;padding:7px 10px;margin-bottom:6px;max-width:260px">'
+      + '<span style="flex:none">' + icon + '</span>'
+      + '<span style="display:flex;flex-direction:column;overflow:hidden;gap:1px;min-width:0">' + nameHtml + typeHtml + '</span>'
+      + '</a>';
   }
   function chatMessageBubbleHtml(m){
     if(m.from === 'system'){
