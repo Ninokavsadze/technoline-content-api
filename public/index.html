@@ -2443,24 +2443,30 @@
   document.getElementById('cart-btn').addEventListener('click', openCart);
   cartDrawer.addEventListener('click', function(e){ if(e.target.closest('[data-close-cart]')) closeCart(); });
 
-  // Language toggle — UI control + persisted preference only for now; the
-  // site's actual English content/translation isn't wired up yet (pending
-  // a decision on scope — see the conversation this shipped from). Flipping
-  // it updates its own label/lang attribute so it's visibly there and ready,
-  // without claiming the page content itself is translated yet.
+  // Language toggle — persisted preference + full re-render of every
+  // data-ck/data-ck-placeholder field via resolveCk()/applyContentOverrides(),
+  // which pick the admin-managed English text (content/site-en) when present
+  // and fall back to the Georgian text otherwise, so nothing goes blank for
+  // a field that hasn't been translated yet. Hardcoded, non-CMS UI strings
+  // (toast messages, validation text, etc.) are not covered by this toggle.
   var LANG_KEY = 'tl_lang';
   function getLang(){
     try{ return localStorage.getItem(LANG_KEY) || 'ka'; }catch(e){ return 'ka'; }
   }
-  function setLang(lang){
+  function setLang(lang, skipRerender){
     try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
     document.documentElement.lang = lang;
     var lbl = document.getElementById('lang-toggle-label');
     if(lbl) lbl.textContent = lang === 'en' ? 'EN' : 'GE';
     var lblMobile = document.getElementById('lang-toggle-mobile-label');
     if(lblMobile) lblMobile.textContent = lang === 'en' ? 'Language: English' : 'ენა: ქართული';
+    // applyContentOverrides (defined further below, but hoisted) re-reads
+    // every [data-ck]/[data-ck-placeholder] element through resolveCk(),
+    // which checks getLang() itself — so this single call re-renders the
+    // whole page's admin-editable text in the newly selected language.
+    if(!skipRerender && typeof applyContentOverrides === 'function') applyContentOverrides();
   }
-  setLang(getLang());
+  setLang(getLang(), true); // initial paint: content isn't loaded yet, applyContentOverrides() runs once it is
   function toggleLang(){ setLang(getLang() === 'en' ? 'ka' : 'en'); }
   var langToggleBtn = document.getElementById('lang-toggle');
   if(langToggleBtn) langToggleBtn.addEventListener('click', toggleLang);
@@ -3675,7 +3681,22 @@
   var PARTS_DEFAULTS = PARTS_BASE.map(function(p){ return {id:p.id, name:p.name, price:p.price, stock:p.stock, brand:p.brand, cat:p.cat, device:p.device, compat:p.compat}; });
   var BRANCHES_DEFAULTS = BRANCHES.map(function(b){ return {id:b.id, name:b.name, addr:b.addr, hours:b.hours, phone:b.phone}; });
 
-  var siteContent = { content:{}, theme:{}, parts:{}, branches:{}, chatSettings:{} };
+  var siteContent = { content:{}, contentEn:{}, theme:{}, parts:{}, branches:{}, chatSettings:{} };
+
+  // Resolves a data-ck key's text for the currently selected language.
+  // English: admin-edited/seeded content/site-en wins when it has a non-empty
+  // value for this key; otherwise falls back to the Georgian value (admin
+  // override, then the page's own built-in default) so nothing is ever blank
+  // just because a field hasn't been translated yet.
+  // Georgian (default): unchanged behavior — admin override, else built-in default.
+  function resolveCk(k){
+    if(getLang() === 'en'){
+      var ev = (siteContent.contentEn && Object.prototype.hasOwnProperty.call(siteContent.contentEn, k)) ? siteContent.contentEn[k] : null;
+      if(ev != null && ev !== '') return ev;
+    }
+    var v = Object.prototype.hasOwnProperty.call(siteContent.content, k) ? siteContent.content[k] : CONTENT_DEFAULTS[k];
+    return v;
+  }
 
   // Chat business-hours: compares the current time in the configured IANA
   // timezone against a per-weekday {closed, open, close} schedule, entirely
@@ -3714,7 +3735,7 @@
     if(label){
       label.classList.toggle('offline', !online);
       var k = online ? 'chatWidget.onlineLabel' : 'chatWidget.offlineLabel';
-      var v = Object.prototype.hasOwnProperty.call(siteContent.content, k) ? siteContent.content[k] : CONTENT_DEFAULTS[k];
+      var v = resolveCk(k);
       label.textContent = v || (online ? 'ონლაინ' : 'ოფლაინ');
     }
     if(notice) notice.style.display = online ? 'none' : 'block';
@@ -3788,7 +3809,7 @@
   function applyContentOverrides(){
     document.querySelectorAll('[data-ck]').forEach(function(el){
       var k = el.getAttribute('data-ck');
-      var v = Object.prototype.hasOwnProperty.call(siteContent.content, k) ? siteContent.content[k] : CONTENT_DEFAULTS[k];
+      var v = resolveCk(k);
       if(v == null) v = '';
       if(el.innerHTML !== v) el.innerHTML = v;
     });
@@ -3814,7 +3835,7 @@
     });
     document.querySelectorAll('[data-ck-placeholder]').forEach(function(el){
       var k = el.getAttribute('data-ck-placeholder');
-      var v = Object.prototype.hasOwnProperty.call(siteContent.content, k) ? siteContent.content[k] : CONTENT_DEFAULTS[k];
+      var v = resolveCk(k);
       if(v == null) v = '';
       el.setAttribute('placeholder', v);
     });
@@ -4992,6 +5013,7 @@
     }
     function applyData(data){
       siteContent.content = data.content || {};
+      siteContent.contentEn = data.contentEn || {};
       siteContent.theme = data.theme || {};
       siteContent.parts = data.parts || {};
       siteContent.branches = data.branches || {};

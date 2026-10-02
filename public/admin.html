@@ -553,7 +553,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   }
   function listItemFieldVal(page, id, key){
     var ck = page + '.' + id + '.' + key;
-    return Object.prototype.hasOwnProperty.call(state.content, ck) ? state.content[ck] : (CONTENT_DEFAULTS[ck] || '');
+    return contentValFor(ck) || '';
   }
 
   /* ---------- toast ---------- */
@@ -667,7 +667,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   });
 
   /* ---------- app state ---------- */
-  var state = { content:{}, theme:{}, parts:{}, branches:{}, warranty:{}, warrantyTemplate:{} };
+  var state = { content:{}, contentEn:{}, theme:{}, parts:{}, branches:{}, warranty:{}, warrantyTemplate:{} };
   var dirty = { content:{}, theme:false, parts:false, branches:false, warrantyRecords:false, warrantyTemplate:false };
   var TABS = [];
   var activeTab = null;
@@ -727,6 +727,43 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   // stacked list of textareas and staff had to scroll through all of them
   // to reach one field; now only the selected segment's fields render.
   var contentSubTab = {};
+  // Which language the content tabs (renderContentPanel / renderListContentPanel)
+  // are currently showing/editing — 'ka' edits state.content + saves to
+  // content-site (unchanged, original behavior); 'en' edits state.contentEn +
+  // saves to content-site-en. Persisted locally so it survives a reload.
+  var CONTENT_LANG_KEY = 'tl_admin_content_lang';
+  var contentLang = (function(){ try{ return localStorage.getItem(CONTENT_LANG_KEY) === 'en' ? 'en' : 'ka'; }catch(e){ return 'ka'; } })();
+  function setContentLang(lang){
+    contentLang = lang === 'en' ? 'en' : 'ka';
+    try{ localStorage.setItem(CONTENT_LANG_KEY, contentLang); }catch(e){}
+  }
+  // Current store + fallback-default for a single-key content field,
+  // language-aware. Georgian keeps the original behavior (admin override,
+  // else the page's built-in default). English has no built-in default of
+  // its own here — an untranslated field just shows empty with a hint, and
+  // falls back to the Georgian text on the live site (see resolveCk there).
+  function ckStore(){ return contentLang === 'en' ? state.contentEn : state.content; }
+  function contentValFor(k){
+    if(contentLang === 'en') return Object.prototype.hasOwnProperty.call(state.contentEn, k) ? state.contentEn[k] : '';
+    return Object.prototype.hasOwnProperty.call(state.content, k) ? state.content[k] : CONTENT_DEFAULTS[k];
+  }
+  function contentLangToggleHtml(){
+    return '<div class="bg-type-row" style="margin-bottom:14px">'
+      + '<button type="button" class="bg-type-btn'+(contentLang==='ka'?' is-active':'')+'" data-content-lang="ka">ქართული</button>'
+      + '<button type="button" class="bg-type-btn'+(contentLang==='en'?' is-active':'')+'" data-content-lang="en">English</button>'
+      + '</div>'
+      + (contentLang==='en' ? '<p class="field-hint" style="margin:-8px 0 14px">თარგმანი ჯერ არ არის შევსებული ველებისთვის — ცარიელი ველი საიტზე ავტომატურად აჩვენებს ქართულ ტექსტს.</p>' : '');
+  }
+  function wireContentLangToggle(main, tab){
+    main.querySelectorAll('[data-content-lang]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var lang = btn.getAttribute('data-content-lang');
+        if(lang === contentLang) return;
+        setContentLang(lang);
+        renderMain();
+      });
+    });
+  }
 
   // Content pages are split into three sidebar subgroups so staff aren't
   // scrolling one long flat list to find a page — "informational" static
@@ -921,6 +958,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   function renderListContentPanel(main, tab, cfg){
     var page = tab.page;
     var html = panelHeadHtml(tab, 'შეცვალეთ ტექსტი და დააჭირეთ „ცვლილებების შენახვას“. ქვემოთ შეგიძლიათ დაამატოთ ახალი ' + cfg.label + ' ან წაშალოთ არსებული — საიტზეც შესაბამისად განახლდება.');
+    html += contentLangToggleHtml();
 
     var fixedKeys = CONTENT_ORDER.filter(function(k){
       var p = parseCk(k);
@@ -929,7 +967,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(fixedKeys.length){
       html += '<div class="card">';
       fixedKeys.forEach(function(k){
-        var val = Object.prototype.hasOwnProperty.call(state.content,k) ? state.content[k] : CONTENT_DEFAULTS[k];
+        var val = contentValFor(k);
         html += '<div class="field-block"><label>' + labelForCk(k) + '<span class="ck-key">' + k + '</span></label>'
           + '<textarea data-ck-edit="'+escAttr(k)+'">' + escHtml(val) + '</textarea></div>';
       });
@@ -940,6 +978,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     html += '<button type="button" class="btn btn-ghost" id="list-item-add" style="margin:4px 0 16px">+ ახალი ' + cfg.label + '</button>';
     html += saveBarHtml();
     main.innerHTML = html;
+    wireContentLangToggle(main, tab);
 
     function itemCardHtml(id, idx){
       var title = listItemFieldVal(page, id, 'title');
@@ -968,7 +1007,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       main.querySelectorAll('[data-list-field]').forEach(function(ta){
         ta.addEventListener('input', function(){
           var id = ta.getAttribute('data-list-id'), field = ta.getAttribute('data-list-field');
-          state.content[page + '.' + id + '.' + field] = ta.value;
+          ckStore()[page + '.' + id + '.' + field] = ta.value;
           setDirty(tab, true);
           updateStatusChip(tab);
           if(field === 'title'){
@@ -984,7 +1023,9 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
           if(current.length <= 1){ alert('ბოლო ჩანაწერის წაშლა შეუძლებელია.'); return; }
           if(!confirm('წავშალო ეს ' + cfg.label + '? საიტზეც გაქრება.')) return;
           saveListOrder(page, current.filter(function(x){ return x !== id; }));
-          cfg.fields.forEach(function(f){ delete state.content[page + '.' + id + '.' + f.key]; });
+          // delete both languages' text for this item — the item itself is
+          // gone (shared __order), not just its currently-viewed translation
+          cfg.fields.forEach(function(f){ delete state.content[page + '.' + id + '.' + f.key]; delete state.contentEn[page + '.' + id + '.' + f.key]; });
           setDirty(tab, true);
           updateStatusChip(tab);
           renderItems();
@@ -994,7 +1035,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
 
     main.querySelectorAll('[data-ck-edit]').forEach(function(ta){
       ta.addEventListener('input', function(){
-        state.content[ta.getAttribute('data-ck-edit')] = ta.value;
+        ckStore()[ta.getAttribute('data-ck-edit')] = ta.value;
         setDirty(tab, true);
         updateStatusChip(tab);
       });
@@ -1012,12 +1053,13 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       if(card) card.scrollIntoView({behavior:'smooth', block:'center'});
     });
 
-    wireSaveBar(tab, function(){ return {path:'content-site', body: state.content}; });
+    wireSaveBar(tab, function(){ return contentLang === 'en' ? {path:'content-site-en', body: state.contentEn} : {path:'content-site', body: state.content}; });
   }
 
   function renderContentPanel(main, tab){
     var keys = CONTENT_ORDER.filter(function(k){ return parseCk(k).page === tab.page; });
     var html = panelHeadHtml(tab, 'შეცვალეთ ტექსტი და დააჭირეთ „ცვლილებების შენახვას“. მარტივი HTML ტეგები (em, strong, br) დაშვებულია და შენარჩუნდება საიტზე.');
+    html += contentLangToggleHtml();
 
     // Group the page's fields by segment (row1, card2, stat1, s1…) in the
     // order they appear — each segment becomes its own sub-tab instead of
@@ -1045,7 +1087,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     html += '<div class="card">';
     if(useSubTabs && activeSub !== '__general__') html += '<div class="seg-label" style="margin-top:0">' + humanizeSegment(activeSub) + '</div>';
     (segKeys[activeSub] || []).forEach(function(k){
-      var val = Object.prototype.hasOwnProperty.call(state.content,k) ? state.content[k] : CONTENT_DEFAULTS[k];
+      var val = contentValFor(k);
       html += '<div class="field-block">'
         + '<label>' + labelForCk(k) + '<span class="ck-key">' + k + '</span></label>'
         + '<textarea data-ck-edit="'+escAttr(k)+'">' + escHtml(val) + '</textarea>'
@@ -1055,6 +1097,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     html += '</div>';
     html += saveBarHtml();
     main.innerHTML = html;
+    wireContentLangToggle(main, tab);
 
     main.querySelectorAll('[data-content-subtab]').forEach(function(btn){
       btn.addEventListener('click', function(){
@@ -1065,7 +1108,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
 
     main.querySelectorAll('[data-ck-edit]').forEach(function(ta){
       ta.addEventListener('input', function(){
-        state.content[ta.getAttribute('data-ck-edit')] = ta.value;
+        ckStore()[ta.getAttribute('data-ck-edit')] = ta.value;
         setDirty(tab, true);
         updateStatusChip(tab);
       });
@@ -1121,7 +1164,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     }
     Object.keys(SVC_TILE_IMAGE_MAP).forEach(function(descKey){ wireSvcPhotoCell(SVC_TILE_IMAGE_MAP[descKey]); });
 
-    wireSaveBar(tab, function(){ return {path:'content-site', body: state.content}; });
+    wireSaveBar(tab, function(){ return contentLang === 'en' ? {path:'content-site-en', body: state.contentEn} : {path:'content-site', body: state.content}; });
   }
 
   var NAV_ITEMS = [
@@ -3808,10 +3851,11 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(resetBtn) resetBtn.addEventListener('click', function(){
       if(!confirm('დარწმუნებული ხართ, რომ გსურთ ამ ჩანართის ნაგულისხმევ მდგომარეობაში დაბრუნება?')) return;
       if(tab.kind === 'content'){
+        var store = ckStore();
         if(LIST_CONTENT_PAGES[tab.page]){
-          Object.keys(state.content).forEach(function(k){ if(k.indexOf(tab.page + '.') === 0) delete state.content[k]; });
+          Object.keys(store).forEach(function(k){ if(k.indexOf(tab.page + '.') === 0) delete store[k]; });
         } else {
-          CONTENT_ORDER.filter(function(k){ return parseCk(k).page === tab.page; }).forEach(function(k){ delete state.content[k]; });
+          CONTENT_ORDER.filter(function(k){ return parseCk(k).page === tab.page; }).forEach(function(k){ delete store[k]; });
         }
       } else if(tab.kind === 'colors'){ THEME_TOKENS.forEach(function(t){ delete state.theme[t.key]; }); }
       else if(tab.kind === 'typography'){
@@ -3835,6 +3879,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   function loadAll(){
     return apiGet('/api/site').then(function(data){
       state.content = data.content || {};
+      state.contentEn = data.contentEn || {};
       state.theme = data.theme || {};
       state.parts = data.parts || {};
       state.branches = data.branches || {};
