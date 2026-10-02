@@ -160,6 +160,7 @@
   .icon-btn:hover{background:var(--surface-alt);color:var(--ink)}
   .icon-btn svg{width:20px;height:20px}
   .cart-badge{position:absolute;top:3px;right:3px;min-width:16px;height:16px;padding:0 3px;border-radius:999px;background:var(--gold);color:#241A00;font-size:.62rem;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:var(--font-display)}
+  .lang-toggle{font-size:.72rem;font-weight:800;letter-spacing:.02em}
   .hamburger{display:none}
 
   /* mega menu */
@@ -463,8 +464,6 @@
   .cart-empty svg{width:52px;height:52px;opacity:.5}
   .cart-total{display:flex;justify-content:space-between;font-weight:800;font-size:1.05rem;padding-block:16px;border-top:1px solid var(--line)}
 
-  /* Admin panel is now a separate published Artifact — see admin-panel.html.
-     A plain link in the header (#admin-btn) opens it in a new tab. */
 
   /* ============ FORMS (generic, used across tools) ============ */
   .field{display:flex;flex-direction:column;gap:7px}
@@ -784,7 +783,7 @@
   @media (max-width:980px){
     nav.primary-nav{display:none}
     .hamburger{display:inline-flex}
-    .hdr-search-wrap,#profile-btn,#admin-btn,.header-actions > a.btn{display:none}
+    .hdr-search-wrap,#profile-btn,.header-actions > a.btn{display:none}
     .header-actions{gap:2px}
     .hero-inner{grid-template-columns:1fr}
     .hero-art{order:-1;height:280px}
@@ -988,7 +987,7 @@
         <span class="cart-badge" id="cart-badge" hidden>0</span>
       </button>
       <a href="#booking" data-route="booking" class="btn btn-blue btn-sm" style="margin-left:6px" data-ck="common.bookCta">ვიზიტის დაჯავშნა</a>
-      <a class="icon-btn" id="admin-btn" href="#" target="_blank" rel="noopener" aria-label="საიტის მართვა" title="საიტის მართვა"><svg><use href="#ic-gear"/></svg></a>
+      <button class="icon-btn lang-toggle" id="lang-toggle" aria-label="ენის გადართვა" title="Switch language"><span id="lang-toggle-label">GE</span></button>
       <button class="icon-btn hamburger" id="hamburger-btn" aria-label="მენიუ"><svg><use href="#ic-menu"/></svg></button>
     </div>
   </div>
@@ -1027,7 +1026,7 @@
     <a class="mobile-top-link" href="#about" data-route="about" data-close-drawer data-navitem="about"><span data-ck="common.navAbout">ჩვენს შესახებ</span></a>
     <a class="mobile-top-link" href="#contact" data-route="contact" data-close-drawer data-navitem="contact"><span data-ck="common.navContact">კონტაქტი</span></a>
     <a class="mobile-top-link" href="#profile" data-route="profile" data-close-drawer>ჩემი პროფილი</a>
-    <a class="mobile-top-link" id="admin-btn-mobile" href="#" target="_blank" rel="noopener" data-close-drawer>საიტის მართვა</a>
+    <button type="button" class="mobile-top-link" id="lang-toggle-mobile" style="text-align:left;width:100%;border:none;background:none"><span id="lang-toggle-mobile-label">ენა: ქართული</span></button>
     <a href="#booking" data-route="booking" data-close-drawer class="btn btn-gold btn-block" style="margin-top:20px" data-ck="common.bookCta">ვიზიტის დაჯავშნა</a>
   </div>
 </div>
@@ -2138,7 +2137,6 @@
   /* Site content + booking API — swap this one line when Q-Logic's
      production endpoints are ready (see qlogic-content-api/README.md). */
   var API_BASE = 'https://technoline-content-api.onrender.com';
-  var ADMIN_PANEL_URL = 'https://claude.ai/artifact/XxTSVQBUgQ4rUqNCnJRe5k';
 
   /* ---------- safe storage ---------- */
   var store = {
@@ -2445,6 +2443,30 @@
   document.getElementById('cart-btn').addEventListener('click', openCart);
   cartDrawer.addEventListener('click', function(e){ if(e.target.closest('[data-close-cart]')) closeCart(); });
 
+  // Language toggle — UI control + persisted preference only for now; the
+  // site's actual English content/translation isn't wired up yet (pending
+  // a decision on scope — see the conversation this shipped from). Flipping
+  // it updates its own label/lang attribute so it's visibly there and ready,
+  // without claiming the page content itself is translated yet.
+  var LANG_KEY = 'tl_lang';
+  function getLang(){
+    try{ return localStorage.getItem(LANG_KEY) || 'ka'; }catch(e){ return 'ka'; }
+  }
+  function setLang(lang){
+    try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+    document.documentElement.lang = lang;
+    var lbl = document.getElementById('lang-toggle-label');
+    if(lbl) lbl.textContent = lang === 'en' ? 'EN' : 'GE';
+    var lblMobile = document.getElementById('lang-toggle-mobile-label');
+    if(lblMobile) lblMobile.textContent = lang === 'en' ? 'Language: English' : 'ენა: ქართული';
+  }
+  setLang(getLang());
+  function toggleLang(){ setLang(getLang() === 'en' ? 'ka' : 'en'); }
+  var langToggleBtn = document.getElementById('lang-toggle');
+  if(langToggleBtn) langToggleBtn.addEventListener('click', toggleLang);
+  var langToggleMobileBtn = document.getElementById('lang-toggle-mobile');
+  if(langToggleMobileBtn) langToggleMobileBtn.addEventListener('click', toggleLang);
+
   /* quick view (product photo zoom) */
   var qvModal = document.getElementById('qv-modal');
   var qvImg = document.getElementById('qv-modal-img');
@@ -2457,11 +2479,6 @@
   }
   function closeQuickView(){ qvModal.classList.remove('is-open'); }
   qvModal.addEventListener('click', function(e){ if(e.target.closest('[data-close-qv]')) closeQuickView(); });
-
-  /* #admin-btn is now a plain link (href set once ADMIN_PANEL_URL is
-     known — see loadSiteContent below); the admin panel itself lives
-     in a separately published Artifact, so no click handler is needed
-     here. */
 
   /* header quick-search dropdown — opens in place (no navigation), shows
      an instant substring preview while the AI-ranked answer is in flight,
@@ -4967,13 +4984,6 @@
   }
 
   function loadSiteContent(){
-    var adminLink = document.getElementById('admin-btn');
-    var adminLinkMobile = document.getElementById('admin-btn-mobile');
-    if(ADMIN_PANEL_URL && ADMIN_PANEL_URL.indexOf('PLACEHOLDER') === -1){
-      if(adminLink) adminLink.href = ADMIN_PANEL_URL;
-      if(adminLinkMobile) adminLinkMobile.href = ADMIN_PANEL_URL;
-    }
-
     var revealed = false;
     function reveal(){
       if(revealed) return;
