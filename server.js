@@ -246,6 +246,7 @@ if (!USE_UPSTASH && !fs.existsSync(DATA_FILE)) writeDb(DEFAULT_DB);
 // the Georgian text today. A key missing here or left blank by staff simply
 // falls back to the Georgian default on the storefront — nothing goes blank.
 const SEED_EN_CONTENT = {
+  "about.band.cta": "View Branches",
   "about.band.desc": "Over 60 certified engineers, our own quality-control lab, and 12 years of experience in the digital device market.",
   "about.band.title": "A Team You Can Trust",
   "about.head.lede": "Since 2013 we have served Georgia's market with digital device repair &mdash; transparent, fast, and with original parts.",
@@ -331,6 +332,7 @@ const SEED_EN_CONTENT = {
   "footer.servicesLink2": "Laptops",
   "footer.servicesLink3": "Tablets",
   "footer.servicesLink4": "Smartwatches",
+  "footer.termsLink": "Terms and Conditions",
   "home.band.desc": "Enter your serial number or IMEI to find out whether your warranty covers the current issue.",
   "home.band.title": "Check your device's warranty status in 10 seconds",
   "home.craft.eyebrow": "Our Engineers at Work",
@@ -350,15 +352,20 @@ const SEED_EN_CONTENT = {
   "home.reviews.quote3": "„I booked my visit online, skipped the line, and knew the price in advance — the most convenient service I've used.“",
   "home.reviews.title": "What Our Customers Say",
   "home.services.card2.desc": "Motherboard diagnostics, keyboard and screen replacement, system recovery.",
+  "home.services.card2.tag": "Computers",
   "home.services.card2.title": "Laptops & Computers",
   "home.services.card3.desc": "Screen, battery, and port repairs for iPad and Android tablets.",
+  "home.services.card3.tag": "Tablets",
   "home.services.card3.title": "Tablets",
   "home.services.card4.desc": "Screen, button, and charging module repair for all major brands.",
+  "home.services.card4.tag": "Smartwatches",
   "home.services.card4.title": "Smartwatches",
   "home.services.card5.desc": "Cleaning, overheating, and HDMI issues for PlayStation, Xbox, and Nintendo consoles.",
+  "home.services.card5.tag": "Gaming Consoles",
   "home.services.card5.title": "Gaming Consoles",
   "home.services.eyebrow": "Services",
   "home.services.lead.desc": "Screen, battery, camera, water damage &mdash; with original parts, usually the same day.",
+  "home.services.lead.tag": "Smartphones",
   "home.services.lead.title": "Smartphone Repair",
   "home.services.lede": "From diagnostics to repair &mdash; our engineers work with every major brand and device type.",
   "home.services.title": "One center, every device",
@@ -435,6 +442,15 @@ const SEED_EN_CONTENT = {
   "terms.s6.title": "6. Cancellation and Returns",
   "terms.s7.body": "For questions about these terms, contact us via the channels listed on our <a href=\"#contact\" data-route=\"contact\" style=\"color:var(--blue);font-weight:700\">Contact page</a>.",
   "terms.s7.title": "7. Contact",
+  "warranty-check.head.lede": "Enter your device's serial number or IMEI and get its warranty status instantly.",
+  "warranty-check.head.title": "Check Warranty Period",
+  "warranty-check.side.desc": "Every repaired device and sold part comes with a 6-month warranty against defects.",
+  "warranty-check.side.item1": "The warranty covers the replaced part and the work performed",
+  "warranty-check.side.item2": "The serial number can be found in the device settings or on the box",
+  "warranty-check.side.item3": "Warranty repair is free unless the damage is mechanical",
+  "warranty-check.side.title": "How the Warranty Works",
+  "wservice.band.bookCta": "Book",
+  "wservice.band.checkCta": "Check",
   "wservice.band.desc": "Check your serial number online or book a visit for a free diagnostic.",
   "wservice.band.title": "Want to know if your warranty covers your case?",
   "wservice.head.lede": "What the warranty covers, how to use it, and how long warranty repairs take.",
@@ -1086,6 +1102,12 @@ function warrantyStatus(rec) {
   const active = remaining >= 0;
   return {
     active: active,
+    // remainingDays: a signed day count the client can localize itself
+    // (positive = days left, negative = days since expiry). remainingLabel
+    // is kept Georgian-only for old clients/back-compat; the site's
+    // language toggle is client-side only, so the server has no language
+    // to render this string in.
+    remainingDays: remaining,
     remainingLabel: active ? (remaining + ' დღე') : (Math.abs(remaining) + ' დღის წინ')
   };
 }
@@ -1518,7 +1540,7 @@ async function askChatAi(kb, history, userText, agentName, branches, attachment)
         + 'მოწყობილობის ტიპები ვიზიტისთვის: ' + BOOKING_DEVICE_TYPES.join(', ') + '.\n'
         + 'პრობლემის ტიპები ვიზიტისთვის: ' + BOOKING_ISSUE_TYPES.join(', ') + '.\n'
         + 'საათების სლოტები: ' + BOOKING_TIME_SLOTS.join(', ') + '.\n\n'
-        + '1) საგარანტიო ბარათის გამოგზავნა (action.type = "send_warranty_card"): თუ მომხმარებელი სურს თავისი საგარანტიო ბარათის მიღება ჩატში, სთხოვე მოწყობილობის სერიული ნომერი (თუ ჯერ არ დაწერა და ყუთის ფოტოც არ გამოუგზავნია). თუ მომხმარებელმა ტექსტის მაგივრად ყუთის ფოტო გამოაგზავნა, სერიული ნომერი ამოიღე ზემოთ აღწერილი წესით (IMEI1, ან მხოლოდ S/N რომ იყოს — S/N) და ცალკე აღარ ჰკითხო. როგორც კი სერიული ნომერი გაქვს, დააბრუნე action.type="send_warranty_card" და action.serial ველში ზუსტად ის სერიული ნომერი — ნუ დაელოდები დამატებით დადასტურებას, რადგან ბარათის ძებნა/გაგზავნა თავისთავად უსაფრთხოა (ან იპოვება და გაეგზავნება, ან არა). reply-ში დაწერე მხოლოდ მოკლე გარდამავალი ფრაზა (მაგ. „წამით, ვამოწმებ სერიულ ნომერს...“) — არასდროს დაწერო, რომ ბარათი უკვე გამოგზავნილია ან ვერ მოიძებნა, რადგან ამას რეალური შედეგის მიხედვით ცალკე შეტყობინება დაადასტურებს.\n'
+        + '1) საგარანტიო ბარათის გამოგზავნა (action.type = "send_warranty_card"): თუ მომხმარებელი სურს თავისი საგარანტიო ბარათის მიღება ჩატში, სთხოვე მოწყობილობის სერიული ნომერი (თუ ჯერ არ დაწერა და ყუთის ფოტოც არ გამოუგზავნია). თუ მომხმარებელმა ტექსტის მაგივრად ყუთის ფოტო გამოაგზავნა, სერიული ნომერი ამოიღე ზემოთ აღწერილი წესით (IMEI1, ან მხოლოდ S/N რომ იყოს — S/N) და ცალკე აღარ ჰკითხო. როგორც კი სერიული ნომერი გაქვს, დააბრუნე action.type="send_warranty_card" და action.serial ველში ზუსტად ის სერიული ნომერი — ნუ დაელოდები დამატებით დადასტურებას, რადგან ბარათის ძებნა/გაგზავნა თავისთავად უსაფრთხოა (ან იპოვება და გაეგზავნება, ან არა). reply-ში დაწერე მხოლოდ მოკლე გარდამავალი ფრაზა ზუსტად ამ ფორმით: „გთხოვთ, დამელოდოთ, გადავამოწმებ საგარანტიო ნომერს.“ — არასდროს დაწერო, რომ ბარათი უკვე გამოგზავნილია ან ვერ მოიძებნა, რადგან ამას რეალური შედეგის მიხედვით ცალკე შეტყობინება დაადასტურებს.\n'
         + '2) ვიზიტის დაჯავშნა (action.type = "book_visit"): საჭირო ოთხივე დეტალი შეაგროვე საუბრის განმავლობაში — ფილიალი (ზემოთ ჩამოთვლილთაგან), მოწყობილობის ტიპი, პრობლემის ტიპი და სასურველი თარიღი+საათი (ზემოთ ჩამოთვლილი სლოტებიდან). სახელი და ტელეფონი არ გჭირდება კითხვა — სისტემამ უკვე იცის ვინ ესაუბრება. სანამ ეს ოთხივე არ გაქვს, action.type="none" და reply-ში ჰკითხე ნაკლული დეტალი. როცა ოთხივე გაქვს, reply-ში ჩამოუთვალე მომხმარებელს არჩეული დეტალები და ამის შემდეგ სიტყვასიტყვით დაამატე: „გთხოვთ, გადახედოთ ჯავშნის მონაცემებს და დამიდასტუროთ სისწორე, რათა შევძლო ვიზიტის დაგეგმვა.“ (მაგ. „[ფილიალი], [თარიღი] [საათი], [მოწყობილობა] — [პრობლემა]. გთხოვთ, გადახედოთ ჯავშნის მონაცემებს და დამიდასტუროთ სისწორე, რათა შევძლო ვიზიტის დაგეგმვა.“) — არასდროს დასვა კითხვა „ასე გავაგებინო...?“-ის მსგავსი ფორმით. და მხოლოდ იმ ერთ შემდეგ შეტყობინებაში, როცა მომხმარებელი ამაზე პირდაპირ თანხმობას (კი/დიახ/დამიჯავშნე და მისთ.) დაწერს, დააბრუნე action.type="book_visit" შესაბამისი action.branchId (მხოლოდ id, მაგ. "b1"), action.deviceType, action.issue, action.date (YYYY-MM-DD) და action.timeSlot (HH:MM) ველებით — ოთხივე ერთად, ზუსტად ისე როგორც თანხმობის წინ დაწერე. reply-ში ამ დასტურის შეტყობინებაში დაწერე მხოლოდ მოკლე გარდამავალი ფრაზა (მაგ. „ვაგზავნი ჯავშანს...“) — არასდროს დაწერო, რომ ჯავშანი უკვე დადასტურებულია ან სლოტი დაკავებულია, რადგან ამას რეალური შედეგის მიხედვით ცალკე შეტყობინება დაადასტურებს.\n'
         + '- ორივე ქმედებისთვის: action-ის გამოყენება (type !== "none") არასდროს ჩაითვალოს ოპერატორთან გადაცემის მიზეზად — დატოვე escalate:false.\n'
         + '- action ველი ყოველთვის დააბრუნე — როცა არც ერთი ზემოთხსენებული ქმედება არ გჭირდება, დააბრუნე {"type":"none"}.\n\n'
@@ -1633,7 +1655,7 @@ async function performChatAiAction(db, chat, action) {
       const pdf = await generateWarrantyCardPdf(db, serial, rec, status);
       return {
         from: 'ai',
-        text: 'აი თქვენი საგარანტიო ბარათი (' + serial + '):',
+        text: 'გიგზავნით საგარანტიო ბარათს (' + serial + '):',
         attachment: { name: 'warranty-' + serial + '.pdf', type: 'application/pdf', dataUrl: 'data:application/pdf;base64,' + pdf.toString('base64') },
         at: Date.now()
       };
