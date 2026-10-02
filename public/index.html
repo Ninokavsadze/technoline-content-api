@@ -969,7 +969,7 @@
     </nav>
 
     <div class="header-actions">
-      <div class="hdr-search-wrap" id="hdr-search-wrap">
+      <div class="hdr-search-wrap" id="hdr-search-wrap" data-navitem="search">
         <button class="icon-btn" id="warranty-quick-btn" aria-label="ნაწილების ძიება" title="ნაწილების ძიება" aria-expanded="false"><svg><use href="#ic-search"/></svg></button>
         <div class="hdr-search-panel" id="hdr-search-panel">
           <div class="hdr-search-box">
@@ -980,7 +980,7 @@
         </div>
       </div>
       <button class="icon-btn" id="profile-btn" aria-label="პროფილი" title="პროფილი" data-route="profile"><svg><use href="#ic-user"/></svg></button>
-      <button class="icon-btn" id="cart-btn" aria-label="კალათა" title="კალათა">
+      <button class="icon-btn" id="cart-btn" aria-label="კალათა" title="კალათა" data-navitem="cart">
         <svg><use href="#ic-cart"/></svg>
         <span class="cart-badge" id="cart-badge" hidden>0</span>
       </button>
@@ -2367,6 +2367,7 @@
     closeHdrSearch();
     if(route === 'profile') renderProfileView();
     if(route === 'booking' && typeof prefillBookingContact === 'function') prefillBookingContact();
+    if(route === 'booking' && typeof resetBookingFlow === 'function') resetBookingFlow();
     if(route === 'orders') renderOrders();
     if(route === 'catalog'){
       renderCatalog();
@@ -3149,6 +3150,27 @@
   phoneIn.addEventListener('input', checkStep4);
   checkStep4();
 
+  // Visiting the booking page (not just moving between its own steps, which
+  // never changes the #booking hash) always starts a FRESH booking — without
+  // this, a customer who just finished a booking and clicked „ვიზიტის
+  // დაჯავშნა" again was left staring at their previous booking's confirmation
+  // screen, since goStep('done') is otherwise never undone. Called from
+  // render() every time the route becomes "booking".
+  function resetBookingFlow(){
+    booking.branch = null; booking.device = ''; booking.issue = ''; booking.time = '';
+    booking.date = todayStr;
+    dateInput.value = todayStr;
+    deviceSel.value = ''; issueSel.value = '';
+    renderBranchPick();
+    renderSlots();
+    refreshBookingBusySlots();
+    checkStep2();
+    checkStep3();
+    var qBox = document.getElementById('booking-qlogic-box');
+    if(qBox) qBox.hidden = true;
+    goStep(1);
+  }
+
   function summaryHTML(){
     return '<div class="result-grid">'
       + '<div class="ri"><span>ფილიალი</span><strong>' + (booking.branch ? booking.branch.name : '—') + '</strong></div>'
@@ -3596,7 +3618,8 @@
   var NAV_VISIBILITY_MAP = {
     'services': 'navHideServices', 'catalog': 'navHideCatalog',
     'warranty-service': 'navHideWarrantyService', 'warranty-check': 'navHideWarrantyCheck',
-    'about': 'navHideAbout', 'contact': 'navHideContact'
+    'about': 'navHideAbout', 'contact': 'navHideContact',
+    'search': 'navHideSearch', 'cart': 'navHideCart'
   };
   function applyNavVisibility(){
     Object.keys(NAV_VISIBILITY_MAP).forEach(function(navKey){
@@ -4047,7 +4070,7 @@
         return '<div class="review">'
           + '<div class="stars">' + '★'.repeat(n) + '☆'.repeat(5 - n) + '</div>'
           + '<p>' + escReviewHtml(f.comment || 'დადებითი შეფასება, კომენტარის გარეშე.') + '</p>'
-          + '<footer><span class="avatar">✓</span><div><div class="who">დადასტურებული მომხმარებელი</div><div class="meta">რეალური ვიზიტის შეფასება</div></div></footer>'
+          + '<footer><div class="meta">რეალური ვიზიტის შეფასება</div></footer>'
           + '</div>';
       }).join('');
     }).catch(function(){ /* API unreachable — keep the existing static quotes */ });
