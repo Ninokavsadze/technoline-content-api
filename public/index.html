@@ -686,7 +686,7 @@
   #chat-messages-wrap{position:relative;flex:1;min-height:0;overflow:hidden}
   #chat-bg-emblem{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden}
   #chat-bg-emblem .chat-ring{position:absolute;border-radius:50%;border:1.5px solid var(--blue-deep);opacity:.07}
-  #chat-bg-emblem svg{width:38%;height:38%;color:var(--gold);opacity:.1}
+  #chat-bg-emblem svg{width:38%;height:38%;color:var(--gold);--logo-power-color:#fff;opacity:.1}
   @media (prefers-color-scheme:dark){ #chat-bg-emblem .chat-ring{border-color:var(--blue-mid);opacity:.1} #chat-bg-emblem svg{opacity:.14} }
   #chat-messages{position:relative;height:100%;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
   .chat-msg{max-width:82%;padding:10px 14px;border-radius:15px;font-size:.87rem;line-height:1.45}
@@ -843,9 +843,10 @@
     <g fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round">
       <path d="M32 6c14.36 0 26 11.64 26 26S46.36 58 32 58"/>
       <path d="M14 50.2C9.02 45.28 6 38.48 6 31c0-13.8 11.2-25 25-25"/>
-      <circle cx="32" cy="32" r="17.5"/>
+      <path d="M32 14.5c9.67 0 17.5 7.83 17.5 17.5S41.67 49.5 32 49.5"/>
+      <path d="M19.88 44.25C16.53 40.94 14.5 36.36 14.5 31.33c0-9.29 7.54-16.83 16.83-16.83"/>
     </g>
-    <path d="M32 20.5v8.3M25 26a9 9 0 1 0 14 0" fill="none" stroke="var(--gold)" stroke-width="4" stroke-linecap="round" class="logo-power"/>
+    <path d="M32 20.5v8.3M25 26a9 9 0 1 0 14 0" fill="none" stroke="var(--logo-power-color, var(--gold))" stroke-width="4" stroke-linecap="round" class="logo-power"/>
   </symbol>
   <symbol id="ic-chev" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
@@ -1169,7 +1170,7 @@
         <div class="ring-orbit" style="width:92%;height:92%"></div>
         <div class="ring-orbit" style="width:70%;height:70%"></div>
         <div class="ring-orbit" style="width:48%;height:48%"></div>
-        <svg viewBox="0 0 64 64" style="width:34%;height:34%;color:var(--gold);filter:drop-shadow(0 0 34px rgba(252,187,45,.45))"><use href="#ic-logo"/></svg>
+        <svg viewBox="0 0 64 64" style="width:34%;height:34%;color:var(--gold);--logo-power-color:#fff;filter:drop-shadow(0 0 34px rgba(252,187,45,.45))"><use href="#ic-logo"/></svg>
         <div class="hero-badge hb-1"><svg style="width:20px;height:20px;color:var(--gold)"><use href="#ic-shield"/></svg><span data-ck="home.hero.badge1">ორიგინალი<br>ნაწილები</span></div>
         <div class="hero-badge hb-2"><span class="b-num" data-ck="home.hero.badge2Num">48სთ</span><span data-ck="home.hero.badge2Label">საშუალო<br>შეკეთების ვადა</span></div>
         <div class="hero-badge hb-3"><span class="b-num" data-ck="home.hero.badge3Num">12</span><span data-ck="home.hero.badge3Label">წელი<br>გამოცდილება</span></div>
