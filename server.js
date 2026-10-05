@@ -874,7 +874,7 @@ app.get('/api/bookings/:id', async function (req, res) {
 app.get('/api/bookings', requireAuth, async function (req, res) {
   try {
     const db = await readDb();
-    res.json(db.bookings.slice(-200).reverse());
+    res.json(db.bookings.slice(-2000).reverse());
   } catch (e) {
     res.status(500).json({ error: 'server_error' });
   }
