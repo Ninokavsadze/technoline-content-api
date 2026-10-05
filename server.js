@@ -1519,11 +1519,27 @@ function buildGeminiUserParts(text, attachment) {
 }
 
 function chatKbToPromptText(kb) {
-  const entries = (kb && Array.isArray(kb.entries)) ? kb.entries : [];
+  const allEntries = (kb && Array.isArray(kb.entries)) ? kb.entries : [];
+  const folders = (kb && Array.isArray(kb.folders)) ? kb.folders : [];
+  const folderById = {};
+  folders.forEach(function (f) { folderById[f.id] = f; });
+  // an entry (or its whole folder) switched off in the admin is simply not
+  // part of what Tato knows
+  const entries = allEntries.filter(function (e) {
+    if (e.enabled === false) return false;
+    const f = e.folderId ? folderById[e.folderId] : null;
+    return !(f && f.enabled === false);
+  });
   if (!entries.length) return '(ცოდნის ბაზა ჯერ ცარიელია)';
-  return entries.map(function (e) {
-    return '### ' + String(e.title || '').trim() + '\n' + String(e.body || '').trim();
-  }).join('\n\n');
+  const fmt = function (e) { return '### ' + String(e.title || '').trim() + '\n' + String(e.body || '').trim(); };
+  const out = [];
+  folders.forEach(function (f) {
+    const inF = entries.filter(function (e) { return e.folderId === f.id; });
+    if (inF.length) out.push('## თემა: ' + String(f.name || '').trim() + '\n\n' + inF.map(fmt).join('\n\n'));
+  });
+  const loose = entries.filter(function (e) { return !e.folderId || !folderById[e.folderId]; });
+  if (loose.length) out.unshift((folders.length ? '## თემა: ზოგადი\n\n' : '') + loose.map(fmt).join('\n\n'));
+  return out.join('\n\n');
 }
 
 // history: chat.messages BEFORE the new customer message, already filtered
@@ -1536,6 +1552,11 @@ async function askChatAi(kb, history, userText, agentName, branches, attachment)
   if (!CHAT_AI_CONFIGURED) return null;
   const nameLine = agentName ? ('შენი სახელია „' + agentName + '" — თუ მომხმარებელი სახელს გკითხავს, ასე გააცანი თავი.\n\n') : '';
   const todayStr = new Date().toISOString().slice(0, 10);
+  // Tato's built-in chat actions can be switched off one by one in the admin
+  // panel (content/chat-kb .abilities); anything not explicitly false is on.
+  const abil = (kb && kb.abilities) || {};
+  const warrantyOn = abil.warrantyCard !== false;
+  const bookingOn = abil.bookVisit !== false;
   const branchesLines = (branches || []).map(function (b) {
     return b.id + ' — ' + b.name + ' (' + b.addr + '), სამუშაო საათები: ' + b.hours;
   }).join('\n');
@@ -1555,16 +1576,18 @@ async function askChatAi(kb, history, userText, agentName, branches, attachment)
         + '- მოწყობილობის ყუთის ფოტოდან სერიული ნომრის ამოკითხვისას იხელმძღვანელე ამ წესით: თუ ეტიკეტზე ერთდროულად წერია S/N, IMEI1 და IMEI2 — საძიებო/საგარანტიო სერიულ ნომრად აუცილებლად გამოიყენე მხოლოდ IMEI1-ის გასწვრივ მითითებული კოდი (არა S/N და არა IMEI2). თუ ეტიკეტზე მხოლოდ S/N წერია (IMEI ველების გარეშე) — მაშინ S/N-ის გასწვრივ მითითებული კოდი გამოიყენე. ეს წესი მოქმედებს ნებისმიერ შემთხვევაში, როცა ყუთის ფოტოდან სერიული ნომერი გჭირდება — მათ შორის საგარანტიო ბარათის ძებნისას (იხ. ქვემოთ, send_warranty_card).\n'
         + '- თუ პასუხი რამდენიმე პუნქტს შეიცავს (მაგ. რამდენიმე ფილიალი, რამდენიმე ნაბიჯი, რამდენიმე ვარიანტი) — არასდროს ჩაყარო ყველაფერი ერთ წინადადებაში მძიმით/წერტილ-მძიმით გამოყოფილი. სამაგიეროდ დაწერე ცალკე ხაზზე, ხაზის დასაწყისში „- “ (დეფისი და space) ნიშნით, თითოეული პუნქტი ცალკე ხაზზე. ფილიალის მისამართი ყოველთვის ზუსტად ისე ჩაწერე, როგორც ცოდნის ბაზაშია — სიტყვასიტყვით, შემოკლების ან გადაკეთების გარეშე.\n'
         + '- ყველა სხვა შემთხვევაში დააბრუნე escalate:false და დასვი პასუხი reply ველში.\n\n'
-        + 'დამატებითი შესაძლებლობები — საგარანტიო ბარათის გამოგზავნა და ვიზიტის დაჯავშნა ჩატშივე (action ველი):\n'
-        + 'დღევანდელი თარიღი: ' + todayStr + ' (YYYY-MM-DD).\n'
-        + 'ფილიალები (id — დასახელება (მისამართი), სამუშაო საათები):\n' + branchesLines + '\n'
-        + 'მოწყობილობის ტიპები ვიზიტისთვის: ' + BOOKING_DEVICE_TYPES.join(', ') + '.\n'
-        + 'პრობლემის ტიპები ვიზიტისთვის: ' + BOOKING_ISSUE_TYPES.join(', ') + '.\n'
-        + 'საათების სლოტები: ' + BOOKING_TIME_SLOTS.join(', ') + '.\n\n'
-        + '1) საგარანტიო ბარათის გამოგზავნა (action.type = "send_warranty_card"): თუ მომხმარებელი სურს თავისი საგარანტიო ბარათის მიღება ჩატში, სთხოვე მოწყობილობის სერიული ნომერი (თუ ჯერ არ დაწერა და ყუთის ფოტოც არ გამოუგზავნია). თუ მომხმარებელმა ტექსტის მაგივრად ყუთის ფოტო გამოაგზავნა, სერიული ნომერი ამოიღე ზემოთ აღწერილი წესით (IMEI1, ან მხოლოდ S/N რომ იყოს — S/N) და ცალკე აღარ ჰკითხო. როგორც კი სერიული ნომერი გაქვს, დააბრუნე action.type="send_warranty_card" და action.serial ველში ზუსტად ის სერიული ნომერი — ნუ დაელოდები დამატებით დადასტურებას, რადგან ბარათის ძებნა/გაგზავნა თავისთავად უსაფრთხოა (ან იპოვება და გაეგზავნება, ან არა). reply-ში დაწერე მხოლოდ მოკლე გარდამავალი ფრაზა ზუსტად ამ ფორმით: „გთხოვთ, დამელოდოთ, გადავამოწმებ საგარანტიო ნომერს.“ — არასდროს დაწერო, რომ ბარათი უკვე გამოგზავნილია ან ვერ მოიძებნა, რადგან ამას რეალური შედეგის მიხედვით ცალკე შეტყობინება დაადასტურებს.\n'
-        + '2) ვიზიტის დაჯავშნა (action.type = "book_visit"): საჭირო ოთხივე დეტალი შეაგროვე საუბრის განმავლობაში — ფილიალი (ზემოთ ჩამოთვლილთაგან), მოწყობილობის ტიპი, პრობლემის ტიპი და სასურველი თარიღი+საათი (ზემოთ ჩამოთვლილი სლოტებიდან). სახელი და ტელეფონი არ გჭირდება კითხვა — სისტემამ უკვე იცის ვინ ესაუბრება. სანამ ეს ოთხივე არ გაქვს, action.type="none" და reply-ში ჰკითხე ნაკლული დეტალი. როცა ოთხივე გაქვს, reply-ში ჩამოუთვალე მომხმარებელს არჩეული დეტალები და ამის შემდეგ სიტყვასიტყვით დაამატე: „გთხოვთ, გადახედოთ ჯავშნის მონაცემებს და დამიდასტუროთ სისწორე, რათა შევძლო ვიზიტის დაგეგმვა.“ (მაგ. „[ფილიალი], [თარიღი] [საათი], [მოწყობილობა] — [პრობლემა]. გთხოვთ, გადახედოთ ჯავშნის მონაცემებს და დამიდასტუროთ სისწორე, რათა შევძლო ვიზიტის დაგეგმვა.“) — არასდროს დასვა კითხვა „ასე გავაგებინო...?“-ის მსგავსი ფორმით. და მხოლოდ იმ ერთ შემდეგ შეტყობინებაში, როცა მომხმარებელი ამაზე პირდაპირ თანხმობას (კი/დიახ/დამიჯავშნე და მისთ.) დაწერს, დააბრუნე action.type="book_visit" შესაბამისი action.branchId (მხოლოდ id, მაგ. "b1"), action.deviceType, action.issue, action.date (YYYY-MM-DD) და action.timeSlot (HH:MM) ველებით — ოთხივე ერთად, ზუსტად ისე როგორც თანხმობის წინ დაწერე. reply-ში ამ დასტურის შეტყობინებაში დაწერე მხოლოდ მოკლე გარდამავალი ფრაზა (მაგ. „ვაგზავნი ჯავშანს...“) — არასდროს დაწერო, რომ ჯავშანი უკვე დადასტურებულია ან სლოტი დაკავებულია, რადგან ამას რეალური შედეგის მიხედვით ცალკე შეტყობინება დაადასტურებს.\n'
-        + '- ორივე ქმედებისთვის: action-ის გამოყენება (type !== "none") არასდროს ჩაითვალოს ოპერატორთან გადაცემის მიზეზად — დატოვე escalate:false.\n'
+        + ((warrantyOn || bookingOn) ? 'დამატებითი შესაძლებლობები — საგარანტიო ბარათის გამოგზავნა და ვიზიტის დაჯავშნა ჩატშივე (action ველი):\n' : '')
+        + (bookingOn ? 'დღევანდელი თარიღი: ' + todayStr + ' (YYYY-MM-DD).\n' : '')
+        + (bookingOn ? 'ფილიალები (id — დასახელება (მისამართი), სამუშაო საათები):\n' + branchesLines + '\n' : '')
+        + (bookingOn ? 'მოწყობილობის ტიპები ვიზიტისთვის: ' + BOOKING_DEVICE_TYPES.join(', ') + '.\n' : '')
+        + (bookingOn ? 'პრობლემის ტიპები ვიზიტისთვის: ' + BOOKING_ISSUE_TYPES.join(', ') + '.\n' : '')
+        + (bookingOn ? 'საათების სლოტები: ' + BOOKING_TIME_SLOTS.join(', ') + '.\n\n' : '')
+        + (warrantyOn ? '1) საგარანტიო ბარათის გამოგზავნა (action.type = "send_warranty_card"): თუ მომხმარებელი სურს თავისი საგარანტიო ბარათის მიღება ჩატში, სთხოვე მოწყობილობის სერიული ნომერი (თუ ჯერ არ დაწერა და ყუთის ფოტოც არ გამოუგზავნია). თუ მომხმარებელმა ტექსტის მაგივრად ყუთის ფოტო გამოაგზავნა, სერიული ნომერი ამოიღე ზემოთ აღწერილი წესით (IMEI1, ან მხოლოდ S/N რომ იყოს — S/N) და ცალკე აღარ ჰკითხო. როგორც კი სერიული ნომერი გაქვს, დააბრუნე action.type="send_warranty_card" და action.serial ველში ზუსტად ის სერიული ნომერი — ნუ დაელოდები დამატებით დადასტურებას, რადგან ბარათის ძებნა/გაგზავნა თავისთავად უსაფრთხოა (ან იპოვება და გაეგზავნება, ან არა). reply-ში დაწერე მხოლოდ მოკლე გარდამავალი ფრაზა ზუსტად ამ ფორმით: „გთხოვთ, დამელოდოთ, გადავამოწმებ საგარანტიო ნომერს.“ — არასდროს დაწერო, რომ ბარათი უკვე გამოგზავნილია ან ვერ მოიძებნა, რადგან ამას რეალური შედეგის მიხედვით ცალკე შეტყობინება დაადასტურებს.\n' : '')
+        + (bookingOn ? '2) ვიზიტის დაჯავშნა (action.type = "book_visit"): საჭირო ოთხივე დეტალი შეაგროვე საუბრის განმავლობაში — ფილიალი (ზემოთ ჩამოთვლილთაგან), მოწყობილობის ტიპი, პრობლემის ტიპი და სასურველი თარიღი+საათი (ზემოთ ჩამოთვლილი სლოტებიდან). სახელი და ტელეფონი არ გჭირდება კითხვა — სისტემამ უკვე იცის ვინ ესაუბრება. სანამ ეს ოთხივე არ გაქვს, action.type="none" და reply-ში ჰკითხე ნაკლული დეტალი. როცა ოთხივე გაქვს, reply-ში ჩამოუთვალე მომხმარებელს არჩეული დეტალები და ამის შემდეგ სიტყვასიტყვით დაამატე: „გთხოვთ, გადახედოთ ჯავშნის მონაცემებს და დამიდასტუროთ სისწორე, რათა შევძლო ვიზიტის დაგეგმვა.“ (მაგ. „[ფილიალი], [თარიღი] [საათი], [მოწყობილობა] — [პრობლემა]. გთხოვთ, გადახედოთ ჯავშნის მონაცემებს და დამიდასტუროთ სისწორე, რათა შევძლო ვიზიტის დაგეგმვა.“) — არასდროს დასვა კითხვა „ასე გავაგებინო...?“-ის მსგავსი ფორმით. და მხოლოდ იმ ერთ შემდეგ შეტყობინებაში, როცა მომხმარებელი ამაზე პირდაპირ თანხმობას (კი/დიახ/დამიჯავშნე და მისთ.) დაწერს, დააბრუნე action.type="book_visit" შესაბამისი action.branchId (მხოლოდ id, მაგ. "b1"), action.deviceType, action.issue, action.date (YYYY-MM-DD) და action.timeSlot (HH:MM) ველებით — ოთხივე ერთად, ზუსტად ისე როგორც თანხმობის წინ დაწერე. reply-ში ამ დასტურის შეტყობინებაში დაწერე მხოლოდ მოკლე გარდამავალი ფრაზა (მაგ. „ვაგზავნი ჯავშანს...“) — არასდროს დაწერო, რომ ჯავშანი უკვე დადასტურებულია ან სლოტი დაკავებულია, რადგან ამას რეალური შედეგის მიხედვით ცალკე შეტყობინება დაადასტურებს.\n' : '')
+        + ((warrantyOn || bookingOn) ? '- ორივე ქმედებისთვის: action-ის გამოყენება (type !== "none") არასდროს ჩაითვალოს ოპერატორთან გადაცემის მიზეზად — დატოვე escalate:false.\n' : '')
         + '- action ველი ყოველთვის დააბრუნე — როცა არც ერთი ზემოთხსენებული ქმედება არ გჭირდება, დააბრუნე {"type":"none"}.\n\n'
+        + (!warrantyOn ? '- საგარანტიო ბარათის ჩატში გამოგზავნის ფუნქცია ამჟამად გამორთულია: არასდროს დააბრუნო send_warranty_card. თუ მომხმარებელი ბარათს ითხოვს, ცოდნის ბაზით უპასუხე, ხოლო თუ იქ პასუხი არ არის — escalate:true.\n' : '')
+        + (!bookingOn ? '- ჩატში ვიზიტის დაჯავშნის ფუნქცია ამჟამად გამორთულია: არასდროს დააბრუნო book_visit. თუ მომხმარებელი ჯავშანს ითხოვს, ცოდნის ბაზით უპასუხე, ხოლო თუ იქ პასუხი არ არის — escalate:true.\n' : '')
         + 'უპასუხე მხოლოდ JSON ობიექტით, მითითებული სქემის მიხედვით — არაფერი სხვა.'
     }]
   };
@@ -1620,7 +1643,8 @@ async function askChatAi(kb, history, userText, agentName, branches, attachment)
     let parsed;
     try { parsed = JSON.parse(text); } catch (e) { return null; }
     const rawAction = (parsed.action && typeof parsed.action === 'object') ? parsed.action : {};
-    const actionType = ['send_warranty_card', 'book_visit'].indexOf(rawAction.type) !== -1 ? rawAction.type : 'none';
+    let actionType = ['send_warranty_card', 'book_visit'].indexOf(rawAction.type) !== -1 ? rawAction.type : 'none';
+    if ((actionType === 'send_warranty_card' && !warrantyOn) || (actionType === 'book_visit' && !bookingOn)) actionType = 'none';
     return {
       escalate: !!parsed.escalate,
       reply: String(parsed.reply || '').trim().slice(0, 2000),
