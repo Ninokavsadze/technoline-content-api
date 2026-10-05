@@ -1634,26 +1634,11 @@
         <div class="field-row">
           <div class="field">
             <label for="bk-device" data-i18n="booking.deviceType">მოწყობილობის ტიპი</label>
-            <select id="bk-device">
-              <option value="" data-i18n="common.choose">აირჩიეთ</option>
-              <option data-i18n="booking.device.phone">სმარტფონი</option>
-              <option data-i18n="booking.device.laptop">ლეპტოპი / კომპიუტერი</option>
-              <option data-i18n="booking.device.tablet">პლანშეტი</option>
-              <option data-i18n="booking.device.watch">სმარტ-საათი</option>
-              <option data-i18n="booking.device.console">სათამაშო კონსოლი</option>
-              <option data-i18n="booking.device.appliance">საყოფაცხოვრებო ტექნიკა</option>
-            </select>
+            <select id="bk-device"></select>
           </div>
           <div class="field">
             <label for="bk-issue" data-i18n="booking.issueType">პრობლემის ტიპი</label>
-            <select id="bk-issue">
-              <option value="" data-i18n="common.choose">აირჩიეთ</option>
-              <option data-i18n="booking.issue.screen">ეკრანის დაზიანება</option>
-              <option data-i18n="booking.issue.battery">ბატარეა ვერ იტენება</option>
-              <option data-i18n="booking.issue.water">წყლის დაზიანება</option>
-              <option data-i18n="booking.issue.wontTurnOn">არ ირთვება</option>
-              <option data-i18n="booking.issue.other">სხვა</option>
-            </select>
+            <select id="bk-issue"></select>
           </div>
         </div>
         <div class="field" style="margin-top:16px">
@@ -2468,6 +2453,7 @@
     // whole page's admin-editable text in the newly selected language.
     if(!skipRerender && typeof applyContentOverrides === 'function') applyContentOverrides();
     if(!skipRerender && typeof applyUiI18n === 'function') applyUiI18n();
+    if(!skipRerender && typeof renderBookingOptions === 'function') renderBookingOptions();
   }
   setLang(getLang(), true); // initial paint: content isn't loaded yet, applyContentOverrides() runs once it is
   function toggleLang(){ setLang(getLang() === 'en' ? 'ka' : 'en'); }
@@ -3100,12 +3086,46 @@
 
   var deviceSel = document.getElementById('bk-device');
   var issueSel = document.getElementById('bk-issue');
+  // Device types and each device's own issue list come from the admin panel
+  // (siteContent.bookingOptions); until/unless that loads, the built-in
+  // defaults below are used. Option VALUES are always the Georgian names (what
+  // gets sent to the server / Q-Logic) — only the visible label follows the
+  // language (nameEn, falling back to the Georgian name).
+  var BOOKING_OPTIONS_FALLBACK = { devices: [
+    ['სმარტფონი','Smartphone'], ['ლეპტოპი / კომპიუტერი','Laptop / computer'], ['პლანშეტი','Tablet'],
+    ['სმარტ-საათი','Smartwatch'], ['სათამაშო კონსოლი','Game console'], ['საყოფაცხოვრებო ტექნიკა','Home appliance']
+  ].map(function(d){
+    return { name:d[0], nameEn:d[1], enabled:true, issues:[
+      ['ეკრანის დაზიანება','Screen damage'], ['ბატარეა ვერ იტენება',"Battery won't charge"], ['წყლის დაზიანება','Water damage'], ['არ ირთვება',"Won't turn on"], ['სხვა','Other']
+    ].map(function(x){ return { name:x[0], nameEn:x[1], enabled:true }; }) };
+  }) };
+  function escOpt(v){ return escReviewHtml(v).replace(/"/g,'&quot;'); }
+  function bookingOptionLabel(o){ return (getLang() === 'en' && o.nameEn) ? o.nameEn : o.name; }
+  function renderBookingOptions(){
+    var opts = (siteContent && siteContent.bookingOptions) || BOOKING_OPTIONS_FALLBACK;
+    var devices = (opts.devices || []).filter(function(d){ return d.enabled !== false && d.name; });
+    var chooseTxt = (typeof UI_STRINGS !== 'undefined' && UI_STRINGS) ? uiText('common.choose') : 'აირჩიეთ';
+    var curDevice = deviceSel.value, curIssue = issueSel.value;
+    deviceSel.innerHTML = '<option value="">' + escReviewHtml(chooseTxt) + '</option>' + devices.map(function(d){
+      return '<option value="' + escOpt(d.name) + '">' + escReviewHtml(bookingOptionLabel(d)) + '</option>';
+    }).join('');
+    if(devices.some(function(d){ return d.name === curDevice; })) deviceSel.value = curDevice;
+    var dev = devices.find(function(d){ return d.name === deviceSel.value; });
+    var issues = dev ? (dev.issues || []).filter(function(x){ return x.enabled !== false && x.name; }) : [];
+    issueSel.innerHTML = '<option value="">' + escReviewHtml(chooseTxt) + '</option>' + issues.map(function(x){
+      return '<option value="' + escOpt(x.name) + '">' + escReviewHtml(bookingOptionLabel(x)) + '</option>';
+    }).join('');
+    if(issues.some(function(x){ return x.name === curIssue; })) issueSel.value = curIssue;
+    issueSel.disabled = !dev;
+    checkStep2();
+  }
   function checkStep2(){
     booking.device = deviceSel.value; booking.issue = issueSel.value;
     deviceSel.closest('.booking-step').querySelector('[data-next]').disabled = !(booking.device && booking.issue);
   }
-  deviceSel.addEventListener('change', checkStep2);
+  deviceSel.addEventListener('change', function(){ issueSel.value = ''; renderBookingOptions(); });
   issueSel.addEventListener('change', checkStep2);
+  // first fill happens right after the initial applyUiI18n() paint (siteContent/UI_STRINGS are defined further down)
 
   var slotGrid = document.getElementById('slot-grid');
   var dateInput = document.getElementById('bk-date');
@@ -3201,7 +3221,7 @@
     booking.branch = null; booking.device = ''; booking.issue = ''; booking.time = '';
     booking.date = todayStr;
     dateInput.value = todayStr;
-    deviceSel.value = ''; issueSel.value = '';
+    deviceSel.value = ''; issueSel.value = ''; renderBookingOptions();
     renderBranchPick();
     renderSlots();
     refreshBookingBusySlots();
@@ -3723,7 +3743,7 @@
   var PARTS_DEFAULTS = PARTS_BASE.map(function(p){ return {id:p.id, name:p.name, price:p.price, stock:p.stock, brand:p.brand, cat:p.cat, device:p.device, compat:p.compat}; });
   var BRANCHES_DEFAULTS = BRANCHES.map(function(b){ return {id:b.id, name:b.name, addr:b.addr, hours:b.hours, phone:b.phone}; });
 
-  var siteContent = { content:{}, contentEn:{}, theme:{}, parts:{}, branches:{}, chatSettings:{} };
+  var siteContent = { content:{}, contentEn:{}, theme:{}, parts:{}, branches:{}, chatSettings:{}, bookingOptions:null };
 
   // Resolves a data-ck key's text for the currently selected language.
   // English: admin-edited/seeded content/site-en wins when it has a non-empty
@@ -3974,6 +3994,7 @@
     });
   }
   applyUiI18n(); // initial paint — data-i18n strings don't depend on loaded site content
+  if(typeof renderBookingOptions === 'function') renderBookingOptions(); // option labels use uiText(), which only works from here on
   // PARTS_BASE sample data stores category/device-type names as raw Georgian
   // strings (also used as filter values elsewhere) — this reverse-maps them
   // to the matching catalog.cat.*/catalog.dev.* UI_STRINGS entry so product
@@ -5318,6 +5339,8 @@
       siteContent.theme = data.theme || {};
       siteContent.parts = data.parts || {};
       siteContent.branches = data.branches || {};
+      siteContent.bookingOptions = (data.bookingOptions && Array.isArray(data.bookingOptions.devices)) ? data.bookingOptions : null;
+      if(typeof renderBookingOptions === 'function') renderBookingOptions();
       siteContent.chatSettings = data.chatSettings || {};
       applyListContentOverrides();
       applyContentOverrides();

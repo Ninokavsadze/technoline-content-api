@@ -669,7 +669,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   });
 
   /* ---------- app state ---------- */
-  var state = { content:{}, contentEn:{}, theme:{}, parts:{}, branches:{}, warranty:{}, warrantyTemplate:{} };
+  var state = { content:{}, contentEn:{}, theme:{}, parts:{}, branches:{}, warranty:{}, warrantyTemplate:{}, bookingOptions:null };
   var dirty = { content:{}, theme:false, parts:false, branches:false, warrantyRecords:false, warrantyTemplate:false };
   var TABS = [];
   var activeTab = null;
@@ -790,13 +790,14 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     TABS.push({id:'branches', label:'ფილიალები', kind:'branches', group:'other'});
     TABS.push({id:'warranty', label:'საგარანტიო ბარათი', kind:'warranty', group:'other'});
     TABS.push({id:'bookings', label:'ვიზიტების ჯავშნები', kind:'bookings', group:'other'});
+    TABS.push({id:'booking-options', label:'ჯავშნის პარამეტრები', kind:'booking-options', group:'other'});
     TABS.push({id:'chat', label:'ლაივ ჩატი', kind:'chat', group:'other'});
     TABS.push({id:'chat-analytics', label:'ჩატების ანალიტიკა', kind:'chat-analytics', group:'other'});
     TABS.push({id:'feedback', label:'მომხმარებელთა უკუკავშირი', kind:'feedback', group:'other'});
     TABS.push({id:'users', label:'მომხმარებლები', kind:'users', group:'other'});
   }
 
-  var TAB_ICONS = { content:'ic-inbox', pages:'ic-menu', colors:'ic-palette', typography:'ic-palette', parts:'ic-box', branches:'ic-pin', warranty:'ic-lock', bookings:'ic-calendar', chat:'ic-chat', 'chat-analytics':'ic-chart', feedback:'ic-star', users:'ic-user' };
+  var TAB_ICONS = { content:'ic-inbox', pages:'ic-menu', colors:'ic-palette', typography:'ic-palette', parts:'ic-box', branches:'ic-pin', warranty:'ic-lock', bookings:'ic-calendar', 'booking-options':'ic-calendar', chat:'ic-chat', 'chat-analytics':'ic-chart', feedback:'ic-star', users:'ic-user' };
 
   // Sidebar groups, in the order they render — "საერთო მართვა" first (the
   // tools staff reach for most), then content pages split into three
@@ -913,6 +914,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     if(tab.kind === 'branches') return renderBranchesPanel(main, tab);
     if(tab.kind === 'warranty') return renderWarrantyPanel(main, tab);
     if(tab.kind === 'bookings') return renderBookingsPanel(main, tab);
+    if(tab.kind === 'booking-options') return renderBookingOptionsPanel(main, tab);
     if(tab.kind === 'chat') return renderChatPanel(main, tab);
     if(tab.kind === 'chat-analytics') return renderChatAnalyticsPanel(main, tab);
     if(tab.kind === 'feedback') return renderFeedbackPanel(main, tab);
@@ -1918,6 +1920,108 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       });
     });
     wireSaveBar(tab, function(){ return {path:'content-branches', body: state.branches}; });
+  }
+
+  /* ---------- booking options: device types + each device's own issue list ---------- */
+  var BK_DEFAULT_DEVICES = [['სმარტფონი','Smartphone'],['ლეპტოპი / კომპიუტერი','Laptop / computer'],['პლანშეტი','Tablet'],['სმარტ-საათი','Smartwatch'],['სათამაშო კონსოლი','Game console'],['საყოფაცხოვრებო ტექნიკა','Home appliance']];
+  var BK_DEFAULT_ISSUES = [['ეკრანის დაზიანება','Screen damage'],['ბატარეა ვერ იტენება',"Battery won't charge"],['წყლის დაზიანება','Water damage'],['არ ირთვება',"Won't turn on"],['სხვა','Other']];
+  function bkId(p){ return p + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+  function defaultBookingOptions(){
+    return { devices: BK_DEFAULT_DEVICES.map(function(d,i){
+      return { id:'d'+(i+1), name:d[0], nameEn:d[1], enabled:true,
+        issues: BK_DEFAULT_ISSUES.map(function(x,j){ return {id:'i'+(j+1), name:x[0], nameEn:x[1], enabled:true}; }) };
+    }) };
+  }
+  function renderBookingOptionsPanel(main, tab){
+    if(!state.bookingOptions) state.bookingOptions = defaultBookingOptions();
+    var opts = state.bookingOptions;
+    var open = renderBookingOptionsPanel._open = renderBookingOptionsPanel._open || {};
+    var html = panelHeadHtml(tab, 'მართეთ მოწყობილობების სია და თითოეული მოწყობილობისთვის მისი პრობლემების სია — ჯავშნის ფორმაში მომხმარებელი ჯერ მოწყობილობას ირჩევს, შემდეგ მხოლოდ ამ მოწყობილობის პრობლემებს ხედავს. იგივე სიით მუშაობს ტატოც ჩატში. ინგლისური დასახელება ინგლისურ ვერსიაში გამოჩნდება (თუ ცარიელია — ქართული).');
+    html += '<div id="bko-list">';
+    opts.devices.forEach(function(d, di){
+      var isOpen = !!open[d.id];
+      var issues = d.issues || [];
+      html += '<div class="card" data-bko-device="'+escAttr(d.id)+'" style="margin-bottom:12px;padding:0;overflow:hidden;'+(d.enabled===false?'opacity:.6':'')+'">'
+        + '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--paper-soft);flex-wrap:wrap">'
+        + '<span style="display:flex;flex-direction:column;gap:0"><button type="button" class="drag-eye" style="font-size:.8rem;padding:0"'+(di===0?' disabled':'')+' data-bko-dev-up="'+escAttr(d.id)+'" title="ზემოთ">▲</button><button type="button" class="drag-eye" style="font-size:.8rem;padding:0"'+(di===opts.devices.length-1?' disabled':'')+' data-bko-dev-down="'+escAttr(d.id)+'" title="ქვემოთ">▼</button></span>'
+        + '<button type="button" class="drag-eye" style="font-size:1.2rem" data-bko-fold="'+escAttr(d.id)+'" title="გახსნა/დაკეცვა">'+(isOpen?'📂':'📁')+'</button>'
+        + '<div class="field-block" style="flex:1;min-width:150px;margin:0"><input type="text" data-bko-dev-field="name" data-bko-id="'+escAttr(d.id)+'" value="'+escAttr(d.name||'')+'" placeholder="მოწყობილობა (ქართულად)" style="font-weight:800"></div>'
+        + '<div class="field-block" style="flex:1;min-width:130px;margin:0"><input type="text" data-bko-dev-field="nameEn" data-bko-id="'+escAttr(d.id)+'" value="'+escAttr(d.nameEn||'')+'" placeholder="English name"></div>'
+        + '<span style="font-size:.78rem;color:var(--ink-faint);white-space:nowrap">'+issues.length+' პრობლემა</span>'
+        + '<label style="display:flex;align-items:center;gap:5px;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap"><input type="checkbox" data-bko-dev-on="'+escAttr(d.id)+'"'+(d.enabled!==false?' checked':'')+'> ჩართ.</label>'
+        + '<button type="button" class="drag-eye" data-bko-dev-del="'+escAttr(d.id)+'" title="მოწყობილობის წაშლა">🗑</button>'
+        + '</div>';
+      if(isOpen){
+        html += '<div style="padding:12px 14px">';
+        if(!issues.length) html += '<p style="font-size:.82rem;color:var(--ink-faint);margin:0 0 10px">ამ მოწყობილობას პრობლემები ჯერ არ აქვს.</p>';
+        issues.forEach(function(x, xi){
+          html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;'+(x.enabled===false?'opacity:.55':'')+'">'
+            + '<span style="display:flex;flex-direction:column;gap:0"><button type="button" class="drag-eye" style="font-size:.7rem;padding:0"'+(xi===0?' disabled':'')+' data-bko-iss-up="'+escAttr(d.id)+'|'+escAttr(x.id)+'" title="ზემოთ">▲</button><button type="button" class="drag-eye" style="font-size:.7rem;padding:0"'+(xi===issues.length-1?' disabled':'')+' data-bko-iss-down="'+escAttr(d.id)+'|'+escAttr(x.id)+'" title="ქვემოთ">▼</button></span>'
+            + '<input type="checkbox" title="ჩართულია" data-bko-iss-on="'+escAttr(d.id)+'|'+escAttr(x.id)+'"'+(x.enabled!==false?' checked':'')+'>'
+            + '<div class="field-block" style="flex:1;min-width:150px;margin:0"><input type="text" data-bko-iss-field="name" data-bko-id="'+escAttr(d.id)+'|'+escAttr(x.id)+'" value="'+escAttr(x.name||'')+'" placeholder="პრობლემა (ქართულად)"></div>'
+            + '<div class="field-block" style="flex:1;min-width:130px;margin:0"><input type="text" data-bko-iss-field="nameEn" data-bko-id="'+escAttr(d.id)+'|'+escAttr(x.id)+'" value="'+escAttr(x.nameEn||'')+'" placeholder="English name"></div>'
+            + '<button type="button" class="drag-eye" data-bko-iss-del="'+escAttr(d.id)+'|'+escAttr(x.id)+'" title="წაშლა">🗑</button>'
+            + '</div>';
+        });
+        html += '<button type="button" class="btn btn-ghost" data-bko-iss-add="'+escAttr(d.id)+'">+ ახალი პრობლემა</button></div>';
+      }
+      html += '</div>';
+    });
+    if(!opts.devices.length) html += '<p style="font-size:.85rem;color:var(--ink-faint)">მოწყობილობა არ არის დამატებული — ჯავშნის ფორმაში არჩევანი ცარიელი იქნება.</p>';
+    html += '</div><button type="button" class="btn btn-ghost" id="bko-add-device" style="margin:4px 0 8px">+ ახალი მოწყობილობა</button>';
+    html += saveBarHtml();
+    main.innerHTML = html;
+
+    function devOf(id){ return opts.devices.find(function(d){ return d.id === id; }); }
+    function issOf(pair){ var a = pair.split('|'); var d = devOf(a[0]); return {d:d, x: d && (d.issues||[]).find(function(x){ return x.id === a[1]; })}; }
+    function changed(){ setDirty(tab, true); updateStatusChip(tab); }
+    function rerender(){ renderBookingOptionsPanel(main, tab); }
+    function swap(arr, i, j){ if(i<0 || j<0 || i>=arr.length || j>=arr.length) return; var t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+
+    main.querySelectorAll('input[type=text][data-bko-id]').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var id = inp.getAttribute('data-bko-id');
+        if(inp.hasAttribute('data-bko-dev-field')){ var d = devOf(id); if(d) d[inp.getAttribute('data-bko-dev-field')] = inp.value; }
+        else { var r = issOf(id); if(r.x) r.x[inp.getAttribute('data-bko-iss-field')] = inp.value; }
+        changed();
+      });
+    });
+    main.querySelectorAll('input[type=checkbox][data-bko-dev-on], input[type=checkbox][data-bko-iss-on]').forEach(function(t){
+      t.addEventListener('change', function(){
+        if(t.hasAttribute('data-bko-dev-on')){ var d = devOf(t.getAttribute('data-bko-dev-on')); if(d){ d.enabled = t.checked; changed(); rerender(); } }
+        else { var r = issOf(t.getAttribute('data-bko-iss-on')); if(r.x){ r.x.enabled = t.checked; changed(); rerender(); } }
+      });
+    });
+    main.querySelectorAll('button').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var a;
+        if((a = btn.getAttribute('data-bko-fold'))){ open[a] = !open[a]; rerender(); }
+        else if((a = btn.getAttribute('data-bko-dev-up'))){ var i = opts.devices.findIndex(function(d){ return d.id===a; }); swap(opts.devices, i, i-1); changed(); rerender(); }
+        else if((a = btn.getAttribute('data-bko-dev-down'))){ var i2 = opts.devices.findIndex(function(d){ return d.id===a; }); swap(opts.devices, i2, i2+1); changed(); rerender(); }
+        else if((a = btn.getAttribute('data-bko-dev-del'))){
+          var dd = devOf(a); if(!dd) return;
+          if(!confirm('წავშალო მოწყობილობა „' + (dd.name||'') + '“ და მისი ' + (dd.issues||[]).length + ' პრობლემა?')) return;
+          opts.devices = opts.devices.filter(function(d){ return d.id !== a; }); changed(); rerender();
+        }
+        else if((a = btn.getAttribute('data-bko-iss-add'))){ var d3 = devOf(a); if(d3){ (d3.issues = d3.issues || []).push({id:bkId('i'), name:'', nameEn:'', enabled:true}); open[a] = true; changed(); rerender(); } }
+        else if((a = btn.getAttribute('data-bko-iss-del'))){ var r2 = issOf(a); if(r2.d){ r2.d.issues = r2.d.issues.filter(function(x){ return x !== r2.x; }); changed(); rerender(); } }
+        else if((a = btn.getAttribute('data-bko-iss-up'))){ var r3 = issOf(a); if(r3.x){ var k = r3.d.issues.indexOf(r3.x); swap(r3.d.issues, k, k-1); changed(); rerender(); } }
+        else if((a = btn.getAttribute('data-bko-iss-down'))){ var r4 = issOf(a); if(r4.x){ var k2 = r4.d.issues.indexOf(r4.x); swap(r4.d.issues, k2, k2+1); changed(); rerender(); } }
+      });
+    });
+    var addDev = document.getElementById('bko-add-device');
+    if(addDev) addDev.addEventListener('click', function(){
+      var nd = {id:bkId('d'), name:'', nameEn:'', enabled:true, issues:[]};
+      opts.devices.push(nd); open[nd.id] = true; changed(); rerender();
+    });
+    wireSaveBar(tab, function(){
+      // never publish blank names — an empty device/issue can't be picked anyway
+      var clean = { devices: opts.devices.filter(function(d){ return (d.name||'').trim(); }).map(function(d){
+        return { id:d.id, name:d.name.trim(), nameEn:(d.nameEn||'').trim(), enabled:d.enabled!==false,
+          issues:(d.issues||[]).filter(function(x){ return (x.name||'').trim(); }).map(function(x){ return {id:x.id, name:x.name.trim(), nameEn:(x.nameEn||'').trim(), enabled:x.enabled!==false}; }) };
+      }) };
+      return {path:'bookingOptions', body: clean};
+    });
   }
 
   /* ---------- warranty cards: records + optional PDF template ---------- */
@@ -4005,6 +4109,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       }
       else if(tab.kind === 'parts'){ state.parts = {}; }
       else if(tab.kind === 'branches'){ state.branches = {}; }
+      else if(tab.kind === 'booking-options'){ state.bookingOptions = defaultBookingOptions(); }
       else if(tab.kind === 'pages'){ NAV_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); HEADER_ICON_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); PAGE_SECTION_ITEMS.forEach(function(it){ delete state.theme[it.hideKey]; }); delete state.theme.navOrder; }
       setDirty(tab, true);
       renderMain();
@@ -4019,6 +4124,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       state.theme = data.theme || {};
       state.parts = data.parts || {};
       state.branches = data.branches || {};
+      state.bookingOptions = (data.bookingOptions && Array.isArray(data.bookingOptions.devices)) ? data.bookingOptions : defaultBookingOptions();
     }).catch(function(){
       toast('კონტენტის ჩატვირთვა ვერ მოხერხდა — ნაგულისხმევი მონაცემები გამოჩნდება');
     });
