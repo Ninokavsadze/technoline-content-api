@@ -3665,6 +3665,10 @@
   function applyNavVisibility(){
     Object.keys(NAV_VISIBILITY_MAP).forEach(function(navKey){
       var hidden = !!siteContent.theme[NAV_VISIBILITY_MAP[navKey]];
+      // the home warranty band: when admin hides both its title and its
+      // description (banner-layout eyes), an empty dark bar with only the
+      // button is left — collapse the whole section instead.
+      if (navKey === 'home-warranty-band' && siteContent.theme.bandTitleHidden && siteContent.theme.bandDescHidden) hidden = true;
       document.querySelectorAll('[data-navitem="'+navKey+'"]').forEach(function(el){
         el.style.display = hidden ? 'none' : '';
       });
