@@ -204,6 +204,32 @@
   .booking-row .bstatus{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:4px 10px;border-radius:999px;background:var(--blue-soft);color:var(--blue-deep);text-align:center;white-space:nowrap}
   @media (max-width:760px){.booking-row{grid-template-columns:1fr;gap:4px}}
 
+  /* Bookings: spreadsheet-style table (sticky header, grid lines, zebra rows, sortable columns) */
+  .xl-filters{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin-top:12px}
+  .xl-filters .xl-f{display:flex;flex-direction:column;gap:4px;font-size:.72rem;font-weight:800;color:var(--ink-soft)}
+  .xl-filters input[type=date],.xl-filters input[type=time],.xl-filters select{padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-soft);color:var(--ink);font-size:.84rem;font-family:inherit}
+  .xl-filters input:focus,.xl-filters select:focus{outline:none;border-color:var(--blue);background:var(--paper)}
+  .xl-chip{padding:7px 12px;border:1.5px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink-soft);font-size:.78rem;font-weight:800;cursor:pointer;font-family:inherit}
+  .xl-chip:hover{border-color:var(--blue);color:var(--blue-deep)}
+  .xl-count{font-size:.8rem;color:var(--ink-faint);margin:0 0 8px 2px}
+  .xl-wrap{overflow:auto;max-height:calc(100vh - 330px);min-height:240px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+  .xl-table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:.82rem}
+  .xl-table th,.xl-table td{padding:8px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);white-space:nowrap;text-align:left;vertical-align:middle}
+  .xl-table th:last-child,.xl-table td:last-child{border-right:none}
+  .xl-table thead th{position:sticky;top:0;z-index:2;background:#E9EEF5;color:var(--ink);font-size:.74rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;user-select:none;border-bottom:2px solid #C9D3E0}
+  .xl-table thead th:hover{background:#DDE5F0}
+  .xl-table thead th .xl-arrow{display:inline-block;width:12px;margin-left:4px;color:var(--blue);font-size:.7rem}
+  .xl-table th.xl-rn,.xl-table td.xl-rn{position:sticky;left:0;z-index:1;background:#F1F4F9;color:var(--ink-faint);text-align:center;font-weight:700;min-width:44px;cursor:default}
+  .xl-table thead th.xl-rn{z-index:3;background:#E9EEF5}
+  .xl-table tbody tr:nth-child(even) td{background:#F8FAFC}
+  .xl-table tbody tr:nth-child(even) td.xl-rn{background:#F1F4F9}
+  .xl-table tbody tr:hover td{background:var(--blue-soft)}
+  .xl-table td.xl-code{font-family:monospace;font-weight:800;color:var(--blue)}
+  .xl-table td.xl-name{font-weight:700}
+  .xl-pill{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:3px 9px;border-radius:999px;background:var(--blue-soft);color:var(--blue-deep)}
+  .xl-ok{color:var(--good,#237A4C);font-weight:700}
+  .xl-bad{color:var(--bad,#B3261E);font-weight:700}
+
   .empty-state{text-align:center;padding:50px 20px;color:var(--ink-faint)}
   .empty-state svg{width:40px;height:40px;margin:0 auto 14px;opacity:.5}
   .empty-state p{margin:0;font-size:.9rem}
@@ -2537,60 +2563,178 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   }
 
   function renderBookingsPanel(main, tab){
-    var html = panelHeadHtml(tab, 'ბოლო ვიზიტის ჯავშნები, საიტიდან შემოსული (სატესტო/საწარმოო API-დან).');
+    var html = panelHeadHtml(tab, 'საიტიდან და ჩატიდან შემოსული ვიზიტის ჯავშნები ცხრილის სახით. სვეტის სათაურზე დაჭერით ხარისხდება, ფილტრებით კი თარიღსა და დროს ირჩევ.');
     html += '<div class="card" style="padding:14px 18px;margin-bottom:14px">'
-      + '<input type="text" id="bookings-search" placeholder="ძებნა: სახელი, ტელეფონი, კოდი, სერვისი, სტატუსი…" style="width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink);font-size:.9rem">'
-      + '</div>';
-    html += '<div class="card" id="bookings-card"><div class="empty-state"><p>იტვირთება…</p></div></div>';
+      + '<input type="text" id="bk-search" placeholder="ძებნა: სახელი, ტელეფონი, კოდი, მოწყობილობა, პრობლემა, სტატუსი…" style="width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink);font-size:.9rem">'
+      + '<div class="xl-filters">'
+        + '<label class="xl-f">თარიღი რის მიხედვით<select id="bk-mode"><option value="visit">ვიზიტის თარიღით</option><option value="created">დაჯავშნის დროით</option></select></label>'
+        + '<label class="xl-f">დან — თარიღი<input type="date" id="bk-from-d"></label>'
+        + '<label class="xl-f">დან — საათი<input type="time" id="bk-from-t"></label>'
+        + '<label class="xl-f">მდე — თარიღი<input type="date" id="bk-to-d"></label>'
+        + '<label class="xl-f">მდე — საათი<input type="time" id="bk-to-t"></label>'
+        + '<label class="xl-f">ფილიალი<select id="bk-branch"><option value="">ყველა</option></select></label>'
+        + '<span style="display:flex;gap:6px;flex-wrap:wrap">'
+          + '<button type="button" class="xl-chip" data-bk-quick="today">დღეს</button>'
+          + '<button type="button" class="xl-chip" data-bk-quick="tomorrow">ხვალ</button>'
+          + '<button type="button" class="xl-chip" data-bk-quick="week">მომდევნო 7 დღე</button>'
+          + '<button type="button" class="xl-chip" data-bk-quick="clear">გასუფთავება</button>'
+        + '</span>'
+      + '</div></div>';
+    html += '<div class="xl-count" id="bk-count"></div>';
+    html += '<div id="bookings-card"><div class="empty-state card"><p>იტვირთება…</p></div></div>';
     main.innerHTML = html;
 
+    var branchMap = {};
+    BRANCHES_DEFAULTS.forEach(function(def){
+      var o = (state.branches && state.branches[def.id]) || {};
+      branchMap[def.id] = o.name != null ? o.name : def.name;
+    });
+    var bkBranchSel = document.getElementById('bk-branch');
+    Object.keys(branchMap).forEach(function(id){
+      var op = document.createElement('option'); op.value = id; op.textContent = branchMap[id]; bkBranchSel.appendChild(op);
+    });
+
     var allBookings = [];
-    function bookingRowHtml(b){
-      var when = (b.date||'') + ' · ' + (b.timeSlot||'');
-      // Smart Q-Logic sync happens after the booking is saved (see server.js) —
-      // it's what actually sends the visit-confirmation SMS on their side, so
-      // a booking with no qlogicId means that sync never went through and no
-      // SMS was sent, even though the booking itself was received fine here.
-      var qlogicHtml = b.qlogicId
-        ? '<span style="color:var(--good,#237A4C)">✓ Q-Logic-თან დასინქრონდა'+(b.qlogicVerifyCode?' ('+escHtml(b.qlogicVerifyCode)+')':'')+'</span>'
-        : '<span style="color:var(--bad,#B3261E)">✗ Q-Logic სინქრონი ვერ მოხერხდა — SMS არ გაუვა'
-          + (b.qlogicError ? '<br><span style="font-weight:400;opacity:.85">(' + escHtml(b.qlogicError) + ')</span>' : '') + '</span>';
-      return '<div class="booking-row">'
-        + '<div class="bcode">'+escHtml(b.confirmationCode)+'</div>'
-        + '<div><div class="bname">'+escHtml(b.name)+'</div><div class="bmeta">'+escHtml(b.phone)+' · '+escHtml(b.serviceType||b.issue||'')+'</div></div>'
-        + '<div class="bmeta">'+escHtml(when)+'</div>'
-        + '<div class="bstatus">'+escHtml(b.status||'received')+'</div>'
-        + '<div class="bmeta" style="font-size:.78rem">'+qlogicHtml+'</div>'
-        + '</div>';
+    var sortKey = 'created', sortDir = -1;
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function localParts(iso){
+      var d = new Date(iso);
+      if(isNaN(d.getTime())) return {d:'', t:''};
+      return {d: d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()), t: pad2(d.getHours()) + ':' + pad2(d.getMinutes())};
     }
-    function renderBookingsList(q){
+    function fmtCreated(iso){
+      var p = localParts(iso); if(!p.d) return '';
+      var a = p.d.split('-'); return a[2] + '.' + a[1] + '.' + a[0] + ' ' + p.t;
+    }
+    function fmtVisitDate(d){ var a = String(d||'').split('-'); return a.length === 3 ? a[2] + '.' + a[1] + '.' + a[0] : (d || ''); }
+    var COLS = [
+      {key:'code',    label:'კოდი',            get:function(b){ return b.confirmationCode || ''; }},
+      {key:'name',    label:'სახელი',          get:function(b){ return b.name || ''; }},
+      {key:'phone',   label:'ტელეფონი',        get:function(b){ return b.phone || ''; }},
+      {key:'branch',  label:'ფილიალი',         get:function(b){ return branchMap[b.branchId] || b.branchId || ''; }},
+      {key:'device',  label:'მოწყობილობა',     get:function(b){ return b.deviceType || ''; }},
+      {key:'issue',   label:'პრობლემა',        get:function(b){ return b.issue || b.serviceType || ''; }},
+      {key:'vdate',   label:'ვიზიტის თარიღი',  get:function(b){ return b.date || ''; }},
+      {key:'vtime',   label:'საათი',           get:function(b){ return b.timeSlot || ''; }},
+      {key:'status',  label:'სტატუსი',         get:function(b){ return b.status || 'received'; }},
+      {key:'qlogic',  label:'Q-Logic',         get:function(b){ return b.qlogicId ? '1' : '0'; }},
+      {key:'created', label:'დაჯავშნის დრო',   get:function(b){ return b.createdAt || ''; }},
+      {key:'notes',   label:'შენიშვნა',        get:function(b){ return b.notes || ''; }}
+    ];
+    function colByKey(k){ return COLS.find(function(c){ return c.key === k; }); }
+
+    function matches(b, f){
+      if(f.q){
+        var hay = [b.confirmationCode, b.name, b.phone, b.serviceType, b.issue, b.deviceType, b.status, b.notes, branchMap[b.branchId]]
+          .map(function(v){ return String(v||'').toLowerCase(); }).join(' ');
+        if(hay.indexOf(f.q) === -1) return false;
+      }
+      if(f.branch && b.branchId !== f.branch) return false;
+      var d, t;
+      if(f.mode === 'created'){ var lp = localParts(b.createdAt); d = lp.d; t = lp.t; }
+      else { d = b.date || ''; t = b.timeSlot || ''; }
+      if(f.fromD){ if(!d || (d + ' ' + (t||'00:00')) < (f.fromD + ' ' + (f.fromT || '00:00'))) return false; }
+      else if(f.fromT){ if(!t || t < f.fromT) return false; }
+      if(f.toD){ if(!d || (d + ' ' + (t||'00:00')) > (f.toD + ' ' + (f.toT || '23:59'))) return false; }
+      else if(f.toT){ if(!t || t > f.toT) return false; }
+      return true;
+    }
+    function currentFilter(){
+      return {
+        q: document.getElementById('bk-search').value.trim().toLowerCase(),
+        mode: document.getElementById('bk-mode').value,
+        fromD: document.getElementById('bk-from-d').value, fromT: document.getElementById('bk-from-t').value,
+        toD: document.getElementById('bk-to-d').value, toT: document.getElementById('bk-to-t').value,
+        branch: bkBranchSel.value
+      };
+    }
+    function cellHtml(c, b){
+      var v = c.get(b);
+      if(c.key === 'code') return '<td class="xl-code">' + escHtml(v) + '</td>';
+      if(c.key === 'name') return '<td class="xl-name">' + escHtml(v) + '</td>';
+      if(c.key === 'vdate') return '<td>' + escHtml(fmtVisitDate(v)) + '</td>';
+      if(c.key === 'created') return '<td>' + escHtml(fmtCreated(v)) + '</td>';
+      if(c.key === 'status') return '<td><span class="xl-pill">' + escHtml(v) + '</span></td>';
+      if(c.key === 'qlogic'){
+        // Smart Q-Logic sync happens after the booking is saved (see server.js) —
+        // a booking with no qlogicId means that sync never went through, so no
+        // confirmation SMS was sent even though the booking itself was received.
+        return b.qlogicId
+          ? '<td class="xl-ok">✓ ' + escHtml(b.qlogicVerifyCode || 'დასინქრონდა') + '</td>'
+          : '<td class="xl-bad" title="' + escAttr(b.qlogicError || '') + '">✗ ვერ დასინქრონდა' + (b.qlogicError ? ' (' + escHtml(String(b.qlogicError).slice(0,40)) + ')' : '') + '</td>';
+      }
+      return '<td>' + escHtml(v) + '</td>';
+    }
+    function render(){
       var card = document.getElementById('bookings-card');
       if(!card) return;
-      var filtered = !q ? allBookings : allBookings.filter(function(b){
-        return [b.confirmationCode, b.name, b.phone, b.serviceType, b.issue, b.status].some(function(v){
-          return String(v||'').toLowerCase().indexOf(q) !== -1;
+      var f = currentFilter();
+      var list = allBookings.filter(function(b){ return matches(b, f); });
+      var col = colByKey(sortKey);
+      list.sort(function(a, b){
+        var x = col.get(a), y = col.get(b);
+        return (x < y ? -1 : x > y ? 1 : 0) * sortDir;
+      });
+      document.getElementById('bk-count').textContent = 'ნაპოვნია ' + list.length + ' ჩანაწერი (სულ ' + allBookings.length + ')';
+      if(!list.length){
+        card.innerHTML = '<div class="empty-state card"><svg><use href="#ic-inbox"/></svg><p>ვერაფერი მოიძებნა.</p></div>';
+        return;
+      }
+      var head = '<tr><th class="xl-rn">#</th>' + COLS.map(function(c){
+        return '<th data-bk-sort="' + c.key + '">' + escHtml(c.label) + '<span class="xl-arrow">' + (c.key === sortKey ? (sortDir === 1 ? '▲' : '▼') : '') + '</span></th>';
+      }).join('') + '</tr>';
+      var body = list.map(function(b, i){
+        return '<tr><td class="xl-rn">' + (i + 1) + '</td>' + COLS.map(function(c){ return cellHtml(c, b); }).join('') + '</tr>';
+      }).join('');
+      card.innerHTML = '<div class="xl-wrap"><table class="xl-table"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+      card.querySelectorAll('[data-bk-sort]').forEach(function(th){
+        th.addEventListener('click', function(){
+          var k = th.getAttribute('data-bk-sort');
+          if(sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; }
+          render();
         });
       });
-      card.innerHTML = filtered.length
-        ? filtered.map(bookingRowHtml).join('')
-        : '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ვერაფერი მოიძებნა.</p></div>';
     }
+
+    ['bk-search','bk-from-d','bk-from-t','bk-to-d','bk-to-t'].forEach(function(id){
+      document.getElementById(id).addEventListener('input', render);
+      document.getElementById(id).addEventListener('change', render);
+    });
+    document.getElementById('bk-mode').addEventListener('change', render);
+    bkBranchSel.addEventListener('change', render);
+    function ymd(d){ return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()); }
+    main.querySelectorAll('[data-bk-quick]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var k = btn.getAttribute('data-bk-quick');
+        var now = new Date(), fd = '', td = '';
+        if(k === 'today'){ fd = td = ymd(now); }
+        else if(k === 'tomorrow'){ var t1 = new Date(now); t1.setDate(t1.getDate()+1); fd = td = ymd(t1); }
+        else if(k === 'week'){ var t2 = new Date(now); t2.setDate(t2.getDate()+6); fd = ymd(now); td = ymd(t2); }
+        if(k === 'clear'){
+          document.getElementById('bk-search').value = ''; document.getElementById('bk-mode').value = 'visit'; bkBranchSel.value = '';
+          ['bk-from-t','bk-to-t'].forEach(function(id){ document.getElementById(id).value = ''; });
+        } else if(document.getElementById('bk-mode').value !== 'visit' && k !== 'clear'){
+          // quick buttons are about the visit date
+          document.getElementById('bk-mode').value = 'visit';
+        }
+        document.getElementById('bk-from-d').value = fd; document.getElementById('bk-to-d').value = td;
+        render();
+      });
+    });
 
     apiGet('/api/bookings').then(function(list){
       allBookings = list || [];
       var card = document.getElementById('bookings-card');
       if(!card) return;
       if(!allBookings.length){
-        card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ჯერ არცერთი ჯავშანი არ დაფიქსირებულა.</p></div>';
+        card.innerHTML = '<div class="empty-state card"><svg><use href="#ic-inbox"/></svg><p>ჯერ არცერთი ჯავშანი არ დაფიქსირებულა.</p></div>';
+        document.getElementById('bk-count').textContent = '';
         return;
       }
-      renderBookingsList('');
-      document.getElementById('bookings-search').addEventListener('input', function(){
-        renderBookingsList(this.value.trim().toLowerCase());
-      });
+      render();
     }).catch(function(){
       var card = document.getElementById('bookings-card');
-      if(card) card.innerHTML = '<div class="empty-state"><svg><use href="#ic-inbox"/></svg><p>ჯავშნების ჩატვირთვა ვერ მოხერხდა — შეამოწმეთ სერვერთან კავშირი.</p></div>';
+      if(card) card.innerHTML = '<div class="empty-state card"><svg><use href="#ic-inbox"/></svg><p>ჯავშნების ჩატვირთვა ვერ მოხერხდა — შეამოწმეთ სერვერთან კავშირი.</p></div>';
     });
   }
 
