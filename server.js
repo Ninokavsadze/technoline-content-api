@@ -53,6 +53,17 @@ app.use(express.json({ limit: '25mb' }));
 // a plain reload, can still reuse a stored copy of that response instead
 // of revalidating, which is why a fresh upload could still show old
 // content/markup on reload). Force a real no-store on the HTML shell.
+// Soft launch: until ALLOW_INDEXING=true is set in Render's environment, the
+// whole public site carries a noindex header too, so Google doesn't pick it
+// up before the official launch. Remove it by adding ALLOW_INDEXING=true
+// (no code change). The admin panel and /api are ALWAYS noindex, regardless.
+const NOINDEX_VALUE = 'noindex, nofollow, noarchive, nosnippet';
+app.use(function (req, res, next) {
+  if (String(process.env.ALLOW_INDEXING || '').toLowerCase() !== 'true') {
+    res.setHeader('X-Robots-Tag', NOINDEX_VALUE);
+  }
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: function (res, filePath) {
     if (filePath.endsWith('.html')) {
@@ -474,10 +485,20 @@ async function seedEnglishContentIfNeeded() {
   try {
     const db = await readDb();
     const existing = db['content/site-en'] || {};
-    if (Object.keys(existing).length > 0) return;
-    db['content/site-en'] = SEED_EN_CONTENT;
+    // Add only the keys that are missing — never overwrite anything the admin
+    // already edited (or deliberately left empty) in the English content.
+    const merged = Object.assign({}, existing);
+    let added = 0;
+    Object.keys(SEED_EN_CONTENT).forEach(function (k) {
+      if (!Object.prototype.hasOwnProperty.call(merged, k)) {
+        merged[k] = SEED_EN_CONTENT[k];
+        added++;
+      }
+    });
+    if (!added) return;
+    db['content/site-en'] = merged;
     await writeDb(db);
-    console.log('Seeded content/site-en with', Object.keys(SEED_EN_CONTENT).length, 'default English translations.');
+    console.log('content/site-en: added ' + added + ' missing default English translation(s).');
   } catch (e) {
     console.error('English content seed failed:', e.message);
   }
