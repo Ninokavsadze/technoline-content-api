@@ -231,9 +231,9 @@
   .hero-copy{padding-block:44px;position:relative;z-index:2}
   .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);padding:7px 14px 7px 8px;border-radius:999px;font-size:.8rem;font-weight:700;color:var(--gold-soft);margin-bottom:22px}
   .hero-eyebrow .dot{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(252,187,45,.25)}
-  .hero h1{font-size:var(--hero-title-size, clamp(2.3rem,4.6vw,3.7rem));color:var(--hero-title-color, #fff);max-width:14ch;transform:translate(var(--hero-title-x, 0px),var(--hero-title-y, 0px));display:var(--hero-title-display, block)}
+  .hero h1{font-size:var(--hero-title-size, clamp(2.3rem,4.6vw,3.7rem));color:var(--hero-title-color, #fff);max-width:14ch;transform:translateX(var(--hero-title-x, 0px));margin-top:var(--hero-title-y, 0px);display:var(--hero-title-display, block)}
   .hero h1 em{font-style:normal;color:var(--gold)}
-  .hero .lede{color:var(--hero-lede-color, #C6D7E9);margin-top:20px;font-size:var(--hero-lede-size, 1.16rem);transform:translate(var(--hero-lede-x, 0px),var(--hero-lede-y, 0px));display:var(--hero-lede-display, block)}
+  .hero .lede{color:var(--hero-lede-color, #C6D7E9);margin-top:max(0px,calc(20px + var(--hero-lede-y, 0px)));font-size:var(--hero-lede-size, 1.16rem);transform:translateX(var(--hero-lede-x, 0px));display:var(--hero-lede-display, block)}
   .hero-cta{display:flex;flex-wrap:wrap;gap:14px;margin-top:34px}
   .hero-art{position:relative;height:min(560px,68vw);display:flex;align-items:center;justify-content:center}
   .ring-orbit{position:absolute;border-radius:50%;border:1.5px solid rgba(255,255,255,.16)}
@@ -2348,6 +2348,8 @@
 
   function currentRoute(){
     var h = location.hash.replace('#','');
+    // admin switched the warranty-check page off -> its direct URL falls back to home
+    if(h === 'warranty-check' && isWarrantyCheckOff()) return 'home';
     return VALID_ROUTES.indexOf(h) !== -1 ? h : 'home';
   }
 
@@ -3662,13 +3664,35 @@
     'contact-corp-card': 'navHideContactCorp',
     'home-warranty-band': 'navHideHomeWarrantyBand'
   };
+  // The warranty-check page is reachable from several places (header, mobile
+  // menu, hero + band buttons, footer, warranty-service page). When admin
+  // hides it from the header menu, switch the whole feature off everywhere.
+  function isWarrantyCheckOff(){
+    return !!(siteContent && siteContent.theme && siteContent.theme.navHideWarrantyCheck);
+  }
+  function applyWarrantyCheckOff(){
+    var off = isWarrantyCheckOff();
+    document.querySelectorAll('a[data-route="warranty-check"]').forEach(function(a){
+      // header/mobile links are already handled via data-navitem; footer links
+      // and in-text links sit inside an <li> — hide the whole list item
+      var target = a.closest('li') || a;
+      if(a.hasAttribute('data-navitem') && a.closest('li') === null) target = a;
+      target.style.display = off ? 'none' : '';
+    });
+    if(off){
+      var v = document.getElementById('view-warranty-check');
+      if(v && !v.hidden) render();
+    }
+  }
   function applyNavVisibility(){
+    applyWarrantyCheckOff();
     Object.keys(NAV_VISIBILITY_MAP).forEach(function(navKey){
       var hidden = !!siteContent.theme[NAV_VISIBILITY_MAP[navKey]];
       // the home warranty band: when admin hides both its title and its
       // description (banner-layout eyes), an empty dark bar with only the
       // button is left — collapse the whole section instead.
       if (navKey === 'home-warranty-band' && siteContent.theme.bandTitleHidden && siteContent.theme.bandDescHidden) hidden = true;
+      if (navKey === 'home-warranty-band' && isWarrantyCheckOff()) hidden = true;
       document.querySelectorAll('[data-navitem="'+navKey+'"]').forEach(function(el){
         el.style.display = hidden ? 'none' : '';
       });

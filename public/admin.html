@@ -3101,13 +3101,51 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       return chatState.hours;
     }).catch(function(){ chatState.hours = CHAT_HOURS_DEFAULT; chatState.hoursLoaded = true; return chatState.hours; });
   }
+  // Knowledge base shape: {folders:[{id,name,enabled}], entries:[{id,title,body,folderId,enabled}],
+  // abilities:{bookVisit,warrantyCard}}. Old flat KBs (entries only) are moved
+  // into one "ზოგადი" folder on load; a totally empty KB gets starter folders
+  // describing Tato's two built-in chat actions.
+  function newFolderId(){ return 'kf_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+  function normalizeKb(d){
+    d = d || {};
+    var kb = {
+      folders: Array.isArray(d.folders) ? d.folders.filter(function(f){ return f && f.id; }) : [],
+      entries: Array.isArray(d.entries) ? d.entries : [],
+      abilities: {
+        bookVisit: !(d.abilities && d.abilities.bookVisit === false),
+        warrantyCard: !(d.abilities && d.abilities.warrantyCard === false)
+      }
+    };
+    if(!kb.folders.length){
+      if(kb.entries.length){
+        kb.folders.push({id:newFolderId(), name:'ზოგადი', enabled:true});
+      } else {
+        var fv = {id:newFolderId(), name:'ვიზიტის დაჯავშნა', enabled:true};
+        var fw = {id:newFolderId(), name:'საგარანტიო ბარათი', enabled:true};
+        kb.folders.push(fv, fw);
+        kb.entries.push(
+          {id:newKbId(), folderId:fv.id, enabled:true, title:'როგორ დავჯავშნო ვიზიტი?',
+           body:'ვიზიტის დაჯავშნა შეიძლება საიტზე ღილაკით „ვიზიტის დაჯავშნა“ ან პირდაპირ ამ ჩატში. საჭიროა ფილიალი, მოწყობილობის ტიპი, პრობლემის ტიპი, თარიღი და საათი. დაჯავშნის შემდეგ მომხმარებელი იღებს დადასტურების კოდს.'},
+          {id:newKbId(), folderId:fw.id, enabled:true, title:'როგორ აღვადგინო საგარანტიო ბარათი?',
+           body:'საგარანტიო ბარათის მისაღებად ჩატში მიუთითეთ მოწყობილობის სერიული ნომერი ან გამოაგზავნეთ ყუთის ფოტო სერიული ნომრით (IMEI/S/N). თუ ბარათი მოიძებნა, PDF სახით ჩატშივე გამოგეგზავნებათ. უსაფრთხოების მიზნით ბარათი მხოლოდ იმ მომხმარებელს ეგზავნება, ვისი ტელეფონის ნომერიც ბარათზეა მითითებული.'}
+        );
+      }
+    }
+    kb.entries.forEach(function(e){
+      if(!e.id) e.id = newKbId();
+      if(!e.folderId || !kb.folders.some(function(f){ return f.id === e.folderId; })) e.folderId = kb.folders[0].id;
+      if(e.enabled === undefined) e.enabled = true;
+    });
+    kb.folders.forEach(function(f){ if(f.enabled === undefined) f.enabled = true; });
+    return kb;
+  }
   function loadChatKb(){
     if(chatState.kbLoaded) return Promise.resolve(chatState.kb);
     return apiGet('/api/site/chatKb').then(function(d){
-      chatState.kb = { entries: (d && Array.isArray(d.entries)) ? d.entries : [] };
+      chatState.kb = normalizeKb(d);
       chatState.kbLoaded = true;
       return chatState.kb;
-    }).catch(function(){ chatState.kb = { entries: [] }; chatState.kbLoaded = true; return chatState.kb; });
+    }).catch(function(){ chatState.kb = normalizeKb({}); chatState.kbLoaded = true; return chatState.kb; });
   }
   function newKbId(){ return 'kb_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
   function renderChatAiForm(){
@@ -3163,37 +3201,122 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       });
     }
   }
-  function kbEntryHtml(e, idx){
-    return '<div class="card" data-kb-id="'+escAttr(e.id)+'" style="margin-bottom:10px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-      + '<span style="font-weight:800;font-size:.86rem">' + (idx+1) + '. საკითხი</span>'
+  var KB_ABILITIES = [
+    {key:'bookVisit', label:'ვიზიტის დაჯავშნა ჩატში'},
+    {key:'warrantyCard', label:'საგარანტიო ბარათის გაგზავნა ჩატში (სერიული ნომრით/ყუთის ფოტოთი)'}
+  ];
+  function kbEntryHtml(e, idx, kb){
+    var opts = kb.folders.map(function(f){
+      return '<option value="'+escAttr(f.id)+'"'+(f.id===e.folderId?' selected':'')+'>'+escHtml(f.name||'უსახელო')+'</option>';
+    }).join('');
+    return '<div class="card" data-kb-id="'+escAttr(e.id)+'" style="margin:0 0 10px;'+(e.enabled===false?'opacity:.55':'')+'">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">'
+      + '<label style="display:flex;align-items:center;gap:6px;font-weight:800;font-size:.84rem;cursor:pointer"><input type="checkbox" data-kb-entry-on="'+escAttr(e.id)+'"'+(e.enabled!==false?' checked':'')+'> ჩართულია</label>'
+      + '<span style="display:flex;align-items:center;gap:8px">'
+      + '<select data-kb-entry-folder="'+escAttr(e.id)+'" title="საქაღალდე" style="padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper-soft);color:var(--ink);font-size:.8rem;max-width:170px">'+opts+'</select>'
       + '<button type="button" class="drag-eye" data-kb-delete="'+escAttr(e.id)+'" title="წაშლა">🗑</button>'
-      + '</div>'
+      + '</span></div>'
       + '<div class="field-block"><label>სათაური</label><input type="text" data-kb-field="title" value="'+escAttr(e.title||'')+'"></div>'
       + '<div class="field-block"><label>დეტალები</label><textarea data-kb-field="body" rows="3">'+escHtml(e.body||'')+'</textarea></div>'
       + '</div>';
   }
   function renderKbEntries(){
     var wrap = document.getElementById('chat-kb-entries');
-    if(!wrap) return;
-    var entries = (chatState.kb && chatState.kb.entries) || [];
-    wrap.innerHTML = entries.length ? entries.map(kbEntryHtml).join('') : '<p style="font-size:.82rem;color:var(--ink-faint);margin:0 0 12px">ჯერ არცერთი საკითხი არ დამატებულა.</p>';
-    wrap.querySelectorAll('[data-kb-field]').forEach(function(inp){
-      inp.addEventListener('input', function(){
-        var card = inp.closest('[data-kb-id]');
-        var id = card.getAttribute('data-kb-id');
-        var field = inp.getAttribute('data-kb-field');
-        var entry = entries.find(function(e){ return e.id === id; });
-        if(entry) entry[field] = inp.value;
-      });
+    var kb = chatState.kb;
+    if(!wrap || !kb) return;
+    chatState.kbOpen = chatState.kbOpen || {};
+
+    var ab = document.getElementById('chat-kb-abilities');
+    if(ab){
+      ab.innerHTML = KB_ABILITIES.map(function(a){
+        return '<label style="display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:700;margin-bottom:8px;cursor:pointer"><input type="checkbox" data-kb-ability="'+a.key+'"'+(kb.abilities[a.key]!==false?' checked':'')+'> '+a.label+'</label>';
+      }).join('');
+    }
+    var pf = document.getElementById('chat-kb-parse-folder');
+    if(pf){
+      var cur = pf.value;
+      pf.innerHTML = kb.folders.map(function(f){ return '<option value="'+escAttr(f.id)+'">'+escHtml(f.name||'უსახელო')+'</option>'; }).join('');
+      if(cur && kb.folders.some(function(f){ return f.id === cur; })) pf.value = cur;
+    }
+
+    var html = '';
+    kb.folders.forEach(function(f){
+      var inF = kb.entries.filter(function(e){ return e.folderId === f.id; });
+      var open = !!chatState.kbOpen[f.id];
+      html += '<div class="card" data-kb-folder="'+escAttr(f.id)+'" style="margin-bottom:10px;padding:0;overflow:hidden;'+(f.enabled===false?'opacity:.6':'')+'">'
+        + '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--paper-soft)">'
+        + '<button type="button" class="drag-eye" style="font-size:1.2rem" data-kb-fold="'+escAttr(f.id)+'" title="გახსნა/დაკეცვა">'+(open?'📂':'📁')+'</button>'
+        + '<div class="field-block" style="flex:1;margin:0"><input type="text" data-kb-folder-name="'+escAttr(f.id)+'" value="'+escAttr(f.name||'')+'" placeholder="საქაღალდის სახელი" style="font-weight:800"></div>'
+        + '<span style="font-size:.78rem;color:var(--ink-faint);white-space:nowrap">'+inF.length+' საკითხი</span>'
+        + '<label style="display:flex;align-items:center;gap:5px;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap"><input type="checkbox" data-kb-folder-on="'+escAttr(f.id)+'"'+(f.enabled!==false?' checked':'')+'> ჩართ.</label>'
+        + '<button type="button" class="drag-eye" data-kb-folder-del="'+escAttr(f.id)+'" title="საქაღალდის წაშლა">🗑</button>'
+        + '</div>';
+      if(open){
+        html += '<div style="padding:12px 14px">'
+          + (inF.length ? inF.map(function(e,i){ return kbEntryHtml(e, i, kb); }).join('') : '<p style="font-size:.82rem;color:var(--ink-faint);margin:0 0 10px">ამ საქაღალდეში საკითხი ჯერ არ არის.</p>')
+          + '<button type="button" class="btn btn-ghost" data-kb-add-entry="'+escAttr(f.id)+'">+ ახალი საკითხი</button>'
+          + '</div>';
+      }
+      html += '</div>';
     });
-    wrap.querySelectorAll('[data-kb-delete]').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        var id = btn.getAttribute('data-kb-delete');
-        chatState.kb.entries = entries.filter(function(e){ return e.id !== id; });
-        renderKbEntries();
+    wrap.innerHTML = html || '<p style="font-size:.82rem;color:var(--ink-faint);margin:0 0 12px">ჯერ არცერთი საქაღალდე არ არის.</p>';
+
+    if(!wrap._kbWired){
+      wrap._kbWired = true;
+      var find = function(list, id){ return list.find(function(x){ return x.id === id; }); };
+      wrap.addEventListener('input', function(ev){
+        var t = ev.target, kb2 = chatState.kb;
+        if(t.hasAttribute('data-kb-field')){
+          var entry = find(kb2.entries, t.closest('[data-kb-id]').getAttribute('data-kb-id'));
+          if(entry) entry[t.getAttribute('data-kb-field')] = t.value;
+        } else if(t.hasAttribute('data-kb-folder-name')){
+          var fo = find(kb2.folders, t.getAttribute('data-kb-folder-name'));
+          if(fo) fo.name = t.value;
+        }
       });
-    });
+      wrap.addEventListener('change', function(ev){
+        var t = ev.target, kb2 = chatState.kb;
+        if(t.hasAttribute('data-kb-entry-on')){
+          var e1 = find(kb2.entries, t.getAttribute('data-kb-entry-on')); if(e1) e1.enabled = t.checked; renderKbEntries();
+        } else if(t.hasAttribute('data-kb-folder-on')){
+          var f1 = find(kb2.folders, t.getAttribute('data-kb-folder-on')); if(f1) f1.enabled = t.checked; renderKbEntries();
+        } else if(t.hasAttribute('data-kb-entry-folder')){
+          var e2 = find(kb2.entries, t.getAttribute('data-kb-entry-folder')); if(e2) e2.folderId = t.value; renderKbEntries();
+        } else if(t.hasAttribute('data-kb-folder-name')){
+          renderKbEntries();
+        }
+      });
+      wrap.addEventListener('click', function(ev){
+        var btn = ev.target.closest('button');
+        if(!btn) return;
+        var kb2 = chatState.kb;
+        if(btn.hasAttribute('data-kb-fold')){
+          var id = btn.getAttribute('data-kb-fold'); chatState.kbOpen[id] = !chatState.kbOpen[id]; renderKbEntries();
+        } else if(btn.hasAttribute('data-kb-delete')){
+          var did = btn.getAttribute('data-kb-delete');
+          kb2.entries = kb2.entries.filter(function(e){ return e.id !== did; }); renderKbEntries();
+        } else if(btn.hasAttribute('data-kb-folder-del')){
+          var fid = btn.getAttribute('data-kb-folder-del');
+          var fo2 = find(kb2.folders, fid);
+          var cnt = kb2.entries.filter(function(e){ return e.folderId === fid; }).length;
+          if(!confirm('წავშალო საქაღალდე „' + ((fo2 && fo2.name) || '') + '“' + (cnt ? ' და მასში არსებული ' + cnt + ' საკითხი' : '') + '?')) return;
+          kb2.folders = kb2.folders.filter(function(f){ return f.id !== fid; });
+          kb2.entries = kb2.entries.filter(function(e){ return e.folderId !== fid; });
+          renderKbEntries();
+        } else if(btn.hasAttribute('data-kb-add-entry')){
+          var aid = btn.getAttribute('data-kb-add-entry');
+          kb2.entries.push({id:newKbId(), folderId:aid, enabled:true, title:'', body:''});
+          chatState.kbOpen[aid] = true; renderKbEntries();
+        }
+      });
+    }
+    if(ab && !ab._kbWired){
+      ab._kbWired = true;
+      ab.addEventListener('change', function(ev){
+        var k = ev.target.getAttribute('data-kb-ability');
+        if(k && chatState.kb) chatState.kb.abilities[k] = ev.target.checked;
+      });
+    }
   }
 
   function renderChatPanel(main, tab){
@@ -3262,17 +3385,22 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       + '<span id="chat-ai-status" style="font-size:.82rem;color:var(--ink-faint)"></span>'
       + '</div>'
       + '<hr style="border:none;border-top:1px solid var(--line);margin:0 0 16px">'
-      + '<h4 style="margin:0 0 10px;font-size:.92rem">ცოდნის ბაზა</h4>'
+      + '<h4 style="margin:0 0 4px;font-size:.92rem">ტატოს ფუნქციები</h4>'
+      + '<p class="field-hint" style="margin:0 0 8px">გამორთულ ფუნქციას ტატო ჩატში აღარ შეასრულებს.</p>'
+      + '<div id="chat-kb-abilities" style="margin-bottom:18px"></div>'
+      + '<h4 style="margin:0 0 4px;font-size:.92rem">ცოდნის ბაზა</h4>'
+      + '<p class="field-hint" style="margin:0 0 10px">საკითხები თემატურ საქაღალდეებშია. საქაღალდის ან ცალკეული საკითხის გამორთვისას ტატო მას აღარ გამოიყენებს, წაშლის გარეშე.</p>'
       + '<div class="field-block" style="margin-bottom:10px">'
         + '<label>ჩასვით ტექსტი — AI ავტომატურად დაყოფს საკითხებად</label>'
         + '<textarea id="chat-kb-paste" rows="6" placeholder="ჩასვით ტექსტი აქ…"></textarea>'
       + '</div>'
       + '<div style="display:flex;gap:12px;align-items:center;margin-bottom:18px">'
+      + '<select id="chat-kb-parse-folder" style="padding:9px 10px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper-soft);color:var(--ink);font-size:.86rem;max-width:200px"></select>'
       + '<button type="button" class="btn btn-ghost" id="chat-kb-parse">AI-ით დაყოფა საკითხებად</button>'
       + '<span id="chat-kb-parse-status" style="font-size:.82rem;color:var(--ink-faint)"></span>'
       + '</div>'
       + '<div id="chat-kb-entries"></div>'
-      + '<button type="button" class="btn btn-ghost" id="chat-kb-add" style="margin:4px 0 16px">+ ახალი საკითხი</button>'
+      + '<button type="button" class="btn btn-ghost" id="chat-kb-add-folder" style="margin:4px 0 16px">+ ახალი საქაღალდე</button>'
       + '<div style="display:flex;gap:12px;align-items:center">'
       + '<button type="button" class="btn btn-gold" id="chat-kb-save">ცოდნის ბაზის შენახვა</button>'
       + '<span id="chat-kb-status" style="font-size:.82rem;color:var(--ink-faint)"></span>'
@@ -3432,10 +3560,12 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
       statusEl.textContent = 'მუშავდება…';
       apiPost('/api/chat-kb/parse-document', {text:text}).then(function(res){
         var newEntries = (res && res.entries) || [];
-        chatState.kb = chatState.kb || {entries:[]};
+        chatState.kb = chatState.kb || normalizeKb({});
+        var targetFolder = (document.getElementById('chat-kb-parse-folder') || {}).value || chatState.kb.folders[0].id;
         newEntries.forEach(function(e){
-          chatState.kb.entries.push({id:newKbId(), title:e.title||'', body:e.body||''});
+          chatState.kb.entries.push({id:newKbId(), folderId:targetFolder, enabled:true, title:e.title||'', body:e.body||''});
         });
+        chatState.kbOpen = chatState.kbOpen || {}; chatState.kbOpen[targetFolder] = true;
         textEl.value = '';
         statusEl.textContent = newEntries.length ? ('დაემატა ' + newEntries.length + ' საკითხი — არ დაგავიწყდეთ შენახვა') : 'ვერაფერი მოიძებნა';
         renderKbEntries();
@@ -3446,15 +3576,18 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
         else toast('ვერ დაიყო საკითხებად — სცადეთ თავიდან');
       });
     });
-    document.getElementById('chat-kb-add').addEventListener('click', function(){
-      chatState.kb = chatState.kb || {entries:[]};
-      chatState.kb.entries.push({id:newKbId(), title:'', body:''});
+    document.getElementById('chat-kb-add-folder').addEventListener('click', function(){
+      chatState.kb = chatState.kb || normalizeKb({});
+      var nf = {id:newFolderId(), name:'ახალი საქაღალდე', enabled:true};
+      chatState.kb.folders.push(nf);
+      chatState.kbOpen = chatState.kbOpen || {}; chatState.kbOpen[nf.id] = true;
       renderKbEntries();
     });
     document.getElementById('chat-kb-save').addEventListener('click', function(){
       var statusEl = document.getElementById('chat-kb-status');
       statusEl.textContent = 'ინახება…';
-      apiPut('/api/site/chatKb', {entries: (chatState.kb && chatState.kb.entries) || []}).then(function(){
+      var kbSave = chatState.kb || normalizeKb({});
+      apiPut('/api/site/chatKb', {folders: kbSave.folders, entries: kbSave.entries, abilities: kbSave.abilities}).then(function(){
         statusEl.textContent = 'შენახულია ✓';
         toast('ცოდნის ბაზა შენახულია');
         setTimeout(function(){ statusEl.textContent = ''; }, 2500);
