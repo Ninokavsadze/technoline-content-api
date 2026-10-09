@@ -1382,7 +1382,7 @@
     </div>
   </section>
 
-  <section>
+  <section data-bandsec="1">
     <div class="wrap">
       <div class="band-dark">
         <div>
@@ -1769,7 +1769,7 @@
     </div>
   </section>
 
-  <section>
+  <section data-navitem="home-warranty-band">
     <div class="wrap">
       <div class="band-dark">
         <div>
@@ -3745,6 +3745,9 @@
         el.style.display = hidden ? 'none' : '';
       });
     });
+    // other dark bands (e.g. About): collapse when both texts are hidden, so no empty bar remains
+    var bandEmpty = !!(siteContent.theme.bandTitleHidden && siteContent.theme.bandDescHidden);
+    document.querySelectorAll('[data-bandsec]').forEach(function(el){ el.style.display = bandEmpty ? 'none' : ''; });
   }
   // Admin-set custom order (theme.navOrder, an array of navitem keys) for
   // the desktop header menu — its 6 top-level items are all direct
