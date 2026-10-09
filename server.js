@@ -538,10 +538,10 @@ function clientIp(req) {
   const xff = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
   return xff || (req.socket && req.socket.remoteAddress) || 'unknown';
 }
-// brute-force guard: 8 failed attempts per IP -> 15 min lock
+// brute-force guard: default 8 failed attempts per IP -> 15 min lock (tunable via ADMIN_LOGIN_MAX_FAILS / ADMIN_LOGIN_LOCK_MIN / ADMIN_OTP_MAX_ATTEMPTS)
 const loginFails = new Map(); // ip -> { n, until }
-const LOGIN_MAX_FAILS = 8;
-const LOGIN_LOCK_MS = 15 * 60 * 1000;
+const LOGIN_MAX_FAILS = parseInt(process.env.ADMIN_LOGIN_MAX_FAILS, 10) || 8;
+const LOGIN_LOCK_MS = (parseInt(process.env.ADMIN_LOGIN_LOCK_MIN, 10) || 15) * 60 * 1000;
 function loginLocked(ip) {
   const r = loginFails.get(ip);
   return !!(r && r.until && r.until > Date.now());
@@ -556,7 +556,7 @@ function loginFailed(ip) {
 const adminChallenges = new Map(); // id -> { code, expiresAt, attempts, lastSentAt, ip }
 const ADMIN_OTP_TTL_MS = 5 * 60 * 1000;
 const ADMIN_OTP_COOLDOWN_MS = 30 * 1000;
-const ADMIN_OTP_MAX_ATTEMPTS = 5;
+const ADMIN_OTP_MAX_ATTEMPTS = parseInt(process.env.ADMIN_OTP_MAX_ATTEMPTS, 10) || 5;
 function maskPhone(p) {
   return p.length > 5 ? p.slice(0, 4) + '•••' + p.slice(-2) : '•••';
 }
@@ -1499,7 +1499,7 @@ app.post('/api/warranty/:serial/send', async function (req, res) {
     // is a link to the same public, unauthenticated /card endpoint the
     // customer's own "PDF download" button already uses.
     if (!SMS_CONFIGURED) return res.status(503).json({ error: 'not_configured', channel: 'sms' });
-    const publicBase = process.env.RENDER_EXTERNAL_URL || PUBLIC_API_BASE_URL;
+    const publicBase = (process.env.PUBLIC_BASE_URL || process.env.RENDER_EXTERNAL_URL || PUBLIC_API_BASE_URL).replace(/\/+$/, '');
     const cardLink = publicBase + '/api/warranty/' + encodeURIComponent(serial) + '/card';
     await sendWifisherSms(destination, 'ტექნოლაინი — თქვენი გარანტია (' + serial + ') ' +
       (status.active ? 'აქტიურია' : 'ამოწურულია') + ', ვადა: ' + rec.end + '. ბარათი: ' + cardLink);
