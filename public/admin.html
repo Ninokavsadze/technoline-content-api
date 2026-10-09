@@ -325,15 +325,32 @@
     </div>
     <h1>ავტორიზაცია</h1>
     <p>შედით საიტის სამართავად — კონტენტი, ფერები, ნაწილების კატალოგი, ფილიალები და ვიზიტების ჯავშნები.</p>
-    <div class="field">
-      <label for="login-password">პაროლი</label>
-      <input type="password" id="login-password" placeholder="შეიყვანეთ პაროლი" autocomplete="current-password">
+    <div id="login-step-cred">
+      <div class="field">
+        <label for="login-username">მომხმარებელი</label>
+        <input type="text" id="login-username" placeholder="იუზერნეიმი" autocomplete="username" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="login-password">პაროლი</label>
+        <input type="password" id="login-password" placeholder="შეიყვანეთ პაროლი" autocomplete="current-password">
+      </div>
+      <button class="btn btn-gold btn-block" id="login-btn">შესვლა</button>
     </div>
-    <button class="btn btn-gold btn-block" id="login-btn">შესვლა</button>
+    <div id="login-step-otp" style="display:none">
+      <p id="login-otp-hint" style="margin-bottom:14px">SMS კოდი გაიგზავნა ნომერზე.</p>
+      <div class="field">
+        <label for="login-otp">SMS კოდი</label>
+        <input type="text" id="login-otp" inputmode="numeric" maxlength="6" placeholder="6-ციფრიანი კოდი" autocomplete="one-time-code" style="letter-spacing:.3em;text-align:center;font-size:1.2rem">
+      </div>
+      <button class="btn btn-gold btn-block" id="login-otp-btn">დადასტურება</button>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-ghost btn-block" id="login-otp-resend" type="button">ხელახლა გაგზავნა</button>
+        <button class="btn btn-ghost btn-block" id="login-otp-back" type="button">უკან</button>
+      </div>
+    </div>
     <div class="login-err" id="login-err"></div>
     <div class="login-foot">
-      სერვერი: <code id="login-api-base">—</code><br>
-      სატესტო გარემოში ნაგულისხმევი პაროლია <code>technoline2026</code>, თუ ცვლილი არ არის.
+      სერვერი: <code id="login-api-base">—</code>
     </div>
   </div>
 </div>
@@ -379,8 +396,13 @@
 
   /* Swap this one line when Q-Logic's production endpoints are ready —
      see qlogic-content-api/README.md for the migration contract. */
-  var API_BASE = 'https://technoline-content-api.onrender.com';
-  var SITE_URL = 'https://claude.ai/artifact/9DgADmJr7vngx4u3beCKHc';
+  var API_BASE = (function(){
+    /* served by our own server (Render URL, technoline.ge, or local test) -> same-origin; anywhere else (file://, preview) -> Render */
+    var h = location.hostname;
+    if(/^https?:$/.test(location.protocol) && (h === 'localhost' || h === '127.0.0.1' || /(^|\.)technoline\.ge$/.test(h) || /\.onrender\.com$/.test(h))) return location.origin;
+    return 'https://technoline-content-api.onrender.com';
+  })();
+  var SITE_URL = (API_BASE === location.origin) ? location.origin + '/' : 'https://claude.ai/artifact/9DgADmJr7vngx4u3beCKHc';
 
 var CONTENT_ORDER = ["common.brandName","common.tagline","common.bookCta","common.catalogCta","common.navServices","common.navCatalog","common.navWarrantyService","common.navWarrantyCheck","common.navAbout","common.navContact","common.megaSvcTypeScreen","common.megaSvcTypeBattery","common.megaSvcTypeWater","common.megaSvcTypeBoard","common.megaSvcTypeData","chatWidget.title","chatWidget.aiBadgeLabel","chatWidget.onlineLabel","chatWidget.offlineLabel","chatWidget.offlineNotice","chatWidget.gateIntro","chatWidget.gateButton","chatWidget.gateNamePlaceholder","chatWidget.gatePhonePlaceholder","chatWidget.inputPlaceholder","home.hero.eyebrow","home.hero.title","home.hero.lede","common.warrantyCheckCta","home.hero.badge1","home.hero.badge2Num","home.hero.badge2Label","home.hero.badge3Num","home.hero.badge3Label","home.stat1Num","home.stat1Label","home.stat2Num","home.stat2Label","home.stat3Num","home.stat3Label","home.stat4Num","home.stat4Label","home.services.eyebrow","home.services.title","home.services.lede","home.services.lead.title","home.services.lead.desc","home.services.lead.tag","home.services.card2.title","home.services.card2.desc","home.services.card2.tag","home.services.card3.title","home.services.card3.desc","home.services.card3.tag","home.services.card4.title","home.services.card4.desc","home.services.card4.tag","home.services.card5.title","home.services.card5.desc","home.services.card5.tag","home.steps.eyebrow","home.steps.title","home.steps.step1.title","home.steps.step1.desc","home.steps.step2.title","home.steps.step2.desc","home.steps.step3.title","home.steps.step3.desc","home.steps.step4.title","home.steps.step4.desc","home.craft.eyebrow","home.craft.title","home.craft.lede","home.band.title","home.band.desc","home.reviews.eyebrow","home.reviews.title","home.reviews.quote1","home.reviews.quote2","home.reviews.quote3","about.head.title","about.head.lede","about.history.eyebrow","about.history.title","about.history.p1","about.history.p2","about.stat1Num","about.stat1Label","about.stat2Num","about.stat2Label","about.stat3Num","about.stat3Label","about.stat4Num","about.stat4Label","about.principles.eyebrow","about.principles.title","about.p1.title","about.p1.desc","about.p2.title","about.p2.desc","about.p3.title","about.p3.desc","about.p4.title","about.p4.desc","about.p5.title","about.p5.desc","about.p6.title","about.p6.desc","about.band.title","about.band.desc","about.band.cta","services.head.title","services.head.lede","services.row1.title","services.row1.desc","services.row1.price","services.row2.title","services.row2.desc","services.row2.price","services.row3.title","services.row3.desc","services.row3.price","services.row4.title","services.row4.desc","services.row4.price","services.row5.title","services.row5.desc","services.row5.price","services.row6.title","services.row6.desc","services.row6.price","catalog.head.title","catalog.head.lede","warranty-check.head.title","warranty-check.head.lede","warranty-check.side.title","warranty-check.side.desc","warranty-check.side.item1","warranty-check.side.item2","warranty-check.side.item3","booking.head.title","booking.head.lede","wservice.head.title","wservice.head.lede","wservice.s1.title","wservice.s1.desc","wservice.s1.list","wservice.s2.title","wservice.s2.desc","wservice.s2.list","wservice.s3.title","wservice.s3.desc","wservice.s4.title","wservice.s4.desc","wservice.s5.title","wservice.s5.desc","wservice.band.title","wservice.band.desc","wservice.band.checkCta","wservice.band.bookCta","profile.head.title","profile.head.lede","orders.head.title","orders.head.lede","terms.head.title","terms.head.date","terms.s1.title","terms.s1.body","terms.s2.title","terms.s2.body","terms.s2.list","terms.s3.title","terms.s3.body","terms.s4.title","terms.s4.body","terms.s5.title","terms.s5.body","terms.s6.title","terms.s6.body","terms.s7.title","contact.head.title","contact.head.lede","contact.center.title","contact.center.phone","contact.center.email","contact.corp.title","contact.corp.phone","contact.corp.email","contact.branches.eyebrow","contact.branches.title","footer.blurb","footer.colServicesTitle","footer.servicesLink1","footer.servicesLink2","footer.servicesLink3","footer.servicesLink4","footer.colToolsTitle","footer.colCompanyTitle","footer.colContactTitle","common.phone","common.email","footer.address","footer.copyright","common.gtmId","common.cookieBannerText","common.cookieAcceptBtn","common.cookieDeclineBtn","footer.termsLink","footer.refundLink","footer.privacyLink","privacy.head.title","privacy.head.date","privacy.s1.title","privacy.s1.body","privacy.s2.title","privacy.s2.body","privacy.s3.title","privacy.s3.body","privacy.s4.title","privacy.s4.body","privacy.s5.title","privacy.s5.body","privacy.s6.title","privacy.s6.body"];
 var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","common.tagline":"TECHNOLINE SERVICE","common.bookCta":"ვიზიტის დაჯავშნა","common.catalogCta":"კატალოგის ნახვა","common.navServices":"სერვისები","common.navCatalog":"ნაწილების<br>კატალოგი","common.navWarrantyService":"საგარანტიო მომსახურება","common.navWarrantyCheck":"საგარანტიო ვადის<br>გადამოწმება","common.navAbout":"ჩვენს<br>შესახებ","common.navContact":"კონტაქტი","common.megaSvcTypeScreen":"ეკრანის შეცვლა","common.megaSvcTypeBattery":"ბატარეის შეცვლა","common.megaSvcTypeWater":"წყლის დაზიანება","common.megaSvcTypeBoard":"დედაპლატის დიაგნოსტიკა","common.megaSvcTypeData":"მონაცემთა აღდგენა","home.hero.eyebrow":"<span class=\"dot\"></span>თბილისში, ბათუმსა და ქუთაისში — 9 ფილიალი","home.hero.title":"თქვენი ტექნიკა, <em>სანდო</em> ხელებში","home.hero.lede":"ტექნოლაინი აღადგენს სმარტფონებს, ლეპტოპებს, პლანშეტებსა და სხვა ციფრულ მოწყობილობებს — ორიგინალი ნაწილებით, გამჭვირვალე ფასად და საშუალოდ 48 საათში.","common.warrantyCheckCta":"საგარანტიოს შემოწმება","chatWidget.title":"დაგვისვით შეკითხვა","chatWidget.aiBadgeLabel":"თქვენ გესაუბრებათ AI აგენტი — საჭიროების შემთხვევაში გადაამოწმეთ ინფორმაცია.","chatWidget.onlineLabel":"ონლაინ","chatWidget.offlineLabel":"ოფლაინ","chatWidget.offlineNotice":"ამჟამად სამუშაო საათებს გარეთ ვართ — დაწერეთ შეტყობინება და პასუხს უახლოეს სამუშაო დროს მიიღებთ.","chatWidget.gateIntro":"დაწყებამდე მიუთითეთ სახელი და ტელეფონის ნომერი, რომ პასუხი მიიღოთ.","chatWidget.gateButton":"საუბრის დაწყება","chatWidget.gateNamePlaceholder":"სახელი","chatWidget.gatePhonePlaceholder":"ტელეფონის ნომერი","chatWidget.inputPlaceholder":"დაწერეთ შეტყობინება…","home.hero.badge1":"ორიგინალი<br>ნაწილები","home.hero.badge2Num":"48სთ","home.hero.badge2Label":"საშუალო<br>შეკეთების ვადა","home.hero.badge3Num":"12","home.hero.badge3Label":"წელი<br>გამოცდილება","home.stat1Num":"45,000+","home.stat1Label":"შეკეთებული მოწყობილობა","home.stat2Num":"9","home.stat2Label":"სერვის-ცენტრი საქართველოში","home.stat3Num":"4.8/5","home.stat3Label":"მომხმარებლის შეფასება","home.stat4Num":"6 თვე","home.stat4Label":"გარანტია ყველა შეკეთებაზე","home.services.eyebrow":"სერვისები","home.services.title":"ერთი ცენტრი, ყველა მოწყობილობისთვის","home.services.lede":"დიაგნოსტიკიდან შეკეთებამდე — ჩვენი ინჟინრები მუშაობენ ყველა ძირითად ბრენდთან და მოწყობილობის ტიპთან.","home.services.lead.title":"სმარტფონების შეკეთება","home.services.lead.desc":"ეკრანი, ბატარეა, კამერა, წყლის დაზიანება — ორიგინალი ნაწილებით, უმეტესად იმავე დღეს.","home.services.card2.title":"ლეპტოპები და კომპიუტერები","home.services.card2.desc":"დედაპლატის დიაგნოსტიკა, კლავიატურის და ეკრანის შეცვლა, სისტემის აღდგენა.","home.services.card3.title":"პლანშეტები","home.services.card3.desc":"iPad და Android პლანშეტების ეკრანის, ბატარეისა და პორტების შეკეთება.","home.services.card4.title":"სმარტ-საათები","home.services.card4.desc":"ეკრანის, ღილაკებისა და დატენვის მოდულის შეკეთება ყველა ძირითადი ბრენდისთვის.","home.services.card5.title":"სათამაშო კონსოლები","home.services.card5.desc":"PlayStation, Xbox და Nintendo კონსოლების გაწმენდა, გაცხელების და HDMI პრობლემები.","home.steps.eyebrow":"როგორ მუშაობს","home.steps.title":"დიაგნოსტიკიდან გატანამდე — 4 ნაბიჯი","home.steps.step1.title":"დაჯავშნა","home.steps.step1.desc":"აირჩიეთ ფილიალი და დრო ონლაინ, ან მიუტანეთ მოწყობილობა უშუალოდ სერვის-ცენტრში.","home.steps.step2.title":"უფასო დიაგნოსტიკა","home.steps.step2.desc":"ინჟინერი ადგენს პრობლემას და გიგზავნით ფასის ზუსტ შეთავაზებას 30 წუთში.","home.steps.step3.title":"შეკეთება","home.steps.step3.desc":"დამტკიცების შემდეგ ვიწყებთ სამუშაოს ორიგინალი ან სერტიფიცირებული ნაწილებით.","home.steps.step4.title":"გატანა და გარანტია","home.steps.step4.desc":"იღებთ მზა მოწყობილობას 6-თვიანი გარანტიით და SMS შეტყობინებით.","home.craft.eyebrow":"ჩვენი ინჟინრები საქმეში","home.craft.title":"სიზუსტე, რომელიც წლების გამოცდილებით შენდება","home.craft.lede":"დედაპლატის მიკრო-შედუღებიდან ბატარეის უსაფრთხო შეცვლამდე — ყოველი შეკეთება გადის იმავე ხარისხის კონტროლს, დამოუკიდებლად მოწყობილობის ბრენდისგან.","home.band.title":"შეამოწმეთ თქვენი მოწყობილობის საგარანტიო სტატუსი 10 წამში","home.band.desc":"შეიყვანეთ სერიული ნომერი ან IMEI და გაიგეთ, ფარავს თუ არა გარანტია მიმდინარე პრობლემას.","home.reviews.eyebrow":"მომხმარებელთა გამოხმაურება","home.reviews.title":"რას ამბობენ ჩვენი კლიენტები","home.reviews.quote1":"„ეკრანი ერთ საათში შემიცვალეს iPhone-ზე, ხარისხი — თითქოს ახალი მოწყობილობა მაქვს.“","home.reviews.quote2":"„ლეპტოპს წყალი დაესხა, ფიქრობდი ჩამორეცხილი იყო — 3 დღეში სრულად აღადგინეს მონაცემებთან ერთად.“","home.reviews.quote3":"„ონლაინ დავჯავშნე ვიზიტი, რიგში არ დამიდგამს და ფასიც წინასწარ ვიცოდი — მაქსიმალურად კომფორტული სერვისი.“","about.head.title":"ტექნოლაინის შესახებ","about.head.lede":"2013 წლიდან ვაწვდით საქართველოს ბაზარს ციფრული ტექნიკის სერვისს — გამჭვირვალედ, სწრაფად და ორიგინალი ნაწილებით.","about.history.eyebrow":"ჩვენი ისტორია","about.history.title":"დაიწყო ერთი სახელოსნოთი, გაგრძელდა ქვეყნის მასშტაბით","about.history.p1":"ტექნოლაინი დაარსდა თბილისში, როგორც პატარა სახელოსნო სმარტფონების შეკეთებისთვის. დღეს ჩვენ ვართ ერთ-ერთი უმსხვილესი დამოუკიდებელი სერვის-ცენტრების ქსელი საქართველოში — 9 ფილიალით სამ ქალაქში, 60-ზე მეტი სერტიფიცირებული ინჟინრით და საკუთარი ნაწილების ლაბორატორიით.","about.history.p2":"ჩვენი მიზანია, ტექნიკის შეკეთება იყოს ისეთივე მარტივი და გასაგები, როგორც მისი შეძენა — გამჭვირვალე ფასებით, რეალურ დროში სტატუსის თვალყურის დევნებით და გარანტიით ყველა სამუშაოზე.","about.stat1Num":"2013","about.stat1Label":"დაარსების წელი","about.stat2Num":"9","about.stat2Label":"ფილიალი","about.stat3Num":"60+","about.stat3Label":"სერტიფიცირებული ინჟინერი","about.stat4Num":"45,000+","about.stat4Label":"შეკეთებული მოწყობილობა","about.principles.eyebrow":"ჩვენი პრინციპები","about.principles.title":"რატომ გვირჩევენ","about.p1.title":"ორიგინალი ნაწილები","about.p1.desc":"ვმუშაობთ მხოლოდ სერტიფიცირებულ მომწოდებლებთან და გავცემთ 6-თვიან გარანტიას ყველა ნაწილზე.","about.p2.title":"სწრაფი შესრულება","about.p2.desc":"სტანდარტული შეკეთებების 80% სრულდება იმავე ან მომდევნო სამუშაო დღეს.","about.p3.title":"მონაცემთა უსაფრთხოება","about.p3.desc":"თქვენი პირადი მონაცემები დაცულია — მუშაობის დაწყებამდე ვაფორმებთ კონფიდენციალურობის ხელშეკრულებას.","about.p4.title":"გამოცდილი ინჟინრები","about.p4.desc":"გუნდი გადის რეგულარულ ტრენინგებს მწარმოებელთა უახლეს სტანდარტებზე.","about.p5.title":"გამჭვირვალე ფასები","about.p5.desc":"ფასს ადასტურებთ დიაგნოსტიკის შემდეგ — დამალული საფასურების გარეშე.","about.p6.title":"9 ფილიალი","about.p6.desc":"თბილისში, ბათუმსა და ქუთაისში — მოწყობილობა ყოველთვის ახლოსაა.","about.band.title":"გუნდი, რომელსაც შეგიძლიათ ენდოთ","about.band.desc":"60-ზე მეტი სერტიფიცირებული ინჟინერი, საკუთარი ხარისხის კონტროლის ლაბორატორია და 12 წლიანი გამოცდილება ციფრული ტექნიკის ბაზარზე.","services.head.title":"სერვისები და ტარიფები","services.head.lede":"საორიენტაციო ფასები — საბოლოო ღირებულებას ადასტურებთ უფასო დიაგნოსტიკის შემდეგ.","services.row1.title":"სმარტფონის შეკეთება","services.row1.desc":"ეკრანი, ბატარეა, კამერა, დამტენი პორტი, წყლის დაზიანება","services.row1.price":"85 ₾ – დან","services.row2.title":"ლეპტოპისა და კომპიუტერის შეკეთება","services.row2.desc":"დედაპლატის დიაგნოსტიკა, კლავიატურა, გაცხელება, SSD/RAM განახლება","services.row2.price":"120 ₾ – დან","services.row3.title":"პლანშეტის შეკეთება","services.row3.desc":"ეკრანი, ბატარეა, დამტენი პორტი — iPad და Android","services.row3.price":"95 ₾ – დან","services.row4.title":"სმარტ-საათის შეკეთება","services.row4.desc":"ეკრანი, ღილაკები, დატენვის მოდული","services.row4.price":"70 ₾ – დან","services.row5.title":"სათამაშო კონსოლის შეკეთება","services.row5.desc":"გაწმენდა, გაცხელება, HDMI/კონტროლერის პრობლემები","services.row5.price":"90 ₾ – დან","services.row6.title":"საყოფაცხოვრებო ტექნიკა","services.row6.desc":"დიაგნოსტიკა და შეკეთება მცირე საყოფაცხოვრებო ტექნიკისთვის","services.row6.price":"60 ₾ – დან","catalog.head.title":"ნაწილების კატალოგი","catalog.head.lede":"ორიგინალი და სერტიფიცირებული სათადარიგო ნაწილები — 6-თვიანი გარანტიით.","warranty-check.head.title":"საგარანტიო პერიოდის შემოწმება","warranty-check.head.lede":"შეიყვანეთ მოწყობილობის სერიული ნომერი ან IMEI და გაიგეთ გარანტიის სტატუსი მყისიერად.","warranty-check.side.title":"როგორ მუშაობს გარანტია","warranty-check.side.desc":"ყველა შეკეთებულ მოწყობილობასა და გაყიდულ ნაწილს ახლავს 6-თვიანი გარანტია დეფექტებზე.","warranty-check.side.item1":"გარანტია ვრცელდება შეცვლილ ნაწილსა და შესრულებულ სამუშაოზე","warranty-check.side.item2":"სერიული ნომერი იძებნება მოწყობილობის პარამეტრებში ან ყუთზე","warranty-check.side.item3":"საგარანტიო შეკეთება უფასოა, თუ დაზიანება არ არის მექანიკური","booking.head.title":"ვიზიტის დაჯავშნა სერვის ცენტრში","booking.head.lede":"აირჩიეთ ფილიალი, მომსახურება და თქვენთვის მოსახერხებელი დრო — 4 მარტივი ნაბიჯი.","wservice.head.title":"საგარანტიო მომსახურება","wservice.head.lede":"რას ფარავს გარანტია, როგორ გამოვიყენოთ და რა ვადებში ხდება საგარანტიო შეკეთება.","wservice.s1.title":"რას მოიცავს გარანტია","wservice.s1.desc":"ტექნოლაინში შესრულებულ ყველა სამუშაოსა და გაყიდულ სათადარიგო ნაწილს ახლავს სტანდარტული 6-თვიანი გარანტია. გარანტია მოქმედებს შემდეგზე:","wservice.s1.list":"\n            <li>შეცვლილი ნაწილის ქარხნული დეფექტი (ეკრანი, ბატარეა, კამერა, დამტენი პორტი და სხვ.)</li>\n            <li>შესრულებული სამუშაოს ხარისხი — თუ იგივე პრობლემა განმეორდა შეკეთების შემდეგ</li>\n            <li>მონტაჟის დროს წარმოქმნილი დაზიანება</li>\n          ","wservice.s2.title":"რას არ მოიცავს გარანტია","wservice.s2.desc":"გარანტია არ ვრცელდება შემდეგ შემთხვევებზე:","wservice.s2.list":"\n            <li>ახალი მექანიკური დაზიანება გარანტიის პერიოდში (ჩავარდნა, დარტყმა, ცემა)</li>\n            <li>წყლის ან სითხის ახალი ზემოქმედება, თუ თავდაპირველი პრობლემა სხვა იყო</li>\n            <li>სხვა სერვის-ცენტრის მიერ განხორციელებული ჩარევა შეკეთების შემდეგ</li>\n            <li>პროგრამული პრობლემები, რომლებიც არ უკავშირდება შესრულებულ სამუშაოს</li>\n          ","wservice.s3.title":"როგორ გამოვიყენოთ გარანტია","wservice.s3.desc":"საგარანტიო შემთხვევის დაფიქსირებისთვის:","wservice.s4.title":"შესრულების ვადები","wservice.s4.desc":"საგარანტიო შემთხვევების უმეტესობა მოგვარდება <strong>1–3 სამუშაო დღეში</strong>. თუ საჭიროა ნაწილის დამატებითი შეკვეთა, ვადა შესაძლოა გაიზარდოს 5–7 დღემდე — ამის შესახებ წინასწარ გეცნობებათ.","wservice.s5.title":"გაფართოებული გარანტია","wservice.s5.desc":"შეკეთების დასრულებისას შეგიძლიათ შეიძინოთ გაფართოებული, 12-თვიანი გარანტიის პაკეტი, რომელიც დამატებით მოიცავს ერთჯერად უფასო დიაგნოსტიკას მომდევნო წელს.","wservice.band.title":"გინდათ გაარკვიოთ, ფარავს თუ არა გარანტია თქვენს შემთხვევას?","wservice.band.desc":"შეამოწმეთ სერიული ნომერი ონლაინ ან დაჯავშნეთ ვიზიტი უფასო დიაგნოსტიკისთვის.","profile.head.title":"ჩემი პროფილი","profile.head.lede":"მართეთ თქვენი პირადი მონაცემები და დამატებული მოწყობილობები.","orders.head.title":"ჩემი შეკვეთები","orders.head.lede":"თვალი ადევნეთ თქვენი მიმდინარე და დასრულებული შეკეთებების სტატუსს.","terms.head.title":"წესები და პირობები","terms.head.date":"ბოლო განახლება: 1 სექტემბერი, 2026","terms.s1.title":"1. ზოგადი დებულებები","terms.s1.body":"წინამდებარე დოკუმენტი არეგულირებს ურთიერთობას შპს „ტექნოლაინსა\" (შემდგომში — კომპანია) და მომხმარებელს შორის, რომელიც სარგებლობს კომპანიის ვებგვერდით ან სერვის-ცენტრების მომსახურებით. ვებგვერდით სარგებლობით მომხმარებელი ეთანხმება ქვემოთ მოცემულ პირობებს.","terms.s2.title":"2. მომსახურების პირობები","terms.s2.body":"დიაგნოსტიკა უფასოა ყველა მოწყობილობისთვის. შეკეთების საბოლოო ღირებულება მომხმარებელს დასტურდება წერილობით (SMS ან ელფოსტა) დიაგნოსტიკის დასრულების შემდეგ, სამუშაოს დაწყებამდე.","terms.s2.list":"\n            <li>მოწყობილობის მიღებისას გაიცემა მიღება-ჩაბარების ქვითარი უნიკალური ნომრით</li>\n            <li>სტანდარტული შეკეთების ვადა შეადგენს 1–3 სამუშაო დღეს, გართულებული შემთხვევებისთვის — 5–7 დღეს</li>\n            <li>თუ დიაგნოსტიკის შემდეგ მომხმარებელი უარს იტყვის შეკეთებაზე, დიაგნოსტიკის საფასური არ ჩამოიჭრება</li>\n          ","terms.s3.title":"3. ანგარიშსწორება","terms.s3.body":"ანგარიშსწორება ხდება ნაღდი ან უნაღდო ფორმით, მოწყობილობის გატანისას. კორპორატიული კლიენტებისთვის შესაძლებელია განვადებით ანგარიშსწორება ხელშეკრულების საფუძველზე.","terms.s4.title":"4. მონაცემთა დაცვა","terms.s4.body":"კომპანია იცავს მომხმარებლის პირად მონაცემებსა და მოწყობილობაზე დაცულ ინფორმაციას საქართველოს კანონმდებლობის შესაბამისად. მოწყობილობის მონაცემებზე წვდომა ეზღუდება მხოლოდ დიაგნოსტიკისა და შეკეთებისთვის საჭირო პერსონალს. მომხმარებელს რეკომენდირებულია მოწყობილობის მონაცემთა სარეზერვო ასლის შექმნა შეკეთებამდე.","terms.s5.title":"5. პასუხისმგებლობა","terms.s5.body":"კომპანია პასუხისმგებელია შესრულებული სამუშაოს ხარისხზე გარანტიის ვადის განმავლობაში. კომპანია არ არის პასუხისმგებელი მონაცემთა დაკარგვაზე, თუ მომხმარებელს არ შეუქმნია სარეზერვო ასლი და დაზიანება არ იყო გამოწვეული შესრულებული სამუშაოთი.","terms.s6.title":"6. გაუქმება და დაბრუნება","terms.s6.body":"დაჯავშნილი ვიზიტის გაუქმება ან გადატანა შესაძლებელია ვიზიტამდე მინიმუმ 2 საათით ადრე, უფასოდ. შეძენილი ნაწილის დაბრუნება შესაძლებელია შეძენიდან 14 დღის განმავლობაში, თუ ნაწილი არ არის დამონტაჟებული და შენარჩუნებულია სასაქონლო სახე.","terms.s7.title":"7. კონტაქტი","contact.head.title":"საკონტაქტო ინფორმაცია","contact.head.lede":"დაგვიკავშირდით ნებისმიერი შეკითხვით ან მოგვინახულეთ უახლოეს ფილიალში.","contact.center.title":"საკონტაქტო ცენტრი","contact.center.phone":"+995 322 12 34 56 (ყოველდღე, 09:00–21:00)","contact.center.email":"info@technoline.ge","contact.corp.title":"კორპორატიული კლიენტები","contact.corp.phone":"+995 322 12 34 57","contact.corp.email":"business@technoline.ge","contact.branches.eyebrow":"ფილიალები","contact.branches.title":"9 ფილიალი, 3 ქალაქი","footer.blurb":"ციფრული ტექნიკის სერვის ცენტრების ქსელი საქართველოში — 2013 წლიდან, ორიგინალი ნაწილებითა და გამჭვირვალე მომსახურებით.","footer.colServicesTitle":"სერვისები","footer.servicesLink1":"სმარტფონები","footer.servicesLink2":"ლეპტოპები","footer.servicesLink3":"პლანშეტები","footer.servicesLink4":"სმარტ-საათები","footer.colToolsTitle":"ხელსაწყოები","footer.colCompanyTitle":"კომპანია","footer.colContactTitle":"კონტაქტი","common.phone":"+995 322 12 34 56","common.email":"info@technoline.ge","footer.address":"ვაჟა-ფშაველას გამზ. 71,<br>თბილისი","footer.copyright":"© 2026 შპს „ტექნოლაინი\". ყველა უფლება დაცულია.","common.gtmId":"","common.cookieBannerText":"საიტი იყენებს აუცილებელ ტექნიკურ ქუქი-ფაილებს გამართული მუშაობისთვის (მაგ. ავტორიზაციის დამახსოვრება). სტატისტიკისა და საიტის გაუმჯობესების მიზნით დამატებითი ანალიტიკური ქუქი-ფაილების გამოყენებაზე თანხმობას თქვენ წყვეტთ — დეტალები <a href=\"#privacy\" data-route=\"privacy\">კონფიდენციალურობის პოლიტიკაში</a>.","common.cookieAcceptBtn":"ყველას მიღება","common.cookieDeclineBtn":"მხოლოდ აუცილებელი","footer.refundLink":"დაბრუნების პოლიტიკა","footer.privacyLink":"კონფიდენციალურობის პოლიტიკა","privacy.head.title":"კონფიდენციალურობის პოლიტიკა","privacy.head.date":"ბოლო განახლება: 1 ოქტომბერი, 2026","privacy.s1.title":"1. რა ინფორმაციას ვაგროვებთ","privacy.s1.body":"საიტზე რეგისტრაციის, ავტორიზაციის, ლაივ ჩატის ან საგარანტიო ბარათის აღდგენისას ვაგროვებთ თქვენს სახელს, ტელეფონის ნომერს (დადასტურებულს SMS-კოდით) და, სურვილის შემთხვევაში, ელფოსტას. ვიზიტის დაჯავშნისას ემატება მოწყობილობის ტიპი, საჭირო სერვისი და არჩეული ფილიალი/დრო. ლაივ ჩატში შენახულია თქვენი მიმოწერის ტექსტი და მასში გაგზავნილი ფოტო/ხმოვანი დანართები. საგარანტიო მომსახურებისას — მოწყობილობის სერიული ნომერი და გარანტიის ვადები.","privacy.s2.title":"2. როგორ ვიყენებთ თქვენს მონაცემებს","privacy.s2.body":"მონაცემებს ვიყენებთ მხოლოდ მომსახურების გასაწევად: თქვენი ვინაობის დასადასტურებლად SMS-კოდით, ჯავშნის/შეკეთების სტატუსის შეტყობინებისთვის, ჩატში (AI აგენტთან ან ოპერატორთან) პასუხის გასაცემად და საგარანტიო ბარათის მოსაძებნად ან გასაგზავნად. თქვენი მონაცემები არასოდეს გამოიყენება პირდაპირი მარკეტინგისთვის თქვენი დამატებითი თანხმობის გარეშე.","privacy.s3.title":"3. ქუქი-ფაილები და ანალიტიკა","privacy.s3.body":"საიტი იყენებს ბრაუზერის ლოკალურ მეხსიერებას (localStorage) იმისთვის, რომ დალოგინებული დაგხვდეთ საიტზე დაბრუნებისას და ჩატში ხელახლა არ გკითხოთ სახელი/ტელეფონი. სტატისტიკისა და საიტის გაუმჯობესების მიზნით შესაძლოა გამოყენებულ იქნას Google Analytics/Google Tag Manager-ის ანონიმური, აგრეგირებული სტატისტიკის ქუქი-ფაილები — ამ შემთხვევაში მოქმედებს Google-ის საკუთარი კონფიდენციალურობის პირობები. ბრაუზერის პარამეტრებში შეგიძლიათ ნებისმიერ დროს გამორთოთ ან წაშალოთ ქუქი-ფაილები.","privacy.s4.title":"4. მონაცემთა გაზიარება მესამე მხარეებთან","privacy.s4.body":"თქვენს მონაცემებს არ ვყიდით და არ ვუზიარებთ მესამე პირებს სარეკლამო მიზნით. SMS-კოდებისა და შეტყობინებების გასაგზავნად ვიყენებთ სანდო SMS-პროვაიდერს, ხოლო ვიზიტის ჯავშნის მართვისთვის — Smart Q-Logic-ის სისტემას. ეს პარტნიორები თქვენს მონაცემებს იღებენ მხოლოდ იმ მოცულობით, რაც კონკრეტული ფუნქციის (SMS-ის მიტანა, ჯავშნის დამუშავება) შესასრულებლად არის საჭირო.","privacy.s5.title":"5. შენახვა და უსაფრთხოება","privacy.s5.body":"მონაცემები ინახება კომპანიის სერვერებზე იმ ვადით, რაც საჭიროა მომსახურების გასაწევად და გარანტიული ვალდებულებების შესასრულებლად, ან კანონმდებლობით დადგენილ ვადამდე. წვდომა შეზღუდულია მხოლოდ იმ პერსონალზე, ვისთვისაც ეს სამუშაო მოვალეობის შესასრულებლად აუცილებელია.","privacy.s6.title":"6. თქვენი უფლებები და კონტაქტი","privacy.s6.body":"გაქვთ უფლება მოითხოვოთ თქვენი პირადი მონაცემების ასლი, შესწორება ან წაშლა. ამისთვის დაგვიკავშირდით — <a href=\"#contact\" data-route=\"contact\" style=\"color:var(--blue);font-weight:700\">საკონტაქტო გვერდზე</a> მითითებულ არხებზე. წინამდებარე პოლიტიკა პერიოდულად შეიძლება განახლდეს — ცვლილების თარიღი მითითებულია გვერდის თავში.","home.services.lead.tag":"სმარტფონები","home.services.card2.tag":"კომპიუტერები","home.services.card3.tag":"პლანშეტები","home.services.card4.tag":"სმარტ-საათები","home.services.card5.tag":"სათამაშო კონსოლები","about.band.cta":"ფილიალების ნახვა","wservice.band.checkCta":"შემოწმება","wservice.band.bookCta":"დაჯავშნა","footer.termsLink":"წესები და პირობები"};
@@ -657,31 +679,83 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
   document.getElementById('login-api-base').textContent = API_BASE;
   document.getElementById('open-site-btn').href = SITE_URL;
 
+  var loginChallenge = null;
+  function loginShowErr(msg){ var e=document.getElementById('login-err'); e.textContent = msg; e.classList.add('show'); }
+  function loginClearErr(){ document.getElementById('login-err').classList.remove('show'); }
+  function loginStep(step){
+    document.getElementById('login-step-cred').style.display = step==='cred' ? '' : 'none';
+    document.getElementById('login-step-otp').style.display = step==='otp' ? '' : 'none';
+    loginClearErr();
+    if(step==='otp'){ var o=document.getElementById('login-otp'); o.value=''; setTimeout(function(){ o.focus(); }, 50); }
+    if(step==='cred'){ loginChallenge = null; document.getElementById('login-otp').value=''; }
+  }
+  function loginDone(token){
+    authToken = token;
+    try{ sessionStorage.setItem('tl_admin_token', authToken); }catch(e){}
+    document.getElementById('login-password').value = '';
+    loginStep('cred');
+    enterApp();
+  }
+  function loginPost(path, body){
+    return fetch(API_BASE + path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
+      .then(function(res){ return res.json().catch(function(){ return {}; }).then(function(d){ d._status = res.status; return d; }); });
+  }
+  var LOGIN_ERRORS = {
+    invalid_credentials:'მომხმარებელი ან პაროლი არასწორია',
+    locked:'ძალიან ბევრი მცდელობა. სცადეთ 15 წუთის შემდეგ',
+    sms_not_configured:'SMS სერვისი სერვერზე არ არის გამართული',
+    invalid_code:'კოდი არასწორია',
+    expired:'კოდს ვადა გაუვიდა — შედით თავიდან',
+    too_many_attempts:'ძალიან ბევრი არასწორი კოდი — შედით თავიდან',
+    too_soon:'ცოტა ხანში სცადეთ ხელახლა გაგზავნა',
+    server_error:'სერვერის შეცდომა'
+  };
+  function loginMsg(d){ return LOGIN_ERRORS[d && d.error] || ('სერვერთან კავშირი ვერ დამყარდა (' + API_BASE + ')'); }
+
   function doLogin(){
+    var user = document.getElementById('login-username').value.trim();
     var pwd = document.getElementById('login-password').value;
-    var errEl = document.getElementById('login-err');
     var btn = document.getElementById('login-btn');
-    errEl.classList.remove('show');
-    if(!pwd){ errEl.textContent = 'შეიყვანეთ პაროლი'; errEl.classList.add('show'); return; }
+    loginClearErr();
+    if(!user || !pwd){ loginShowErr('შეიყვანეთ მომხმარებელი და პაროლი'); return; }
     btn.disabled = true; btn.textContent = 'შემოწმება…';
-    fetch(API_BASE + '/api/auth/login', {
-      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password: pwd})
-    }).then(function(res){
-      if(!res.ok) throw new Error('bad_login');
-      return res.json();
-    }).then(function(data){
-      authToken = data.token;
-      try{ sessionStorage.setItem('tl_admin_token', authToken); }catch(e){}
-      enterApp();
-    }).catch(function(){
-      errEl.textContent = 'პაროლი არასწორია ან სერვერთან კავშირი ვერ დამყარდა (' + API_BASE + ')';
-      errEl.classList.add('show');
-    }).finally(function(){
-      btn.disabled = false; btn.textContent = 'შესვლა';
-    });
+    loginPost('/api/auth/login', {username:user, password:pwd}).then(function(d){
+      if(d.token) return loginDone(d.token);
+      if(d.step==='otp'){
+        loginChallenge = d.challenge;
+        document.getElementById('login-otp-hint').textContent = 'SMS კოდი გაიგზავნა ნომერზე ' + (d.phone||'') + ' (მოქმედია 5 წუთი).';
+        loginStep('otp'); return;
+      }
+      loginShowErr(loginMsg(d));
+    }).catch(function(){ loginShowErr(loginMsg(null)); })
+    .finally(function(){ btn.disabled = false; btn.textContent = 'შესვლა'; });
+  }
+  function doVerifyOtp(){
+    var code = document.getElementById('login-otp').value.trim();
+    var btn = document.getElementById('login-otp-btn');
+    loginClearErr();
+    if(!/^\d{6}$/.test(code)){ loginShowErr('შეიყვანეთ 6-ციფრიანი კოდი'); return; }
+    btn.disabled = true; btn.textContent = 'შემოწმება…';
+    loginPost('/api/auth/verify', {challenge:loginChallenge, code:code}).then(function(d){
+      if(d.token) return loginDone(d.token);
+      loginShowErr(loginMsg(d));
+      if(d.error==='expired' || d.error==='too_many_attempts' || d.error==='locked') setTimeout(function(){ loginStep('cred'); loginShowErr(loginMsg(d)); }, 1200);
+    }).catch(function(){ loginShowErr(loginMsg(null)); })
+    .finally(function(){ btn.disabled = false; btn.textContent = 'დადასტურება'; });
   }
   document.getElementById('login-btn').addEventListener('click', doLogin);
+  document.getElementById('login-username').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('login-password').focus(); });
   document.getElementById('login-password').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+  document.getElementById('login-otp-btn').addEventListener('click', doVerifyOtp);
+  document.getElementById('login-otp').addEventListener('keydown', function(e){ if(e.key==='Enter') doVerifyOtp(); });
+  document.getElementById('login-otp-back').addEventListener('click', function(){ loginStep('cred'); });
+  document.getElementById('login-otp-resend').addEventListener('click', function(){
+    loginClearErr();
+    loginPost('/api/auth/resend', {challenge:loginChallenge}).then(function(d){
+      if(d.ok){ loginShowErr('კოდი ხელახლა გაიგზავნა'); document.getElementById('login-err').style.color='var(--ok, #1a7f4b)'; setTimeout(function(){ document.getElementById('login-err').style.color=''; }, 2500); }
+      else loginShowErr(loginMsg(d));
+    }).catch(function(){ loginShowErr(loginMsg(null)); });
+  });
 
   document.getElementById('logout-btn').addEventListener('click', function(){
     authToken = null;
@@ -692,6 +766,7 @@ var CONTENT_DEFAULTS = {"common.brandName":"ტექნოლაინი","com
     document.getElementById('app').classList.remove('is-active');
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('login-password').value = '';
+    loginStep('cred');
   });
 
   /* ---------- app state ---------- */

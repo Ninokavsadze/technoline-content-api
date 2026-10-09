@@ -2124,7 +2124,12 @@
 
   /* Site content + booking API — swap this one line when Q-Logic's
      production endpoints are ready (see qlogic-content-api/README.md). */
-  var API_BASE = 'https://technoline-content-api.onrender.com';
+  var API_BASE = (function(){
+    /* served by our own server (Render URL, technoline.ge, or local test) -> same-origin; anywhere else (file://, preview) -> Render */
+    var h = location.hostname;
+    if(/^https?:$/.test(location.protocol) && (h === 'localhost' || h === '127.0.0.1' || /(^|\.)technoline\.ge$/.test(h) || /\.onrender\.com$/.test(h))) return location.origin;
+    return 'https://technoline-content-api.onrender.com';
+  })();
 
   /* ---------- safe storage ---------- */
   var store = {
