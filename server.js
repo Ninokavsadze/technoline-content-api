@@ -31,7 +31,10 @@ const { buildWarrantyCardPdf } = require('./warranty-pdf');
 const { fillWarrantyTemplate, extractTemplatePage } = require('./warranty-template-pdf');
 
 const PORT = process.env.PORT || 4001;
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'technoline2026';
+// when set, admin login also needs an SMS code sent to this number (2FA)
+const ADMIN_PHONE = String(process.env.ADMIN_PHONE || '').replace(/[^\d+]/g, '');
 const DATA_FILE = path.join(__dirname, 'data.json');
 
 const app = express();
@@ -525,12 +528,106 @@ function requireAuth(req, res, next) {
   next();
 }
 
-app.post('/api/auth/login', function (req, res) {
-  const password = (req.body && req.body.password) || '';
-  if (password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'invalid_password' });
+// --- admin login: username + password (+ SMS code when ADMIN_PHONE is set) ---
+function safeEq(a, b) {
+  const ha = crypto.createHash('sha256').update(String(a)).digest();
+  const hb = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+function clientIp(req) {
+  const xff = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  return xff || (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+// brute-force guard: 8 failed attempts per IP -> 15 min lock
+const loginFails = new Map(); // ip -> { n, until }
+const LOGIN_MAX_FAILS = 8;
+const LOGIN_LOCK_MS = 15 * 60 * 1000;
+function loginLocked(ip) {
+  const r = loginFails.get(ip);
+  return !!(r && r.until && r.until > Date.now());
+}
+function loginFailed(ip) {
+  const r = loginFails.get(ip) || { n: 0, until: 0 };
+  if (r.until && r.until <= Date.now()) { r.n = 0; r.until = 0; }
+  r.n++;
+  if (r.n >= LOGIN_MAX_FAILS) { r.until = Date.now() + LOGIN_LOCK_MS; r.n = 0; }
+  loginFails.set(ip, r);
+}
+const adminChallenges = new Map(); // id -> { code, expiresAt, attempts, lastSentAt, ip }
+const ADMIN_OTP_TTL_MS = 5 * 60 * 1000;
+const ADMIN_OTP_COOLDOWN_MS = 30 * 1000;
+const ADMIN_OTP_MAX_ATTEMPTS = 5;
+function maskPhone(p) {
+  return p.length > 5 ? p.slice(0, 4) + '•••' + p.slice(-2) : '•••';
+}
+async function sendAdminCode(ch) {
+  ch.code = String(crypto.randomInt(100000, 1000000));
+  ch.expiresAt = Date.now() + ADMIN_OTP_TTL_MS;
+  ch.attempts = 0;
+  ch.lastSentAt = Date.now();
+  await sendWifisherSms(ADMIN_PHONE, 'ტექნოლაინის ადმინის შესვლის კოდია: ' + ch.code);
+}
+setInterval(function () {
+  const now = Date.now();
+  adminChallenges.forEach(function (c, id) { if (c.expiresAt < now) adminChallenges.delete(id); });
+  loginFails.forEach(function (r, ip) { if (!r.until || r.until < now) { if (!r.n) loginFails.delete(ip); } });
+}, 60 * 1000).unref();
+
+app.post('/api/auth/login', async function (req, res) {
+  try {
+    const ip = clientIp(req);
+    if (loginLocked(ip)) return res.status(429).json({ error: 'locked' });
+    const username = String((req.body && req.body.username) || '').trim();
+    const password = String((req.body && req.body.password) || '');
+    // evaluate both so timing doesn't reveal which one was wrong
+    const okUser = safeEq(username.toLowerCase(), ADMIN_USERNAME.toLowerCase());
+    const okPass = safeEq(password, ADMIN_PASSWORD);
+    if (!(okUser && okPass)) {
+      loginFailed(ip);
+      return res.status(401).json({ error: 'invalid_credentials' });
+    }
+    if (!ADMIN_PHONE) return res.json({ token: issueToken() });
+    if (!SMS_CONFIGURED) return res.status(503).json({ error: 'sms_not_configured' });
+    const id = crypto.randomBytes(16).toString('hex');
+    const ch = { ip: ip };
+    await sendAdminCode(ch);
+    adminChallenges.set(id, ch);
+    res.json({ step: 'otp', challenge: id, phone: maskPhone(ADMIN_PHONE) });
+  } catch (e) {
+    console.error('admin login failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
   }
+});
+
+app.post('/api/auth/verify', function (req, res) {
+  const ip = clientIp(req);
+  if (loginLocked(ip)) return res.status(429).json({ error: 'locked' });
+  const id = String((req.body && req.body.challenge) || '');
+  const code = String((req.body && req.body.code) || '').trim();
+  const ch = adminChallenges.get(id);
+  if (!ch) return res.status(400).json({ error: 'expired' });
+  if (Date.now() > ch.expiresAt) { adminChallenges.delete(id); return res.status(400).json({ error: 'expired' }); }
+  if (ch.attempts >= ADMIN_OTP_MAX_ATTEMPTS) { adminChallenges.delete(id); return res.status(429).json({ error: 'too_many_attempts' }); }
+  if (!safeEq(code, ch.code)) {
+    ch.attempts++;
+    loginFailed(ip);
+    return res.status(401).json({ error: 'invalid_code' });
+  }
+  adminChallenges.delete(id);
   res.json({ token: issueToken() });
+});
+
+app.post('/api/auth/resend', async function (req, res) {
+  try {
+    const ch = adminChallenges.get(String((req.body && req.body.challenge) || ''));
+    if (!ch) return res.status(400).json({ error: 'expired' });
+    if (Date.now() - ch.lastSentAt < ADMIN_OTP_COOLDOWN_MS) return res.status(429).json({ error: 'too_soon' });
+    await sendAdminCode(ch);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('admin resend failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 // never let a browser or intermediate cache serve a stale API response —
@@ -2218,5 +2315,6 @@ app.get('/api/health', function (req, res) {
 
 server.listen(PORT, function () {
   console.log('technoline.ge content+booking test API running on http://localhost:' + PORT);
-  console.log('Admin password: ' + ADMIN_PASSWORD + ' (set ADMIN_PASSWORD env var to change it)');
+  console.log('Admin login: username "' + ADMIN_USERNAME + '", 2FA by SMS ' + (ADMIN_PHONE ? 'ON (' + maskPhone(ADMIN_PHONE) + ')' : 'OFF (set ADMIN_PHONE to enable)'));
+  if (!process.env.ADMIN_PASSWORD) console.warn('WARNING: ADMIN_PASSWORD is not set — using the insecure default. Set it in the environment.');
 });
